@@ -9,3 +9,4 @@ outputs/
 *.joblib
 __pycache__/
 .env
+notebooks/*.ipynb
