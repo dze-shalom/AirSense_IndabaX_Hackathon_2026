@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: airsense-cm-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+  - type: web
+    name: airsense-cm-dashboard
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: >
+      streamlit run dashboard/app.py
+      --server.port $PORT
+      --server.address 0.0.0.0
+      --server.headless true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"

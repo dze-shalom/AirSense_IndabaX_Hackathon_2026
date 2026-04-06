@@ -1,0 +1,188 @@
+"""pages/alerts.py"""
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+from datetime import datetime
+
+from config import *
+from utils.live_data import live_all, live_city
+from utils.helpers import (aqi, compute_bfai, bfai_label, bfai_col,
+                            classify_source, health_impact, city_profile,
+                            SOURCE_LABELS, SOURCE_COLORS, LNG)
+from utils.models import (load_models, load_artefacts, get_conf_interval,
+                           get_alert_prob, predict_7day, infer_region_from_lat)
+from utils.api import fetch_forecast, geocode_city, wmo_icon
+from components.ui import sec, card, info_box, bfai_gauge_svg, harmattan_gauge_svg
+from components.charts import PLO
+
+
+def _t(key):
+    lang = LNG()
+    return T.get(lang, T["en"]).get(key, T["en"].get(key, key))
+
+
+def page_alerts_health():
+    st.markdown('<div class="as-content">', unsafe_allow_html=True)
+
+    # ── Live data ─────────────────────────────────────────────────────────────
+    with st.spinner("Loading live predictions…"):
+        _stats = live_all()
+
+    tab_al, tab_hc = st.tabs([_t("alert_centre_tab"), _t("health_calc_tab")])
+
+    with tab_al:
+        # city selector
+        c1,c2 = st.columns(2)
+        with c1: adv_region = st.selectbox("Region", list(CITIES.keys()), key="al_reg")
+        with c2: adv_city   = st.selectbox("City", [c[0] for c in CITIES[adv_region]], key="al_city")
+        adv_s  = _stats.get(adv_city, CITY_STATS.get(adv_city, {"mean_pm25":15.0,"region":adv_region}))
+        adv_pm = adv_s["mean_pm25"]
+        _,adv_col,adv_ico,adv_raw = aqi(adv_pm, LNG())
+
+        a1,a2 = st.columns(2)
+        with a1:
+            sec("Active Alerts — Cities Above WHO 24h")
+            for city,s in sorted([(c,s) for c,s in _stats.items() if s["mean_pm25"]>WHO_24H],
+                                   key=lambda x: x[1]["mean_pm25"],reverse=True)[:12]:
+                _,col,ico,_ = aqi(s["mean_pm25"])
+                st.markdown(f"""<div class="as-alert-item">
+  <div class="as-alert-dot" style="background:{col};box-shadow:0 0 5px {col}80;"></div>
+  <div><div style="font-size:.78rem;font-weight:600;">{city}</div>
+  <div style="font-size:.63rem;color:{TEXT2};">{s["region"]} · {s["who_exc"]:.0f}% days exceed WHO</div></div>
+  <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.76rem;
+    font-weight:600;color:{col};">{s["mean_pm25"]:.1f} μg/m³</span>
+  <span style="font-size:.85rem;">{ico}</span>
+</div>""", unsafe_allow_html=True)
+
+        with a2:
+            sec("Calibrated Alert System — P(Exceed WHO) per City")
+            art_al = load_artefacts()
+            for city,s in sorted(_stats.items(),
+                                  key=lambda x: get_alert_prob(x[1]["mean_pm25"],load_artefacts()),
+                                  reverse=True)[:12]:
+                prob  = get_alert_prob(s["mean_pm25"],art_al)
+                tc    = RED if prob>.70 else (ORANGE if prob>.40 else (AMBER if prob>.20 else GREEN))
+                tl    = "Red" if prob>.70 else ("Amber" if prob>.40 else ("Watch" if prob>.20 else "Green"))
+                _,col,_,_ = aqi(s["mean_pm25"])
+                st.markdown(f"""<div class="as-alert-item">
+  <div class="as-alert-dot" style="background:{col};"></div>
+  <div style="flex:1;"><div style="font-size:.76rem;font-weight:600;">{city}</div>
+  <div style="font-size:.62rem;color:{TEXT2};">{s.get("region","—")} · {s["mean_pm25"]:.1f} μg/m³</div></div>
+  <div style="text-align:right;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:700;color:{tc};">{prob*100:.0f}%</div>
+    <div style="font-size:.55rem;color:{tc};font-weight:600;">{tl}</div>
+  </div>
+</div>""", unsafe_allow_html=True)
+            info_box(f"P(PM2.5 > 15 μg/m³) = sigmoid(0.222 × PM2.5 − 3.037). "
+                     f"City-specific Platt calibration. Alert F1 = <strong>{MODEL_RL_F1}</strong> @ P=0.50.")
+
+        st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+        sec(f"School & Agricultural Advisory — {adv_city} · PM2.5 {adv_pm:.1f} μg/m³")
+        import datetime as _dtt
+        temp_c = 28.0; o3_proxy = max(0,30+(temp_c-25)*2.8)
+        if adv_pm<=15 and o3_proxy<=60:      sl,sc,sb="SAFE — All outdoor activities normal","#4ade80","rgba(74,222,128,0.08)"
+        elif adv_pm<=35 and o3_proxy<=80:    sl,sc,sb="CAUTION — Limit vigorous outdoor activity","#fbbf24","rgba(251,191,36,0.08)"
+        elif adv_pm<=55 or o3_proxy>100:     sl,sc,sb="RESTRICTED — No PE outdoors; short breaks only","#f97316","rgba(249,115,22,0.08)"
+        else:                                 sl,sc,sb="CLOSE OUTDOOR AREAS — Indoors only","#f87171","rgba(248,113,113,0.08)"
+        is_cattle = adv_region in NORTHERN
+        agri_m,agri_c = (("DUST STORM ALERT — Shelter livestock",RED) if adv_pm>80 else
+                         ("DROUGHT + DUST RISK — Monitor irrigation",ORANGE) if adv_pm>40 else
+                         ("Normal — cattle corridor",GREEN)) if is_cattle else ("No agricultural dust alert",AMBER)
+        sa_c,sb_c = st.columns(2)
+        with sa_c:
+            st.markdown(f"""<div class="as-school-card" style="background:{sb};border-color:{sc};">
+  <div style="font-size:.62rem;color:{sc};text-transform:uppercase;letter-spacing:.7px;font-weight:700;">School Advisory</div>
+  <div style="font-size:.88rem;font-weight:700;color:{sc};margin:6px 0;">{sl}</div>
+  <div style="font-size:.68rem;color:{TEXT2};">PM2.5: {adv_pm:.1f} μg/m³ · O₃ est.: {o3_proxy:.0f} μg/m³</div>
+</div>""", unsafe_allow_html=True)
+        with sb_c:
+            st.markdown(f"""<div class="as-school-card" style="border-color:{agri_c};">
+  <div style="font-size:.62rem;color:{agri_c};text-transform:uppercase;letter-spacing:.7px;font-weight:700;">Agricultural Advisory</div>
+  <div style="font-size:.88rem;font-weight:600;color:{agri_c};margin:6px 0;">{agri_m}</div>
+  <div style="font-size:.68rem;color:{TEXT2};">Region: {adv_region}</div>
+</div>""", unsafe_allow_html=True)
+
+        # SMS preview
+        st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+        sec("SMS Alert Preview — Automated Bilingual Format")
+        alert_prob_sms = get_alert_prob(adv_pm, load_artefacts())
+        now = _dtt.datetime.now()
+        sms = (f"AIRSENSE-CM ALERT: {adv_city} — PM2.5 = {adv_pm:.1f} μg/m³ "
+               f"[{adv_raw.replace('_',' ').upper()}]. "
+               f"Exceedance risk: {alert_prob_sms*100:.0f}%. "
+               f"Vulnerable groups: avoid prolonged outdoor exposure. airsense-cm.org")
+        st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};border-radius:12px;padding:14px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+    <div style="width:34px;height:34px;background:{TEAL};border-radius:50%;display:flex;
+      align-items:center;justify-content:center;font-size:11px;font-weight:800;color:{NAVY};flex-shrink:0;">AS</div>
+    <div><div style="font-size:.8rem;font-weight:700;">AirSense-CM</div>
+    <div style="font-size:.62rem;color:{TEXT2};">Ministry of Public Health · Automated</div></div>
+    <div style="margin-left:auto;font-size:.65rem;color:{TEXT2};">{now.strftime('%H:%M')}</div>
+  </div>
+  <div style="font-size:.76rem;line-height:1.65;color:{TEXT1};">{sms}</div>
+</div>""", unsafe_allow_html=True)
+
+        # Seasonal advisory calendar
+        st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+        sec("Seasonal Advisory Calendar")
+        months_cal=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        cal={"Far North":[48,54,32,28,24,19,14,13,13,22,34,47],"North":[43,48,28,23,18,15,12,12,11,18,28,40],
+             "Adamawa":[33,40,24,17,14,13,10,10,9,13,21,30],"West":[37,45,30,23,21,19,15,14,15,19,27,37],
+             "North West":[36,44,28,20,18,15,12,12,12,16,24,35],"South":[15,20,12,9,9,9,8,8,5,6,9,14]}
+        fig_cal=go.Figure(data=go.Heatmap(
+            z=list(cal.values()),x=months_cal,y=list(cal.keys()),
+            colorscale=[[0.0,NAVY2],[0.3,BORDER],[0.5,AMBER],[0.75,ORANGE],[1.0,RED]],
+            text=[[f"{v}" for v in row] for row in cal.values()],texttemplate="%{text}",
+            textfont={"size":10,"color":TEXT1},
+            hovertemplate="<b>%{y}</b> — %{x}<br>PM2.5: %{z:.0f} μg/m³<extra></extra>",
+            colorbar=dict(title=dict(text="PM2.5<br>μg/m³",font=dict(color=TEXT2)),tickfont=dict(color=TEXT2))))
+        fig_cal.update_layout(**PLO(height=260,xaxis=dict(side="top")))
+        st.plotly_chart(fig_cal, use_container_width=True)
+
+    with tab_hc:
+        sec("Health Impact Calculator — WHO Concentration-Response")
+        with st.form("hf2"):
+            c1,c2 = st.columns(2)
+            with c1:
+                pop   = st.slider("Population Exposed (thousands)",1,1000,100,key="hf_pop2")
+                hrs   = st.slider("Daily Exposure Hours",1,24,8,key="hf_hrs2")
+                pm_sl = st.slider("PM2.5 Level (μg/m³)",0,100,25,key="hf_pm2")
+            with c2:
+                sens  = st.selectbox("Sensitivity Group",
+                    ["General Public","Children & Elderly","Respiratory Patients"],key="hf_sens2")
+            ok = st.form_submit_button("Calculate", use_container_width=True)
+        smult={"General Public":1.0,"Children & Elderly":1.4,"Respiratory Patients":1.8}
+        if ok or "hf_res2" in st.session_state:
+            if ok:
+                risk  = max(0,(pm_sl-WHO_ANN)*0.002)
+                cases = (0.05+risk)*smult.get(sens,1.0)*pop*365*(hrs/24)
+                er,hr,ld = health_impact(pm_sl); ap = get_alert_prob(pm_sl,None)
+                st.session_state.hf_res2={"pm":pm_sl,"cases":cases,"er":er,"hr":hr,"ld":ld,"ap":ap}
+            r=st.session_state.hf_res2; pm_sl=r["pm"]
+            _,rc_aqi,_,_ = aqi(pm_sl)
+            k1,k2,k3,k4=st.columns(4)
+            with k1: card("Est. Annual Cases",f"{r['cases']:.0f}","resp. cases/yr",
+                          accent=RED if r["cases"]>500 else AMBER)
+            with k2: card("Excess Resp.",f"{r['er']:.1f}","per 10,000",accent=ORANGE)
+            with k3: card("Hospital Risk",f"{r['hr']:.1f}","%",
+                          accent=RED if r["hr"]>10 else AMBER)
+            with k4: card("Alert Prob.",f"{r['ap']*100:.0f}","% P(exceed WHO)",
+                          accent=RED if r["ap"]>.5 else (AMBER if r["ap"]>.25 else GREEN))
+            if pm_sl<WHO_ANN:     rec,rc="Excellent. No restrictions.",GREEN
+            elif pm_sl<WHO_24H:   rec,rc="Moderate. Sensitive groups monitor.",AMBER
+            elif pm_sl<30:        rec,rc="Unhealthy for sensitive groups.",ORANGE
+            elif pm_sl<60:        rec,rc="Unhealthy. Avoid outdoor exertion.",RED
+            else:                 rec,rc="Very unhealthy. Stay indoors.",PURPLE
+            st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};
+  border-left:3px solid {rc};border-radius:0 9px 9px 0;padding:.8rem 1rem;
+  margin-top:.85rem;font-size:.8rem;color:{TEXT2};">{rec}</div>""", unsafe_allow_html=True)
+            info_box(f"<strong>Alert formula:</strong> P(exceed WHO) = sigmoid(0.222 × PM2.5 − 3.037) "
+                     f"= <strong style='color:{TEAL};'>{r['ap']*100:.1f}%</strong> at {pm_sl} μg/m³.")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+

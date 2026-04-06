@@ -1,0 +1,11 @@
+data/
+models/
+outputs/
+*.parquet
+*.pkl
+*.csv
+*.zip
+*.h5
+*.joblib
+__pycache__/
+.env
