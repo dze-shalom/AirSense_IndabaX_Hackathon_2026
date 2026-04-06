@@ -1,8 +1,6 @@
 data/
-models/
 outputs/
 *.parquet
-*.pkl
 *.csv
 *.zip
 *.h5
