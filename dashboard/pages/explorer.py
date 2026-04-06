@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from config import *
 from utils.helpers import (aqi, compute_bfai, bfai_label, bfai_col,
@@ -318,8 +318,8 @@ def page_explorer():
                 temp_m = [v if v is not None else 25.0 for v in temp_m_raw]
                 prec_m = [v if v is not None else 0.0  for v in prec_m_raw]
                 hum_m  = [v if v is not None else 60.0 for v in hum_m_raw]
-                data_note = (f"🟢 Real data — Open-Meteo archive ({date.today().year-1})"
-                             if LNG()=="en" else f"🟢 Données réelles — Open-Meteo archive ({date.today().year-1})")
+                data_note = (f"🟢 Real data — Open-Meteo archive ({datetime.today().year-1})"
+                             if LNG()=="en" else f"🟢 Données réelles — Open-Meteo archive ({datetime.today().year-1})")
             info_box(data_note)
             seasonal_c = city_monthly_profile(city, region)
             fig_cl = make_subplots(rows=2,cols=2,
