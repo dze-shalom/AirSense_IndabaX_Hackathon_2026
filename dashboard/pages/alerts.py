@@ -18,6 +18,40 @@ from utils.api import fetch_forecast, geocode_city, wmo_icon
 from components.ui import sec, card, info_box, bfai_gauge_svg, harmattan_gauge_svg
 from components.charts import PLO
 
+def _cbg():
+    """Card background — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(255,252,248,0.95)"
+    from config import NAVY2
+    return NAVY2
+
+def _cborder():
+    """Card border — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(160,100,60,0.2)"
+    from config import BORDER
+    return BORDER
+
+def _ctxt():
+    """Primary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#1a0e04"
+    from config import TEXT1
+    return TEXT1
+
+def _ctxt2():
+    """Secondary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#5c3a1e"
+    from config import TEXT2
+    return TEXT2
+
+
+
 
 def _t(key):
     lang = LNG()
@@ -114,7 +148,7 @@ def page_alerts_health():
                f"[{adv_raw.replace('_',' ').upper()}]. "
                f"Exceedance risk: {alert_prob_sms*100:.0f}%. "
                f"Vulnerable groups: avoid prolonged outdoor exposure. airsense-cm.org")
-        st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};border-radius:12px;padding:14px;">
+        st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};border-radius:12px;padding:14px;">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
     <div style="width:34px;height:34px;background:{TEAL};border-radius:50%;display:flex;
       align-items:center;justify-content:center;font-size:11px;font-weight:800;color:{NAVY};flex-shrink:0;">AS</div>
@@ -176,7 +210,7 @@ def page_alerts_health():
             elif pm_sl<30:        rec,rc="Unhealthy for sensitive groups.",ORANGE
             elif pm_sl<60:        rec,rc="Unhealthy. Avoid outdoor exertion.",RED
             else:                 rec,rc="Very unhealthy. Stay indoors.",PURPLE
-            st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};
+            st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-left:3px solid {rc};border-radius:0 9px 9px 0;padding:.8rem 1rem;
   margin-top:.85rem;font-size:.8rem;color:{TEXT2};">{rec}</div>""", unsafe_allow_html=True)
             info_box(f"<strong>Alert formula:</strong> P(exceed WHO) = sigmoid(0.222 × PM2.5 − 3.037) "

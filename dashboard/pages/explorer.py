@@ -17,6 +17,40 @@ from utils.live_data import live_city
 from components.ui import sec, card, info_box, bfai_gauge_svg
 from components.charts import PLO
 
+def _cbg():
+    """Card background — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(255,252,248,0.95)"
+    from config import NAVY2
+    return NAVY2
+
+def _cborder():
+    """Card border — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(160,100,60,0.2)"
+    from config import BORDER
+    return BORDER
+
+def _ctxt():
+    """Primary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#1a0e04"
+    from config import TEXT1
+    return TEXT1
+
+def _ctxt2():
+    """Secondary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#5c3a1e"
+    from config import TEXT2
+    return TEXT2
+
+
+
 
 def _t(key):
     lang = LNG()
@@ -33,7 +67,8 @@ def page_explorer():
     with r1: region = st.selectbox(t["select_region"], list(CITIES.keys()), key="ex_region")
     with r2:
         city_list = [c[0] for c in CITIES[region]]
-        city = st.selectbox(t["select_city"], city_list, key="ex_city")
+        # Key includes region so the widget resets when region changes
+        city = st.selectbox(t["select_city"], city_list, key=f"ex_city_{region}")
         cd   = next(c for c in CITIES[region] if c[0] == city)
         lat, lon = cd[1], cd[2]
     with r3:
@@ -108,6 +143,16 @@ def page_explorer():
                 fd = fetch_historical(lat, lon, str(hist_start), str(hist_end))
             forecasts = predict_7day(fd, city, region, lat, lon, model, enc, fi) if fd and model else None
             date_label = f"Historical: {hist_start} → {hist_end}"
+
+        # ── Show why forecasts are unavailable ───────────────────────────────
+        if not model:
+            st.error("⚠ Model not loaded — check that `models/xgb_pm25.json` and "
+                     "`models/label_encoders.pkl` and `models/features.json` exist in your repo.")
+        elif not fd:
+            st.warning("⚠ Weather forecast unavailable — Open-Meteo API may be down. "
+                       "Try refreshing with ↺")
+        elif not forecasts:
+            st.error("⚠ Prediction failed — check logs for feature mismatch errors.")
 
         # ── KPI cards ─────────────────────────────────────────────────────────
         if forecasts:

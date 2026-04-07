@@ -13,6 +13,40 @@ from utils.live_data import live_all
 from components.ui import sec, card, info_box
 from components.charts import PLO
 
+def _cbg():
+    """Card background — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(255,252,248,0.95)"
+    from config import NAVY2
+    return NAVY2
+
+def _cborder():
+    """Card border — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(160,100,60,0.2)"
+    from config import BORDER
+    return BORDER
+
+def _ctxt():
+    """Primary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#1a0e04"
+    from config import TEXT1
+    return TEXT1
+
+def _ctxt2():
+    """Secondary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#5c3a1e"
+    from config import TEXT2
+    return TEXT2
+
+
+
 
 def _t(key):
     lang = LNG()
@@ -49,36 +83,63 @@ def _wind_arrow(lat, lon, wdir_deg, wspd_kmh):
 
 
 def _circular_stats(stats):
-    """Return a sunburst/donut figure showing national AQI distribution."""
-    counts = {"Good":0,"Moderate":0,"Poor":0,"Very Poor":0,"Hazardous":0}
-    colors = {"Good":GREEN,"Moderate":AMBER,"Poor":ORANGE,"Very Poor":RED,"Hazardous":PURPLE}
+    """Professional AQI distribution donut for 71 Cameroonian cities."""
+    order  = ["good","moderate","poor","very_poor","hazardous"]
+    colors = {"good":GREEN,"moderate":AMBER,"poor":ORANGE,"very_poor":RED,"hazardous":PURPLE}
+    labels_en = {"good":"Healthy","moderate":"Moderate","poor":"Poor",
+                 "very_poor":"Critical","hazardous":"Hazardous"}
+    labels_fr = {"good":"Sain","moderate":"Modéré","poor":"Mauvais",
+                 "very_poor":"Critique","hazardous":"Dangereux"}
+    lang  = LNG()
+    lbls  = labels_fr if lang=="fr" else labels_en
+
+    counts = {k: 0 for k in order}
     for s in stats.values():
-        lbl, _, _, _ = aqi(s["mean_pm25"])
-        counts[lbl] = counts.get(lbl, 0) + 1
-    labels = [k for k,v in counts.items() if v > 0]
-    values = [counts[k] for k in labels]
-    clrs   = [colors[k] for k in labels]
+        pm = s["mean_pm25"]
+        if   pm < 15: counts["good"]      += 1
+        elif pm < 35: counts["moderate"]  += 1
+        elif pm < 55: counts["poor"]      += 1
+        elif pm < 80: counts["very_poor"] += 1
+        else:         counts["hazardous"] += 1
+
+    keys   = [k for k in order if counts[k] > 0]
+    vals   = [counts[k] for k in keys]
+    clrs   = [colors[k]  for k in keys]
+    disp   = [lbls[k]    for k in keys]
+    total  = sum(vals)
+    above  = sum(counts[k] for k in order if k != "good")
+
     fig = go.Figure(go.Pie(
-        labels=labels, values=values,
-        marker=dict(colors=clrs, line=dict(color=NAVY, width=2)),
-        hole=0.62, direction="clockwise", sort=False,
-        textinfo="label+percent",
-        textfont=dict(size=9, color=TEXT1, family="Space Grotesk"),
-        hovertemplate="<b>%{label}</b><br>%{value} cities (%{percent})<extra></extra>",
+        labels=disp, values=vals,
+        marker=dict(colors=clrs, line=dict(color="rgba(255,255,255,0.2)", width=2)),
+        hole=0.64,
+        direction="clockwise",
+        sort=False,
+        textinfo="percent",
+        textposition="inside",
+        insidetextfont=dict(size=10, family="Open Sans", color="white"),
+        hovertemplate="<b>%{label}</b><br>%{value} cities · %{percent}<extra></extra>",
         rotation=90,
+        pull=[0.05 if k in ("poor","very_poor","hazardous") else 0 for k in keys],
     ))
-    total = sum(values)
-    above_who = sum(v for k, v in zip(labels, values) if k not in ("Good", "Moderate"))
     fig.add_annotation(
-        text=f"<b style='font-size:18px'>{above_who}</b><br><span style='font-size:9px;color:{TEXT2}'>/{total} cities<br>above WHO</span>",
-        x=0.5, y=0.5, showarrow=False, font=dict(color=TEXT1, size=11),
+        text=(f"<b>{above}</b><br>"
+              f"<span style='font-size:11px'>{('of' if lang=='en' else 'sur')} {total}</span><br>"
+              f"<span style='font-size:9px'>{'above WHO' if lang=='en' else 'dépassent OMS'}</span>"),
+        x=0.5, y=0.5, showarrow=False,
+        font=dict(color="#1c0f05", size=15, family="Montserrat"),
         align="center",
     )
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        height=240, margin=dict(l=0, r=0, t=8, b=8),
-        showlegend=False,
-        font=dict(family="Space Grotesk", color=TEXT2),
+        paper_bgcolor="rgba(0,0,0,0)",
+        height=230,
+        margin=dict(l=0, r=0, t=6, b=40),
+        legend=dict(
+            orientation="h", x=0.5, xanchor="center", y=-0.12,
+            font=dict(size=9, color="#1c0f05", family="Open Sans"),
+            itemwidth=40,
+        ),
+        font=dict(family="Open Sans"),
     )
     return fig
 
@@ -91,10 +152,10 @@ def page_overview():
         _stats = live_all()
 
     # ── Headline ──────────────────────────────────────────────────────────────
-    headline = ("97% of Cameroon cities breathe air above WHO annual limits."
+    headline = ("51.9% of city-days in Cameroon exceed the WHO 24h PM2.5 limit."
                 if lang == "en" else
-                "97% des villes du Cameroun respirent un air au-dessus des limites de l'OMS.")
-    sub = (f'The Far North averages <strong style="color:{RED};">28.7 μg/m³</strong> — '
+                "51,9% des jours-villes au Cameroun dépassent la limite OMS PM2.5 24h.")
+    sub = (f'The Far North averages <strong style="color:{RED};">24.1 μg/m³</strong> — '
            f'nearly <strong style="color:{RED};">6× the WHO annual guideline</strong> of 5 μg/m³.'
            if lang == "en" else
            f'L\'Extrême-Nord est à <strong style="color:{RED};">28,7 μg/m³</strong> — '
@@ -106,16 +167,16 @@ def page_overview():
 
     # ── Stat strip ────────────────────────────────────────────────────────────
     st.markdown(f"""<div class="as-stat-strip">
-  <div style="text-align:center;"><div class="as-stat-val">88</div>
+  <div style="text-align:center;"><div class="as-stat-val">71</div>
     <div class="as-stat-lbl">{"Cities" if lang=="en" else "Villes"}</div></div>
   <div style="text-align:center;"><div class="as-stat-val">10</div>
     <div class="as-stat-lbl">{"Regions" if lang=="en" else "Régions"}</div></div>
-  <div style="text-align:center;"><div class="as-stat-val">49.9%</div>
+  <div style="text-align:center;"><div class="as-stat-val">51.9%</div>
     <div class="as-stat-lbl">{"WHO Exceedance" if lang=="en" else "Dépassement OMS"}</div></div>
-  <div style="text-align:center;"><div class="as-stat-val">19.3</div>
+  <div style="text-align:center;"><div class="as-stat-val">18.9</div>
     <div class="as-stat-lbl">{"Mean PM2.5" if lang=="en" else "PM2.5 Moyen"}</div></div>
-  <div style="text-align:center;"><div class="as-stat-val">97.3%</div>
-    <div class="as-stat-lbl">{"Above Annual WHO" if lang=="en" else "Au-dessus OMS Ann."}</div></div>
+  <div style="text-align:center;"><div class="as-stat-val">51.9%</div>
+    <div class="as-stat-lbl">{"Above WHO 24h" if lang=="en" else "Au-dessus OMS 24h"}</div></div>
   <div style="text-align:center;"><div class="as-stat-val">0.847</div>
     <div class="as-stat-lbl">{"Alert F1" if lang=="en" else "F1 Alerte"}</div></div>
 </div>""", unsafe_allow_html=True)
@@ -212,7 +273,8 @@ def page_overview():
                     lat=hlats, lon=hlons, mode="lines",
                     line=dict(color=rc, width=1.5), opacity=0.30,
                     fill="toself",
-                    fillcolor=rc.replace("#","rgba(").replace("ef4444","239,68,68,0.04)").replace("f97316","249,115,22,0.04)").replace("f59e0b","245,158,11,0.04)").replace("8b5cf6","139,92,246,0.04)").replace("ec4899","236,72,153,0.04)").replace("0f7b8a","15,123,138,0.04)").replace("06b6d4","6,182,212,0.04)").replace("84cc16","132,204,22,0.04)").replace("22c55e","34,197,94,0.04)").replace("10b981","16,185,129,0.04)"),
+                    fillcolor="rgba({},{},{},0.04)".format(
+                        int(rc[1:3],16),int(rc[3:5],16),int(rc[5:7],16)),
                     showlegend=False, hoverinfo="skip", name=f"r_{reg}"))
 
         # Layer 3 — wind arrows (every 3rd city to avoid clutter)
@@ -230,7 +292,7 @@ def page_overview():
         if all_alats:
             fig.add_trace(go.Scattermapbox(
                 lat=all_alats, lon=all_alons, mode="lines",
-                line=dict(color="rgba(100,255,218,0.65)", width=1.8),
+                line=dict(color="rgba(100,255,218,0.65)" if st.session_state.get("theme","light")=="dark" else "rgba(60,120,90,0.75)", width=1.8),
                 showlegend=False, hoverinfo="skip", name="wind"))
 
         # Layer 4 — city bubbles
@@ -254,15 +316,26 @@ def page_overview():
         sec(_t("national_map"))
         st.plotly_chart(fig, use_container_width=True)
 
-        # ── Legend ────────────────────────────────────────────────────────────
-        st.markdown(f"""<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.1rem;">
-  <span style="font-size:.6rem;color:{TEXT2};">●<span style="color:{GREEN}"> {_t('good')}</span> &lt;5</span>
-  <span style="font-size:.6rem;color:{TEXT2};">●<span style="color:{AMBER}"> {_t('moderate')}</span> 5-15</span>
-  <span style="font-size:.6rem;color:{TEXT2};">●<span style="color:{ORANGE}"> {_t('poor')}</span> 15-30</span>
-  <span style="font-size:.6rem;color:{TEXT2};">●<span style="color:{RED}"> {_t('very_poor')}</span> 30-60</span>
-  <span style="font-size:.6rem;color:{TEXT2};">●<span style="color:{PURPLE}"> {_t('hazardous')}</span> &gt;60</span>
-  <span style="font-size:.6rem;color:rgba(100,255,218,0.8);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(100,255,218,0.8)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> {_t('wind_note')}</span>
-  <span style="font-size:.6rem;color:{TEXT2};">● {_t('bubble_note')}</span>
+        # ── Legend — competition guide colours ────────────────────────────────
+        _is_lt = st.session_state.get("theme","light") == "light"
+        _ltxt  = "#5c3a1e" if _is_lt else TEXT2
+        _wclr  = "rgba(80,160,120,0.9)" if _is_lt else "rgba(100,255,218,0.8)"
+        st.markdown(f"""<div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.25rem;
+            padding:.35rem .5rem;border-radius:6px;
+            background:{'rgba(255,252,248,0.7)' if _is_lt else 'rgba(10,25,47,0.5)'};
+            border:1px solid {'rgba(160,100,60,0.15)' if _is_lt else 'rgba(100,255,218,0.08)'};">
+  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{GREEN};font-weight:700;"> Healthy</span> &lt;15 µg/m³</span>
+  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{AMBER};font-weight:700;"> Moderate</span> 15-35</span>
+  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{ORANGE};font-weight:700;"> Poor</span> 35-55</span>
+  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{RED};font-weight:700;"> Critical</span> 55-80</span>
+  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{PURPLE};font-weight:700;"> Hazardous</span> &gt;80</span>
+  <span style="font-size:.62rem;color:{_wclr};">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{_wclr}"
+      stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle;margin-right:2px;">
+      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+    </svg>{_t('wind_note')}
+  </span>
+  <span style="font-size:.62rem;color:{_ltxt};">● {_t('bubble_note')}</span>
 </div>""", unsafe_allow_html=True)
 
         # ── City selector — Cameroon only ────────────────────────────────────
@@ -336,7 +409,7 @@ def page_overview():
         mean_pm    = np.mean([s["mean_pm25"] for s in _stats.values()])
         kc1, kc2 = st.columns(2)
         with kc1:
-            st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};
+            st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-radius:8px;padding:.5rem .7rem;text-align:center;margin-bottom:.4rem;">
   <div style="font-size:1.2rem;font-weight:700;font-family:'JetBrains Mono',monospace;
     color:{RED};">{above_who}</div>
@@ -344,7 +417,7 @@ def page_overview():
     {"Above WHO" if lang=="en" else "Dépassant OMS"}</div>
 </div>""", unsafe_allow_html=True)
         with kc2:
-            st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};
+            st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-radius:8px;padding:.5rem .7rem;text-align:center;margin-bottom:.4rem;">
   <div style="font-size:1.2rem;font-weight:700;font-family:'JetBrains Mono',monospace;
     color:{TEAL};">{live_count}</div>
@@ -401,8 +474,8 @@ def page_overview():
             yaxis=dict(gridcolor="rgba(0,0,0,0)")))
         st.plotly_chart(fig_bar, use_container_width=True)
     with b2:
-        re = {"West":75.6,"Far North":74.1,"North":64.8,"North West":63.2,"Adamawa":50.4,
-              "East":49.2,"Littoral":35.8,"Centre":30.9,"South West":29.8,"South":13.2}
+        re = {"Far North":73,"North":66,"West":60,"North West":55,"East":49,"Adamawa":49,
+              "Littoral":47,"South West":44,"Centre":42,"South":32}
         exc_lbl = "% Jours Dépassant OMS 24h" if lang=="fr" else "% Days Exceeding WHO 24h"
         fig_exc = go.Figure(go.Bar(
             y=list(re.keys()), x=list(re.values()), orientation="h",

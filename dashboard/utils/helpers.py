@@ -14,10 +14,11 @@ def LNG():
 
 
 def aqi(pm25, lang="en"):
-    if pm25 < 5:    k = "good"
-    elif pm25 < 15: k = "moderate"
-    elif pm25 < 30: k = "poor"
-    elif pm25 < 60: k = "very_poor"
+    # Competition guidelines: <15 green, 15-35 yellow, 35-55 orange, >55 red
+    if pm25 < 15:   k = "good"
+    elif pm25 < 35: k = "moderate"
+    elif pm25 < 55: k = "poor"
+    elif pm25 < 80: k = "very_poor"
     else:           k = "hazardous"
     c = {"good":GREEN,"moderate":AMBER,"poor":ORANGE,"very_poor":RED,"hazardous":PURPLE}[k]
     l = T[lang].get(k, T["en"][k])

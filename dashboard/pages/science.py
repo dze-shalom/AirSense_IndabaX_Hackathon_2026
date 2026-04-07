@@ -31,6 +31,51 @@ from utils.live_data import compute_live_shap, live_all
 from components.ui import sec, card, info_box
 from components.charts import PLO
 
+def _T1():
+    return "#1a0e04" if st.session_state.get("theme","light")=="light" else TEXT1
+
+def _T2():
+    return "#5c3a1e" if st.session_state.get("theme","light")=="light" else TEXT2
+
+def _BD():
+    return "rgba(160,100,60,0.15)" if st.session_state.get("theme","light")=="light" else BORDER
+
+
+
+def _cbg():
+    """Card background — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(255,252,248,0.95)"
+    from config import NAVY2
+    return NAVY2
+
+def _cborder():
+    """Card border — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(160,100,60,0.2)"
+    from config import BORDER
+    return BORDER
+
+def _ctxt():
+    """Primary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#1a0e04"
+    from config import TEXT1
+    return TEXT1
+
+def _ctxt2():
+    """Secondary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#5c3a1e"
+    from config import TEXT2
+    return TEXT2
+
+
+
 
 def _t(key):
     lang = LNG()
@@ -86,9 +131,9 @@ def page_science():
                 hovertemplate=f"<b>{reg}</b><br>%{{y}}: %{{x:.3f}}<extra></extra>"), row=rw, col=cp)
         fig_grid.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             height=540, showlegend=False, margin=dict(l=0,r=0,t=40,b=0),
-            font=dict(family="Space Grotesk",color=TEXT2,size=8))
+            font=dict(family="Open Sans",color=_T2(),size=8))
         for i in range(1,11):
-            fig_grid.update_xaxes(gridcolor=BORDER,gridwidth=0.5,row=(i-1)//5+1,col=(i-1)%5+1)
+            fig_grid.update_xaxes(gridcolor=_BD(),gridwidth=0.5,row=(i-1)//5+1,col=(i-1)%5+1)
             fig_grid.update_yaxes(gridcolor="rgba(0,0,0,0)",row=(i-1)//5+1,col=(i-1)%5+1)
         st.plotly_chart(fig_grid, use_container_width=True)
 
@@ -106,7 +151,7 @@ def page_science():
   <div style="flex:1;height:7px;background:{BORDER};border-radius:3px;overflow:hidden;">
     <div style="width:{pct:.0f}%;height:100%;background:{col};border-radius:3px;"></div></div>
   <span style="font-size:.72rem;font-weight:700;width:50px;text-align:right;color:{col};">{val:.3f}</span>
-  <span style="font-size:.65rem;color:{TEXT2};flex:1;">{desc}</span>
+  <span style="font-size:.65rem;color:{_T2()};flex:1;">{desc}</span>
 </div>""", unsafe_allow_html=True)
         info_box("<strong>Key finding:</strong> <em>year</em> dominates 7 of 10 regions — "
                  "a genuine multi-year pollution trend. <em>South</em> driven by <em>latitude</em> (SHAP≈0.23). "
@@ -117,7 +162,7 @@ def page_science():
     # ══════════════════════════════════════════════════════════════════════════
     with tab_cl:
         sec("Climate 2050 PM2.5 Projection — CMIP6 SSP Scenarios")
-        st.markdown(f"<div style='font-size:.76rem;color:{TEXT2};margin-bottom:.9rem;'>"
+        st.markdown(f"<div style='font-size:.76rem;color:{_T2()};margin-bottom:.9rem;'>"
                     "IPCC AR6 warming rates × empirical PM2.5/temperature sensitivity × "
                     "regional amplification. Indicative — not certified climate model output.</div>",
                     unsafe_allow_html=True)
@@ -147,12 +192,12 @@ def page_science():
             c = REGION_COLORS.get(reg, TEAL)
             _, aqi_col, _, _ = aqi(proj)
             with cols[i%2]:
-                st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};
+                st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-left:3px solid {c};border-radius:8px;padding:.65rem .85rem;
   margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center;">
   <div>
     <div style="font-size:.78rem;font-weight:700;color:{c};">{reg}</div>
-    <div style="font-size:.62rem;color:{TEXT2};margin-top:.15rem;">
+    <div style="font-size:.62rem;color:{_T2()};margin-top:.15rem;">
       Baseline: {base:.1f} → <strong style="color:{aqi_col};">{proj:.1f} μg/m³</strong>
     </div>
   </div>
@@ -160,7 +205,7 @@ def page_science():
     <div style="font-size:1.1rem;font-weight:800;color:{'#f87171' if chg>0 else GREEN};">
       {"↑" if chg>0 else "↓"}{abs(chg):.1f}%
     </div>
-    <div style="font-size:.55rem;color:{TEXT2};">by {yr_sel}</div>
+    <div style="font-size:.55rem;color:{_T2()};">by {yr_sel}</div>
   </div>
 </div>""", unsafe_allow_html=True)
 
@@ -188,9 +233,9 @@ def page_science():
         fig_ts.add_vrect(x0=BASE_YEAR,x1=BASE_YEAR+1,fillcolor="rgba(100,255,218,0.07)",line_width=0,
                          annotation_text="Now",annotation_font_color=TEAL,annotation_font_size=9)
         fig_ts.update_layout(**PLO(height=320,
-            yaxis=dict(gridcolor=BORDER,title="PM2.5 (μg/m³)"),
-            xaxis=dict(gridcolor=BORDER,dtick=10,title="Year"),
-            legend=dict(font=dict(size=8),bgcolor="rgba(0,0,0,0)",orientation="h",yanchor="bottom",y=1.02),
+            yaxis=dict(gridcolor=_BD(),title="PM2.5 (μg/m³)"),
+            xaxis=dict(gridcolor=_BD(),dtick=10,title="Year"),
+            legend=dict(font=dict(size=8,color=_T2()),bgcolor="rgba(0,0,0,0)",orientation="h",yanchor="bottom",y=1.02),
             hovermode="x unified"))
         st.plotly_chart(fig_ts, use_container_width=True)
 
@@ -206,13 +251,13 @@ def page_science():
         fig_bar = go.Figure()
         fig_bar.add_trace(go.Bar(name="Today",x=bar_regs,y=bar_now,
             marker=dict(color=TEAL2,opacity=0.75),
-            text=[f"{v:.0f}%" for v in bar_now],textposition="outside",textfont=dict(size=9,color=TEXT2)))
+            text=[f"{v:.0f}%" for v in bar_now],textposition="outside",textfont=dict(size=9,color=_T2())))
         fig_bar.add_trace(go.Bar(name=str(yr_sel),x=bar_regs,y=bar_fut,
             marker=dict(color=SSP_COLORS[ssp_sel],opacity=0.82),
-            text=[f"{v:.0f}%" for v in bar_fut],textposition="outside",textfont=dict(size=9,color=TEXT2)))
+            text=[f"{v:.0f}%" for v in bar_fut],textposition="outside",textfont=dict(size=9,color=_T2())))
         fig_bar.update_layout(**PLO(height=260,barmode="group",
-            yaxis=dict(gridcolor=BORDER,title="% days exceeding WHO 24h",range=[0,115]),
-            xaxis=dict(gridcolor="rgba(0,0,0,0)"),legend=dict(font=dict(size=9),bgcolor="rgba(0,0,0,0)")))
+            yaxis=dict(gridcolor=_BD(),title="% days exceeding WHO 24h",range=[0,115]),
+            xaxis=dict(gridcolor="rgba(0,0,0,0)"),legend=dict(font=dict(size=9,color=_T2()),bgcolor="rgba(0,0,0,0)")))
         st.plotly_chart(fig_bar, use_container_width=True)
         fn_pct = SSP_RATES[ssp_sel]*REGION_WARM.get("Far North",1)*((yr_sel-BASE_YEAR)/75)*100
         info_box(f"<strong>Scenario: {ssp_sel}</strong> — {SSP_RATES[ssp_sel]:.2f} warming/decade. "
@@ -223,7 +268,7 @@ def page_science():
     # ══════════════════════════════════════════════════════════════════════════
     with tab_sp:
         sec("Spatial Generalization — Can the Model Predict Cities It Has Never Seen?")
-        st.markdown(f"""<div style="font-size:.78rem;color:{TEXT2};margin-bottom:1rem;line-height:1.6;">
+        st.markdown(f"""<div style="font-size:.78rem;color:{_T2()};margin-bottom:1rem;line-height:1.6;">
 The model was trained on <strong>40 Cameroonian cities</strong>. To test generalization,
 it was applied to unseen cities at three difficulty levels:<br>
 <strong style="color:{GREEN};">L1</strong> — Cameroon cities not in training set &nbsp;·&nbsp;
@@ -231,62 +276,151 @@ it was applied to unseen cities at three difficulty levels:<br>
 <strong style="color:{RED};">L3</strong> — Fully out-of-domain (Nairobi, Kenya)
 </div>""", unsafe_allow_html=True)
 
-        # Map
         level_colors = {"L1":GREEN,"L2":AMBER,"L3":RED}
-        fig_sp = go.Figure()
 
-        # Training cities (background)
-        for reg, clist in CITIES.items():
-            for cname, clat, clon in clist:
+        # ── Map + donut side by side ──────────────────────────────────────────
+        map_col, donut_col = st.columns([1.7, 1])
+
+        with map_col:
+            fig_sp = go.Figure()
+            for reg, clist in CITIES.items():
+                for cname, clat, clon in clist:
+                    fig_sp.add_trace(go.Scattermapbox(
+                        lat=[clat], lon=[clon], mode="markers",
+                        marker=dict(size=7, color=TEAL, opacity=0.35),
+                        hovertemplate=f"<b>{cname}</b><br>Training city<extra></extra>",
+                        showlegend=False, name="train"))
+            for entry in SPATIAL_GEN:
+                lvl = entry["level"].split("—")[0].strip()
+                col = level_colors.get(lvl, AMBER)
+                r2_str = f"{entry['r2']:.3f}" if entry["r2"] else "—"
                 fig_sp.add_trace(go.Scattermapbox(
-                    lat=[clat], lon=[clon], mode="markers",
-                    marker=dict(size=7, color=TEAL, opacity=0.35),
-                    hovertemplate=f"<b>{cname}</b><br>Training city<extra></extra>",
-                    showlegend=False, name="train"))
+                    lat=[entry["lat"]], lon=[entry["lon"]], mode="markers+text",
+                    marker=dict(size=18, color=col, opacity=0.9),
+                    text=[entry["city"]], textposition="top right",
+                    textfont=dict(size=10, color=_T1(), family="Open Sans"),
+                    hovertemplate=(f"<b>{entry['city']}</b><br>{entry['level']}<br>"
+                                   f"MAE: {entry['mae']:.2f} μg/m³<br>R²: {r2_str}<extra></extra>"),
+                    showlegend=False, name=entry["city"]))
+            fig_sp.update_layout(
+                mapbox=dict(style="carto-darkmatter", center=dict(lat=6, lon=15), zoom=3.5),
+                **PLO(height=360, margin=dict(l=0,r=0,t=0,b=0), showlegend=False))
+            st.plotly_chart(fig_sp, use_container_width=True)
 
-        # Test cities
-        for entry in SPATIAL_GEN:
-            lvl = entry["level"].split("—")[0].strip()
-            col = level_colors.get(lvl, AMBER)
-            r2_str = f"{entry['r2']:.3f}" if entry["r2"] else "—"
-            fig_sp.add_trace(go.Scattermapbox(
-                lat=[entry["lat"]], lon=[entry["lon"]], mode="markers+text",
-                marker=dict(size=18, color=col, opacity=0.9),
-                text=[entry["city"]], textposition="top right",
-                textfont=dict(size=10, color=TEXT1, family="Space Grotesk"),
-                hovertemplate=(f"<b>{entry['city']}</b><br>{entry['level']}<br>"
-                               f"MAE: {entry['mae']:.2f} μg/m³<br>R²: {r2_str}<extra></extra>"),
-                showlegend=False, name=entry["city"]))
+        with donut_col:
+            sec("R² by Generalization Level")
 
-        fig_sp.update_layout(
-            mapbox=dict(style="carto-darkmatter", center=dict(lat=6, lon=15), zoom=3.5),
-            **PLO(height=400, margin=dict(l=0,r=0,t=0,b=0), showlegend=False))
-        st.plotly_chart(fig_sp, use_container_width=True)
+            # Compute average R² per level for donut
+            from collections import defaultdict
+            level_r2   = defaultdict(list)
+            level_mae  = defaultdict(list)
+            level_name = {"L1":"L1 — Cameroon","L2":"L2 — Cross-border","L3":"L3 — Out-of-domain"}
+            for entry in SPATIAL_GEN:
+                lvl = entry["level"].split("—")[0].strip()
+                if entry["r2"]: level_r2[lvl].append(entry["r2"])
+                level_mae[lvl].append(entry["mae"])
 
-        # Results table
+            donut_labels  = [level_name[lvl] for lvl in ["L1","L2","L3"]]
+            donut_r2_vals = [
+                round(sum(level_r2["L1"])/len(level_r2["L1"]),3) if level_r2["L1"] else 0,
+                round(sum(level_r2["L2"])/len(level_r2["L2"]),3) if level_r2["L2"] else 0,
+                round(sum(level_r2["L3"])/len(level_r2["L3"]),3) if level_r2["L3"] else 0,
+            ]
+            donut_mae_vals = [
+                round(sum(level_mae["L1"])/len(level_mae["L1"]),2) if level_mae["L1"] else 0,
+                round(sum(level_mae["L2"])/len(level_mae["L2"]),2) if level_mae["L2"] else 0,
+                round(sum(level_mae["L3"])/len(level_mae["L3"]),2) if level_mae["L3"] else 0,
+            ]
+            donut_colors = [GREEN, AMBER, RED]
+
+            # R² donut — slice size proportional to R² value
+            fig_donut = go.Figure(go.Pie(
+                labels=donut_labels,
+                values=donut_r2_vals,
+                marker=dict(colors=donut_colors,
+                            line=dict(color=NAVY, width=3)),
+                hole=0.60,
+                direction="clockwise",
+                sort=False,
+                textinfo="label+percent",
+                textfont=dict(size=9, color=_T1(), family="Open Sans"),
+                hovertemplate=(
+                    "<b>%{label}</b><br>"
+                    "Mean R²: %{value:.3f}<br>"
+                    "Share of accuracy: %{percent}<extra></extra>"
+                ),
+                rotation=90,
+            ))
+            # Centre annotation — best R²
+            best_lvl  = max(zip(donut_r2_vals, donut_labels))[1]
+            best_r2   = max(donut_r2_vals)
+            fig_donut.add_annotation(
+                text=f"<b>{best_r2:.3f}</b><br><span style='font-size:9px'>Best R²<br>{best_lvl[:2]}</span>",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(color=_T1(), size=12), align="center"
+            )
+            fig_donut.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                height=220,
+                margin=dict(l=0, r=0, t=8, b=0),
+                showlegend=False,
+                font=dict(family="Open Sans", color=_T2()),
+            )
+            st.plotly_chart(fig_donut, use_container_width=True)
+
+            # MAE bar chart below the donut
+            sec("Mean MAE by Level")
+            fig_mae = go.Figure(go.Bar(
+                x=["L1","L2","L3"],
+                y=donut_mae_vals,
+                marker=dict(color=donut_colors, opacity=0.85),
+                text=[f"{v:.2f}" for v in donut_mae_vals],
+                textposition="outside",
+                textfont=dict(size=10, color=_T2()),
+                hovertemplate="<b>%{x}</b><br>Mean MAE: %{y:.2f} μg/m³<extra></extra>",
+            ))
+            fig_mae.add_hline(y=MODEL_MAE, line=dict(color=TEAL, width=1.5, dash="dash"),
+                              annotation_text=f"Train MAE ({MODEL_MAE})",
+                              annotation_font_color=TEAL, annotation_font_size=9)
+            fig_mae.update_layout(**PLO(
+                height=180,
+                yaxis=dict(gridcolor=_BD(), title="MAE (μg/m³)", range=[0, 16]),
+                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                showlegend=False,
+                margin=dict(l=0, r=0, t=18, b=0),
+            ))
+            st.plotly_chart(fig_mae, use_container_width=True)
+
+        # ── Results cards ─────────────────────────────────────────────────────
         sec("Generalization Results by City")
         for entry in SPATIAL_GEN:
             lvl = entry["level"].split("—")[0].strip()
             col = level_colors.get(lvl, AMBER)
             r2_str = f"{entry['r2']:.3f}" if entry["r2"] else "—"
             quality = "Good" if entry["mae"]<7 else ("Fair" if entry["mae"]<12 else "Poor")
-            st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};
+            q_color = GREEN if quality=="Good" else (AMBER if quality=="Fair" else RED)
+            st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-left:3px solid {col};border-radius:8px;padding:.65rem .9rem;
   margin-bottom:.3rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">
   <div>
     <div style="font-size:.82rem;font-weight:700;color:{col};">{entry['city']}</div>
-    <div style="font-size:.62rem;color:{TEXT2};">{entry['level']}</div>
+    <div style="font-size:.62rem;color:{_T2()};">{entry['level']}</div>
   </div>
-  <div style="display:flex;gap:1.2rem;align-items:center;">
+  <div style="display:flex;gap:1.4rem;align-items:center;">
     <div style="text-align:center;">
-      <div style="font-size:.7rem;color:{TEXT2};">MAE</div>
-      <div style="font-size:.9rem;font-weight:700;color:{TEXT1};font-family:'JetBrains Mono',monospace;">{entry['mae']:.2f}</div>
+      <div style="font-size:.62rem;color:{_T2()};">MAE</div>
+      <div style="font-size:.88rem;font-weight:700;color:{_T1()};
+        font-family:'JetBrains Mono',monospace;">{entry['mae']:.2f}</div>
     </div>
     <div style="text-align:center;">
-      <div style="font-size:.7rem;color:{TEXT2};">R²</div>
-      <div style="font-size:.9rem;font-weight:700;color:{TEXT1};font-family:'JetBrains Mono',monospace;">{r2_str}</div>
+      <div style="font-size:.62rem;color:{_T2()};">R²</div>
+      <div style="font-size:.88rem;font-weight:700;color:{_T1()};
+        font-family:'JetBrains Mono',monospace;">{r2_str}</div>
     </div>
-    <div style="font-size:.75rem;color:{col};font-weight:600;">{quality}</div>
+    <div style="background:{q_color}22;border:1px solid {q_color}55;color:{q_color};
+      border-radius:4px;padding:.15rem .45rem;font-size:.65rem;font-weight:700;">
+      {quality}
+    </div>
   </div>
 </div>""", unsafe_allow_html=True)
 
@@ -299,12 +433,12 @@ it was applied to unseen cities at three difficulty levels:<br>
     # ══════════════════════════════════════════════════════════════════════════
     with tab_mc:
         sec("Master Model Comparison — IndabaX 2026")
-        st.markdown(f"<div style='font-size:.76rem;color:{TEXT2};margin-bottom:.9rem;'>"
+        st.markdown(f"<div style='font-size:.76rem;color:{_T2()};margin-bottom:.9rem;'>"
                     "All models evaluated on the same held-out test set "
                     "(17,840 rows · 2024-10-01 → 2025-12-20 · 100% CAMS real data).</div>",
                     unsafe_allow_html=True)
 
-        flag_colors = {"baseline":TEXT2,"primary":TEAL,"ensemble":AMBER,"deep":PURPLE}
+        flag_colors = {"baseline":_T2(),"primary":TEAL,"ensemble":AMBER,"deep":PURPLE}
         flag_labels = {"baseline":"Baseline","primary":"Primary","ensemble":"Ensemble","deep":"Deep Learning"}
 
         for row in MODEL_COMPARISON:
@@ -325,17 +459,17 @@ it was applied to unseen cities at three difficulty levels:<br>
   </div>
   <div style="display:flex;gap:1.4rem;">
     <div style="text-align:center;">
-      <div style="font-size:.58rem;color:{TEXT2};">Test MAE</div>
-      <div style="font-size:.82rem;font-weight:700;color:{TEAL if best else TEXT1};
+      <div style="font-size:.58rem;color:{_T2()};">Test MAE</div>
+      <div style="font-size:.82rem;font-weight:700;color:{TEAL if best else _T1()};
         font-family:'JetBrains Mono',monospace;">{mae_str}</div>
     </div>
     <div style="text-align:center;">
-      <div style="font-size:.58rem;color:{TEXT2};">R²</div>
-      <div style="font-size:.82rem;font-weight:700;color:{TEXT1};
+      <div style="font-size:.58rem;color:{_T2()};">R²</div>
+      <div style="font-size:.82rem;font-weight:700;color:{_T1()};
         font-family:'JetBrains Mono',monospace;">{r2_str}</div>
     </div>
     <div style="text-align:center;">
-      <div style="font-size:.58rem;color:{TEXT2};">Harm MAE</div>
+      <div style="font-size:.58rem;color:{_T2()};">Harm MAE</div>
       <div style="font-size:.82rem;font-weight:700;color:{ORANGE if hm_str!='—' else TEXT2};
         font-family:'JetBrains Mono',monospace;">{hm_str}</div>
     </div>
@@ -351,12 +485,12 @@ it was applied to unseen cities at three difficulty levels:<br>
             y=[r["mae"] for r in valid],
             marker=dict(color=[flag_colors[r["flag"]] for r in valid], opacity=0.85),
             text=[f"{r['mae']:.2f}" for r in valid],
-            textposition="outside", textfont=dict(size=9, color=TEXT2),
+            textposition="outside", textfont=dict(size=9, color=_T2()),
             hovertemplate="<b>%{x}</b><br>MAE: %{y:.3f} μg/m³<extra></extra>"))
         fig_mc.add_hline(y=7.521, line=dict(color=ORANGE,width=1.5,dash="dot"),
                          annotation_text="City-month baseline (7.52)",annotation_font_color=ORANGE,annotation_font_size=9)
         fig_mc.update_layout(**PLO(height=280,
-            yaxis=dict(gridcolor=BORDER,title="Test MAE (μg/m³)"),
+            yaxis=dict(gridcolor=_BD(),title="Test MAE (μg/m³)"),
             xaxis=dict(tickangle=-25,gridcolor="rgba(0,0,0,0)"),showlegend=False))
         st.plotly_chart(fig_mc, use_container_width=True)
 

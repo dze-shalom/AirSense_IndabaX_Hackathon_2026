@@ -21,25 +21,29 @@ WIND_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" view
 
 # ── Global CSS ────────────────────────────────────────────────────────────────
 CSS = f"""<style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Open+Sans:wght@300;400;500;600&family=Roboto+Mono:wght@400;500;600&display=swap');
 #MainMenu,footer,header{{visibility:hidden;}}
 .stDeployButton,[data-testid="stToolbar"],[data-testid="stDecoration"]{{display:none;}}
 .stApp>header{{display:none;}}
-.block-container{{padding-top:0!important;}}
-body,.stApp{{background:{NAVY}!important;font-family:'Space Grotesk',sans-serif!important;color:{TEXT1}!important;}}
+.block-container{{padding-top:0!important;padding-bottom:1rem!important;max-width:100%!important;}}.stApp>header{{display:none!important;height:0!important;}}.main .block-container{{padding-top:0!important;margin-top:0!important;}}section.main>div.block-container{{padding-top:0!important;}}
+body,.stApp{{background:{NAVY}!important;font-family:'Open Sans',sans-serif!important;color:{TEXT1}!important;font-size:16px!important;}}
 [data-testid="stSidebar"]{{background:linear-gradient(180deg,rgba(17,34,64,0.98),rgba(10,25,47,0.99))!important;border-right:1px solid {BORDER}!important;}}
 [data-testid="stSidebar"]>div:first-child{{padding:.95rem .6rem!important;}}
-[data-testid="stSidebar"] button[kind="secondary"]{{width:100%!important;border-radius:6px!important;border:1px solid transparent!important;background:transparent!important;color:{TEXT2}!important;font-size:.75rem!important;padding:.32rem .45rem!important;margin-bottom:.08rem!important;transition:all .15s!important;font-weight:500!important;font-family:'Space Grotesk',sans-serif!important;}}
+[data-testid="stSidebar"] button[kind="secondary"]{{width:100%!important;border-radius:6px!important;border:1px solid transparent!important;background:transparent!important;color:{TEXT2}!important;font-size:.75rem!important;padding:.32rem .45rem!important;margin-bottom:.08rem!important;transition:all .15s!important;font-weight:500!important;font-family:'Open Sans',sans-serif!important;}}
 [data-testid="stSidebar"] button[kind="secondary"]:hover{{background:rgba(100,255,218,0.07)!important;border-color:rgba(100,255,218,0.22)!important;color:{TEXT1}!important;}}
-[data-testid="stSidebar"] button[kind="primary"]{{width:100%!important;border-radius:6px!important;background:rgba(100,255,218,0.10)!important;border:1px solid {TEAL}!important;color:{TEAL}!important;font-size:.75rem!important;padding:.32rem .45rem!important;margin-bottom:.08rem!important;font-weight:600!important;box-shadow:0 0 10px rgba(100,255,218,0.14)!important;font-family:'Space Grotesk',sans-serif!important;}}
-.as-fixed-nav{{position:fixed;top:0;left:0;right:0;height:48px;z-index:997;background:rgba(10,25,47,0.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid {BORDER};display:flex;align-items:center;padding:0 1.4rem 0 22rem;justify-content:space-between;}}
-.as-logo{{font-family:'JetBrains Mono',monospace;font-size:.9rem;font-weight:700;color:{TEAL};display:flex;align-items:center;gap:.4rem;white-space:nowrap;}}
-.as-content{{margin-top:16px;padding:1rem 1.4rem;}}
-.as-alert-badge{{background:rgba(239,68,68,0.13);border:1px solid rgba(239,68,68,0.36);color:{RED};border-radius:4px;padding:.11rem .38rem;font-size:.6rem;font-family:'JetBrains Mono',monospace;font-weight:600;}}
+[data-testid="stSidebar"] button[kind="primary"]{{width:100%!important;border-radius:6px!important;background:rgba(100,255,218,0.10)!important;border:1px solid {TEAL}!important;color:{TEAL}!important;font-size:.75rem!important;padding:.32rem .45rem!important;margin-bottom:.08rem!important;font-weight:600!important;box-shadow:0 0 10px rgba(100,255,218,0.14)!important;font-family:'Open Sans',sans-serif!important;}}
+h1,h2,h3,h4,h5,h6{{font-family:'Montserrat',sans-serif!important;font-weight:700!important;}}.stMarkdown,.stMarkdown p,.stText{{font-family:'Open Sans',sans-serif!important;font-size:15px!important;line-height:1.6!important;}}.as-stat-val,.as-fc-val,[data-testid='metric-container'] [data-testid='stMetricValue']{{font-family:'Roboto Mono',monospace!important;}}[data-testid='metric-container'] [data-testid='stMetricLabel']{{font-family:'Open Sans',sans-serif!important;}}.as-fixed-nav{{position:fixed;top:0;left:0;right:0;height:42px;z-index:997;background:rgba(10,25,47,0.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid {BORDER};display:flex;align-items:center;padding:0 1.4rem 0 22rem;justify-content:space-between;}}
+/* On mobile the sidebar is hidden so no 22rem offset needed */
+@media(max-width:768px){{.as-fixed-nav{{padding:0 .6rem!important;}}}}
+.as-logo{{font-family:'Montserrat',sans-serif;font-size:.9rem;font-weight:700;color:{TEAL};display:flex;align-items:center;gap:.4rem;white-space:nowrap;}}
+.as-content{{margin-top:48px;padding:.75rem 1.5rem;}}
+/* Ensure nav strip buttons wrap on very small screens */
+#as-topnav-row{{flex-wrap:wrap!important;}}
+.as-alert-badge{{background:rgba(239,68,68,0.13);border:1px solid rgba(239,68,68,0.36);color:{RED};border-radius:4px;padding:.11rem .38rem;font-size:.6rem;font-family:'Roboto Mono',monospace;font-weight:600;}}
 @keyframes as-pulse{{0%,100%{{opacity:1;transform:scale(1);}}50%{{opacity:.55;transform:scale(.78);}}}}
-.as-live-dot{{width:6px;height:6px;border-radius:50%;background:{TEAL};animation:as-pulse 2.1s ease infinite;display:inline-block;}}
+.as-hamburger-btn{{width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(0,0,0,0.12);background:transparent;transition:background .15s;color:inherit;}}.as-hamburger-btn:hover{{background:rgba(0,0,0,0.06);}}.as-live-dot{{width:6px;height:6px;border-radius:50%;background:{TEAL};animation:as-pulse 2.1s ease infinite;display:inline-block;}}
 .as-stat-strip{{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:.75rem;padding:.8rem 0;border-top:1px solid {BORDER};border-bottom:1px solid {BORDER};margin-bottom:1.2rem;}}
-.as-stat-val{{font-size:1.35rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:{TEAL};line-height:1;}}
+.as-stat-val{{font-size:1.35rem;font-weight:700;font-family:'Roboto Mono',monospace;color:{TEAL};line-height:1;}}
 .as-stat-lbl{{font-size:.55rem;color:{TEXT2};margin-top:.1rem;text-transform:uppercase;letter-spacing:.08em;}}
 .as-fc-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:.5rem;margin-top:.8rem;}}
 .as-fc-card{{background:{NAVY2};border:1px solid {BORDER};border-radius:9px;padding:.7rem;text-align:center;transition:all .18s;position:relative;}}
@@ -47,7 +51,7 @@ body,.stApp{{background:{NAVY}!important;font-family:'Space Grotesk',sans-serif!
 .as-fc-card.today{{border-color:{TEAL};box-shadow:0 0 14px rgba(100,255,218,.12);}}
 .as-fc-day{{font-size:.56rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:{TEXT2};margin-bottom:.22rem;}}
 .as-fc-icon{{font-size:1.2rem;margin:.18rem 0;}}
-.as-fc-val{{font-size:1.25rem;font-weight:700;font-family:'JetBrains Mono',monospace;}}
+.as-fc-val{{font-size:1.25rem;font-weight:700;font-family:'Roboto Mono',monospace;}}
 .as-fc-unit{{font-size:.5rem;color:{TEXT2};}}
 .as-fc-badge{{margin-top:.22rem;padding:.1rem .26rem;border-radius:3px;font-size:.54rem;font-weight:600;}}
 .as-fc-meta{{font-size:.54rem;color:{TEXT2};margin-top:.22rem;}}
@@ -72,12 +76,8 @@ body,.stApp{{background:{NAVY}!important;font-family:'Space Grotesk',sans-serif!
 .stTabs [aria-selected="true"]{{color:{TEAL}!important;border-bottom-color:{TEAL}!important;}}
 div[data-testid="metric-container"]{{background:rgba(255,255,255,.04)!important;border:1px solid {BORDER}!important;border-radius:9px!important;padding:9px!important;}}
 ::-webkit-scrollbar{{width:5px;}}::-webkit-scrollbar-track{{background:{NAVY};}}::-webkit-scrollbar-thumb{{background:{BORDER};border-radius:3px;}}
-/* Hide sidebar collapse/expand arrows — nav strip handles page switching */
-[data-testid="collapsedControl"],
-[data-testid="stSidebarCollapsedControl"],
-button[data-testid="baseButton-headerNoPadding"]{{display:none!important;}}
-section[data-testid="stSidebar"] > div > button:first-child{{display:none!important;}}
-@media(max-width:768px){{.as-content{{margin-top:12px;padding:.8rem .6rem!important;}}.as-stat-strip{{grid-template-columns:repeat(3,1fr);}}.as-fc-grid{{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));}}}}
+
+@media(max-width:768px){{.as-content{{margin-top:48px;padding:.5rem .6rem!important;}}.as-stat-strip{{grid-template-columns:repeat(3,1fr);}}.as-fc-grid{{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));}}}}
 
 </style>"""
 
@@ -96,95 +96,207 @@ modes:{grab:{distance:90,line_linked:{opacity:.18}}}},retina_detect:true});})();
 
 def inject_css():
     """Inject global CSS and particle background."""
+    # Viewport meta — critical for mobile rendering
+    st.markdown(
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">',
+        unsafe_allow_html=True)
     st.markdown(CSS, unsafe_allow_html=True)
-    # ── Global button styles (all buttons, not just sidebar) ─────────────────
+    # ── Global button base styles — theme-neutral structure only ────────────
     st.markdown(f"""<style>
 button[kind="secondary"], .stButton>button {{
-    background: {NAVY2} !important;
-    border: 1px solid {BORDER} !important;
-    color: {TEXT2} !important;
     border-radius: 6px !important;
     transition: all .18s !important;
-    font-family: 'Space Grotesk', sans-serif !important;
-}}
-button[kind="secondary"]:hover, .stButton>button:hover {{
-    background: rgba(100,255,218,0.08) !important;
-    border-color: {TEAL} !important;
-    color: {TEXT1} !important;
+    font-family: 'Open Sans', sans-serif !important;
+    font-size: .78rem !important;
 }}
 button[kind="primary"] {{
-    background: rgba(100,255,218,0.10) !important;
-    border: 1px solid {TEAL} !important;
-    color: {TEAL} !important;
     border-radius: 6px !important;
     font-weight: 600 !important;
-    font-family: 'Space Grotesk', sans-serif !important;
+    font-family: 'Open Sans', sans-serif !important;
 }}
-button[kind="primary"]:hover {{
-    background: rgba(100,255,218,0.18) !important;
-    box-shadow: 0 0 12px rgba(100,255,218,0.2) !important;
-}}
-/* Checkbox ticks */
-.stCheckbox > label > div[data-testid="stMarkdownContainer"] > p {{
-    color: {TEXT1} !important; font-size: .73rem !important;
-}}
-.stCheckbox {{accent-color: {TEAL};}}
 </style>""", unsafe_allow_html=True)
 
-    if st.session_state.get("theme", "dark") == "light":
-        # Claude Light: warm parchment content area, sidebar stays dark
+    # ── LIGHT THEME (default) — competition palette ───────────────────────────
+    if st.session_state.get("theme", "light") == "light":
         st.markdown(f"""<style>
 @keyframes bgParchment{{0%,100%{{background-position:0% 50%;}}50%{{background-position:100% 50%;}}}}
-/* Main app background — warm parchment */
+/* Background */
 body,.stApp{{
-    background:linear-gradient(-45deg,#fdf8f2,#f5ede0,#fdf3e8,#f8ede0,#fdf7f1)!important;
+    background:linear-gradient(-45deg,#fdf8f2,#f5ede0,#fdf3e8,#faf0e5,#fdf7f1)!important;
     background-size:300% 300%!important;
-    animation:bgParchment 16s ease infinite!important;
-    color:#1c0f05!important;
-    font-family:'Söhne',ui-sans-serif,'Helvetica Neue',sans-serif!important;
+    animation:bgParchment 18s ease infinite!important;
+    color:#1a0e04!important;
+    font-family:'Open Sans',sans-serif!important;
 }}
-/* Sidebar stays dark — Claude's sidebar is always dark */
+/* Universal text override — force dark text everywhere in content area */
+.stApp *:not([data-testid="stSidebar"]):not([data-testid="stSidebar"] *){{
+    color:#1a0e04!important;
+}}
+/* Catch any remaining white/light-blue text from dark theme variables */
+.stApp [style*="color: rgb(230"],
+.stApp [style*="color: rgb(136"],
+.stApp [style*="color: #e6f1ff"],
+.stApp [style*="color: #8892b0"]{{
+    color:#1a0e04!important;
+}}
+/* Specific Streamlit elements that bypass the universal selector */
+[data-testid="stText"],[data-testid="stText"] *,
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] span,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] strong,
+[data-testid="stMarkdownContainer"] em,
+.element-container,.element-container *,
+.stAlert,.stAlert *,
+.stSuccess,.stSuccess *,
+.stInfo,.stInfo *,
+.stWarning,.stWarning *,
+.stException,.stException *,
+p,li,td,th,caption,figcaption{{
+    color:#1a0e04!important;
+}}
+/* Section headers (sec() function) */
+.as-city-row,.as-city-row *,
+.as-stat-strip .as-stat-lbl{{ color:#5c3a1e!important; }}
+/* Keep AQI badge text white (coloured backgrounds) */
+.as-fc-badge,.as-alert-dot + span{{ color:#fff!important; }}
+/* Keep sidebar text dark-themed */
+[data-testid="stSidebar"] *{{ color:unset; }}
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] div{{ color:#8892b0!important; }}
+/* Headings */
+h1,h2,h3,h4,h5,h6{{
+    color:#1a0e04!important;
+    font-family:'Montserrat',sans-serif!important;
+    font-weight:700!important;
+}}
+/* Sidebar stays DARK — untouched */
 [data-testid="stSidebar"]{{
-    background:linear-gradient(180deg,rgba(17,34,64,0.98),rgba(10,25,47,0.99))!important;
+    background:linear-gradient(180deg,{NAVY2} 0%,{NAVY} 100%)!important;
     border-right:1px solid {BORDER}!important;
 }}
-[data-testid="stSidebar"] *{{color:{TEXT2}!important;}}
+[data-testid="stSidebar"] *{{ color:{TEXT2}!important; }}
+[data-testid="stSidebar"] .as-stat-val{{ color:{TEAL}!important; }}
 [data-testid="stSidebar"] button[kind="primary"]{{
-    color:{TEAL}!important;background:rgba(100,255,218,0.10)!important;
+    color:{TEAL}!important;
+    background:rgba(100,255,218,0.10)!important;
     border-color:{TEAL}!important;
 }}
-[data-testid="stSidebar"] button[kind="secondary"]{{color:{TEXT2}!important;}}
-/* Content area cards and surfaces */
-.as-fc-card,.as-alert-item,.as-chat-ai{{
-    background:rgba(255,252,248,0.90)!important;
+[data-testid="stSidebar"] button[kind="secondary"]{{ color:{TEXT2}!important; }}
+/* Cards and surfaces */
+.as-fc-card,.as-alert-item,.as-chat-ai,.as-school-card,
+div[data-testid="metric-container"]{{
+    background:rgba(255,252,248,0.92)!important;
     border-color:rgba(160,100,60,0.18)!important;
-    color:#1c0f05!important;
 }}
-div[data-testid="metric-container"]{{background:rgba(255,252,248,0.85)!important;border-color:rgba(160,100,60,0.18)!important;}}
-/* Fixed nav */
-.as-fixed-nav{{background:rgba(253,248,242,0.96)!important;backdrop-filter:blur(20px)!important;border-bottom-color:rgba(160,100,60,0.18)!important;}}
-.as-logo{{color:#b5613f!important;-webkit-text-fill-color:#b5613f!important;}}
+.as-fc-card *,.as-alert-item *,.as-chat-ai *{{ color:#1a0e04!important; }}
+/* AQI badge colours — keep competition colours, just darken text */
+.as-fc-badge{{ color:#fff!important; }}
+/* Top bar */
+.as-fixed-nav{{
+    background:rgba(253,248,242,0.97)!important;
+    border-bottom:1px solid rgba(160,100,60,0.2)!important;
+}}
+.as-logo{{ color:#b5613f!important; }}
+.as-alert-badge{{
+    background:rgba(181,97,63,0.12)!important;
+    border-color:rgba(181,97,63,0.35)!important;
+    color:#b5613f!important;
+}}
+.as-live-dot{{ background:#b5613f!important; }}
+/* Data values */
+.as-stat-val,.as-fc-val,
+[data-testid="stMetricValue"],[data-testid="stMetricValue"] *{{
+    color:#b5613f!important;
+    font-family:'Roboto Mono',monospace!important;
+}}
+.as-stat-lbl{{ color:#5c3a1e!important; }}
 /* Inputs */
-.stSelectbox>div>div{{background:rgba(255,252,248,0.9)!important;color:#1c0f05!important;border-color:rgba(160,100,60,0.25)!important;}}
+.stSelectbox>div>div{{
+    background:#fff8f2!important;
+    color:#1a0e04!important;
+    border-color:rgba(160,100,60,0.3)!important;
+}}
+.stSelectbox [data-testid="stMarkdownContainer"] p{{ color:#1a0e04!important; }}
+.stTextInput input,.stTextArea textarea{{
+    background:#fff8f2!important; color:#1a0e04!important;
+    border-color:rgba(160,100,60,0.3)!important;
+}}
 /* Tabs */
-.stTabs [data-baseweb="tab"]{{color:#6b4530!important;}}
-.stTabs [aria-selected="true"]{{color:#b5613f!important;border-bottom-color:#b5613f!important;}}
-/* Stat strip values */
-.as-stat-val{{color:#b5613f!important;}}
-/* Main content buttons — warm, not dark navy */
+.stTabs [data-baseweb="tab"]{{ color:#5c3a1e!important; }}
+.stTabs [aria-selected="true"]{{ color:#b5613f!important; border-bottom-color:#b5613f!important; }}
+.stTabs [data-baseweb="tab-list"]{{ border-bottom-color:rgba(160,100,60,0.2)!important; }}
+/* Buttons */
 button[kind="secondary"],.stButton>button{{
-    background:rgba(255,252,248,0.85)!important;
+    background:rgba(255,252,248,0.92)!important;
     border-color:rgba(160,100,60,0.28)!important;
     color:#5c3a1e!important;
 }}
 button[kind="secondary"]:hover,.stButton>button:hover{{
-    background:rgba(181,97,63,0.10)!important;
-    border-color:rgba(181,97,63,0.50)!important;
-    color:#b5613f!important;
+    background:rgba(181,97,63,0.08)!important;
+    border-color:#b5613f!important; color:#b5613f!important;
 }}
+button[kind="primary"]{{
+    background:rgba(181,97,63,0.12)!important;
+    border-color:rgba(181,97,63,0.5)!important; color:#b5613f!important;
+}}
+/* Checkboxes */
+.stCheckbox label,.stCheckbox label *{{ color:#1a0e04!important; }}
+.stCheckbox{{ accent-color:#b5613f; }}
 /* Scrollbar */
-::-webkit-scrollbar-thumb{{background:rgba(181,97,63,0.35)!important;}}
+::-webkit-scrollbar-track{{ background:#fdf5ee!important; }}
+::-webkit-scrollbar-thumb{{ background:rgba(181,97,63,0.3)!important; }}
 </style>""", unsafe_allow_html=True)
+
+    # ── DARK THEME — original navy/teal palette ───────────────────────────────
+    else:
+        st.markdown(f"""<style>
+/* Background */
+body,.stApp{{ background:{NAVY}!important; color:{TEXT1}!important; font-family:'Open Sans',sans-serif!important; }}
+/* All text white on dark */
+.stApp p,.stApp span,.stApp div,.stApp label,.stApp li,
+.stMarkdown,.stMarkdown *,[data-testid="stMarkdownContainer"] *{{ color:{TEXT1}; }}
+h1,h2,h3,h4,h5,h6{{ color:{TEXT1}!important; font-family:'Montserrat',sans-serif!important; }}
+/* Data values */
+.as-stat-val,.as-fc-val,[data-testid="stMetricValue"] *{{
+    color:{TEAL}!important; font-family:'Roboto Mono',monospace!important;
+}}
+/* Cards */
+.as-fc-card,.as-alert-item,.as-chat-ai,.as-school-card{{
+    background:{NAVY2}!important; border-color:{BORDER}!important;
+}}
+.as-fc-card *,.as-alert-item *{{ color:{TEXT1}!important; }}
+/* Inputs */
+.stSelectbox>div>div{{ background:{NAVY2}!important; color:{TEXT1}!important; border-color:{BORDER}!important; }}
+.stSelectbox [data-testid="stMarkdownContainer"] p{{ color:{TEXT1}!important; }}
+.stTextInput input,.stTextArea textarea{{ background:{NAVY2}!important; color:{TEXT1}!important; border-color:{BORDER}!important; }}
+/* Tabs */
+.stTabs [data-baseweb="tab"]{{ color:{TEXT2}!important; }}
+.stTabs [aria-selected="true"]{{ color:{TEAL}!important; border-bottom-color:{TEAL}!important; }}
+/* Buttons */
+button[kind="secondary"],.stButton>button{{
+    background:{NAVY2}!important; border-color:{BORDER}!important; color:{TEXT2}!important;
+}}
+button[kind="secondary"]:hover,.stButton>button:hover{{
+    background:rgba(100,255,218,0.08)!important; border-color:{TEAL}!important; color:{TEXT1}!important;
+}}
+button[kind="primary"]{{
+    background:rgba(100,255,218,0.10)!important; border-color:{TEAL}!important; color:{TEAL}!important;
+}}
+/* Metric containers */
+div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color:{BORDER}!important; }}
+/* Checkboxes */
+.stCheckbox label,.stCheckbox label *{{ color:{TEXT1}!important; }}
+.stCheckbox{{ accent-color:{TEAL}; }}
+/* Scrollbar */
+::-webkit-scrollbar-track{{ background:{NAVY}; }}
+::-webkit-scrollbar-thumb{{ background:{BORDER};border-radius:3px; }}
+</style>""", unsafe_allow_html=True)
+
     st.markdown(PARTICLES, unsafe_allow_html=True)
 
 
@@ -204,62 +316,47 @@ def render_nav():
     # ── Fixed decorative top bar ──────────────────────────────────────────────
     st.markdown(f"""
 <div class="as-fixed-nav">
-  <div style="display:flex;align-items:center;gap:.6rem;">
+  <div style="display:flex;align-items:center;gap:.5rem;">
+    <span class="as-hamburger-slot"></span>
     <div class="as-logo">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-        fill="none" stroke="{TEAL}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
       </svg>
       AirSense Cameroon
     </div>
-    <div style="width:1px;height:18px;background:{BORDER};"></div>
-    <span style="font-size:.75rem;color:{TEXT2};">{page_lbl}</span>
+    <div style="width:1px;height:16px;background:rgba(0,0,0,0.15);margin:0 .2rem;"></div>
+    <span style="font-size:.72rem;opacity:.7;">{page_lbl}</span>
   </div>
-  <div style="display:flex;align-items:center;gap:.6rem;">
+  <div style="display:flex;align-items:center;gap:.5rem;">
     <span class="as-alert-badge">{n_alerts} {'alerts' if lang=='en' else 'alertes'}</span>
-    <span style="font-size:.62rem;color:{TEXT2};font-family:'JetBrains Mono',monospace;
-      display:flex;align-items:center;gap:.25rem;">
+    <span style="font-size:.6rem;opacity:.65;font-family:'Roboto Mono',monospace;
+      display:flex;align-items:center;gap:.2rem;">
       <span class="as-live-dot"></span>Live
     </span>
   </div>
 </div>""", unsafe_allow_html=True)
 
-    # ── Always-visible page navigation (fallback when sidebar collapsed) ────
-    nav_labels = NAV_LABELS[lang]
-    # Scoped CSS — only affects buttons inside the as-topnav div
-    st.markdown(f"""<style>
-#as-topnav .stButton > button {{
-    padding: .22rem .5rem !important;
-    font-size: .65rem !important;
-    border-radius: 5px !important;
-    white-space: nowrap !important;
-    min-height: 0 !important;
-    line-height: 1.3 !important;
-    width: 100% !important;
-}}
-</style>
-<div id="as-topnav" style="display:none"></div>
-""", unsafe_allow_html=True)
+    # ── Hide ALL sidebar collapse/expand controls — sidebar always stays open ─
+    st.markdown("""<style>
+/* Hide the << collapse arrow — sidebar cannot be closed */
+[data-testid="stSidebar"] > div > div > button:first-child,
+[data-testid="stSidebar"] button[aria-label="Close sidebar"],
+[data-testid="stSidebar"] button[aria-label="Fermer le panneau latéral"],
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+</style>""", unsafe_allow_html=True)
 
-    nav_cols = st.columns(len(PAGE_KEYS))
-    for col, key in zip(nav_cols, PAGE_KEYS):
-        lbl = nav_labels[key]
-        with col:
-            is_active = (page == key)
-            if st.button(lbl, key=f"topnav_{key}",
-                         type="primary" if is_active else "secondary",
-                         use_container_width=True):
-                st.session_state.page = key
-                st.rerun()
-    st.markdown(
-        f"<div style='height:1px;background:{BORDER};margin:.2rem 0 .5rem;'></div>",
-        unsafe_allow_html=True,
-    )
+
 
 def render_sidebar():
     """Left sidebar — ordered nav + settings gear in header."""
     lang    = LNG()
-    is_dark = st.session_state.theme == "dark"
+    is_dark = st.session_state.get("theme","light") == "dark"
     labels  = NAV_LABELS[lang]
     subs    = NAV_SUBTITLES[lang]
 
@@ -273,7 +370,7 @@ def render_sidebar():
     fill="none" stroke="{TEAL}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
   </svg>
-  <span style="font-family:'JetBrains Mono',monospace;font-size:.85rem;
+  <span style="font-family:'Roboto Mono',monospace;font-size:.85rem;
     font-weight:700;color:{TEAL};">AirSense CM</span>
 </div>""", unsafe_allow_html=True)
         with h2:
@@ -353,13 +450,13 @@ def render_sidebar():
       {T.get(lang, T["en"]).get("alerts_label","Active alerts")}
     </span>
     <span style="font-size:.9rem;font-weight:700;color:{RED};
-      font-family:'JetBrains Mono',monospace;">{n_alerts}</span>
+      font-family:'Roboto Mono',monospace;">{n_alerts}</span>
   </div>
   <div style="font-size:.49rem;color:{TEXT2};line-height:1.8;margin-bottom:.45rem;">
     {data_note}<br>
-    XGBoost · Platt Alerts · SHAP<br>
-    Conformal Prediction · CMIP6<br>
-    Claude AI · IndabaX Cameroon 2026
+    PM2.5 Prediction · Health Alerts · SHAP Analysis<br>
+    Climate Projections · AI Health Assistant<br>
+    <strong style="color:{TEAL};">AirSense Team · IndabaX 2026</strong>
   </div>
 </div>""", unsafe_allow_html=True)
 

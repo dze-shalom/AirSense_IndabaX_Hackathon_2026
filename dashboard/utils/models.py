@@ -1,3 +1,7 @@
+try:
+    from dotenv import load_dotenv; load_dotenv()
+except ImportError:
+    pass
 """utils/models.py — Model loading and prediction."""
 import numpy as np
 import json
@@ -8,6 +12,52 @@ import streamlit as st
 from config import CITIES, NORTHERN
 
 logger = logging.getLogger("airsense")
+
+# ── Optional: use remote API instead of local models ─────────────────────────
+# Set AIRSENSE_API_URL in Streamlit secrets or environment to enable
+import os as _os
+_API_URL = _os.environ.get("AIRSENSE_API_URL", "")
+
+
+def _api_predict(city, region, lat, lon, date_str, weather_row):
+    """Call the FastAPI endpoint. Returns pm25 float or None on failure."""
+    if not _API_URL:
+        return None
+    try:
+        import requests as _req
+        payload = {
+            "city": city, "region": region, "lat": lat, "lon": lon,
+            "date": date_str,
+            "temp_max":   weather_row.get("temperature_2m_max", 30),
+            "temp_min":   weather_row.get("temperature_2m_min", 18),
+            "temp_mean":  weather_row.get("temperature_2m_mean", 24),
+            "dew_point":  weather_row.get("dew_point_2m_mean", 15),
+            "precip":     weather_row.get("precipitation_sum", 0),
+            "precip_hrs": weather_row.get("precipitation_hours", 0),
+            "wind_speed": weather_row.get("wind_speed_10m_max", 8),
+            "wind_dir":   weather_row.get("wind_direction_10m_dominant", 180),
+            "wind_gust":  weather_row.get("wind_gusts_10m_max", 12),
+            "wind_100m":  weather_row.get("wind_speed_100m_max", 15),
+            "humidity":   weather_row.get("relative_humidity_2m_mean", 60),
+            "pressure":   weather_row.get("surface_pressure_mean", 950),
+            "cloud":      weather_row.get("cloud_cover_mean", 40),
+            "solar":      weather_row.get("shortwave_radiation_sum", 18),
+            "et0":        weather_row.get("et0_fao_evapotranspiration", 5),
+            "daylight":   weather_row.get("daylight_duration", 43200),
+            "sunshine":   weather_row.get("sunshine_duration", 36000),
+            "soil_moist": weather_row.get("soil_moisture_0_to_7cm_mean", 0.2),
+            "soil_temp":  weather_row.get("soil_temperature_0_to_7cm_mean", 25),
+            "wet_bulb":   weather_row.get("wet_bulb_temperature_2m_mean", 20),
+            "vpd_max":    weather_row.get("vapour_pressure_deficit_max", 2.0),
+            "weather_code": int(weather_row.get("weather_code", 3)),
+        }
+        r = _req.post(f"{_API_URL}/predict", json=payload, timeout=10)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        logger.warning("API call failed: %s", e)
+        return None
+
 
 
 @st.cache_resource
@@ -49,8 +99,10 @@ def load_artefacts():
 
 def get_conf_interval(region, art):
     if art and art.get("conformal"):
-        return art["conformal"].get("region_intervals", {}).get(
-            region, art["conformal"].get("global_q_hat", 30.8))
+        c = art["conformal"]
+        # Handle both 'global_q_hat' (Cell 31) and 'q_hat' (Cell 99 simplified save)
+        global_q = c.get("global_q_hat") or c.get("q_hat", 30.8)
+        return c.get("region_intervals", {}).get(region, global_q)
     fallback = {
         "South":14.1,"East":17.3,"Centre":19.2,"South West":22.4,
         "Littoral":23.6,"Adamawa":26.2,"West":30.9,"North West":41.4,
@@ -109,7 +161,11 @@ def build_features(row, ce, re, lat, lon, reg_classes):
     rad   = np.deg2rad(row.get("wind_direction_10m_dominant", 180))
     ws    = row.get("wind_speed_10m_max", 10)
     tdm   = row.get("temperature_2m_mean", 25)
-    dp    = row.get("dew_point_2m_mean", 15)
+    # dew_point_2m_mean is hourly-only in Open-Meteo; estimate from humidity+temp
+    _hum  = row.get("relative_humidity_2m_mean", 60)
+    _tdm  = row.get("temperature_2m_mean", 25)
+    dp    = row.get("dew_point_2m_mean",
+               _tdm - ((100 - _hum) / 5.0))  # Magnus approximation
     sh    = row.get("sunshine_duration", 30000)
     dl    = row.get("daylight_duration", 43000)
     prec  = row.get("precipitation_sum", 0)
@@ -119,40 +175,92 @@ def build_features(row, ce, re, lat, lon, reg_classes):
     def tet(T): return 0.6108 * np.exp((17.27 * T) / (T + 237.3))
     vpd = max(0, tet(tdm) - tet(dp))
 
+    # Derived values
+    is_harm    = int(month in [11,12,1,2] and north)
+    is_dry     = int(month in [11,12,1,2,3])
+    is_no_rain = int(prec == 0)
+    is_no_wind = int(ws < 2)
+    temp_range = row.get("temperature_2m_max", 30) - row.get("temperature_2m_min", 18)
+    wg         = row.get("wind_gusts_10m_max", ws * 1.5)      # wind gust estimate
+
     return {
+        # ── Location & encoding ─────────────────────────────────────────────
         "latitude": lat, "longitude": lon, "region_enc": re, "city_enc": ce,
+        # ── Date features ───────────────────────────────────────────────────
         "month": month, "day_of_year": doy, "year": year,
-        "month_sin": np.sin(2*np.pi*month/12), "month_cos": np.cos(2*np.pi*month/12),
-        "doy_sin":   np.sin(2*np.pi*doy/365),  "doy_cos":   np.cos(2*np.pi*doy/365),
+        # 1st Fourier harmonics
+        "month_sin":   np.sin(2*np.pi*month/12),
+        "month_cos":   np.cos(2*np.pi*month/12),
+        "doy_sin":     np.sin(2*np.pi*doy/365),
+        "doy_cos":     np.cos(2*np.pi*doy/365),
+        # 2nd Fourier harmonics (notebook Cell 6)
+        "month_sin_2": np.sin(4*np.pi*month/12),
+        "month_cos_2": np.cos(4*np.pi*month/12),
+        "doy_sin_2":   np.sin(4*np.pi*doy/365),
+        "doy_cos_2":   np.cos(4*np.pi*doy/365),
+        # 3rd Fourier harmonics
+        "doy_sin_3":   np.sin(6*np.pi*doy/365),
+        "doy_cos_3":   np.cos(6*np.pi*doy/365),
+        # ── Temperature ─────────────────────────────────────────────────────
         "temp_max":  row.get("temperature_2m_max", 30),
         "temp_min":  row.get("temperature_2m_min", 18),
         "temp_mean": tdm, "apparent_temp_mean": tdm,
-        "precipitation": prec, "precipitation_hours": row.get("precipitation_hours", 0),
-        "wind_speed": ws, "wind_direction": row.get("wind_direction_10m_dominant", 180),
-        "wind_u": -ws*np.sin(rad), "wind_v": -ws*np.cos(rad),
+        "temp_range": temp_range,
+        # ── Precipitation / humidity ─────────────────────────────────────────
+        "precipitation":       prec,
+        "precipitation_hours": row.get("precipitation_hours", 0),
+        "humidity":        row.get("relative_humidity_2m_mean", 60),
+        "dew_point":       dp,
+        "wet_bulb_temp":   row.get("wet_bulb_temperature_2m_mean", row.get("wet_bulb_temp", 20)),
+        "vpd":             round(vpd, 4),
+        "vpd_max":         row.get("vapour_pressure_deficit_max", 2.0),
+        # ── Wind ─────────────────────────────────────────────────────────────
+        "wind_speed":    ws,
+        "wind_direction":row.get("wind_direction_10m_dominant", 180),
+        "wind_u":        -ws*np.sin(rad),
+        "wind_v":        -ws*np.cos(rad),
+        "wind_100m":     row.get("wind_speed_100m_max", 20),
+        "wind_gust":     wg,
+        # ── Radiation / solar ────────────────────────────────────────────────
         "solar_radiation":    row.get("shortwave_radiation_sum", 18),
         "evapotranspiration": row.get("et0_fao_evapotranspiration", 5),
         "daylight_duration":  dl,
-        "weather_code_cat":   min(row.get("weather_code", 3), 9),
-        "humidity":        row.get("relative_humidity_2m_mean", 60),
-        "dew_point":       dp,
-        "surface_pressure":row.get("surface_pressure_mean", 950),
-        "cloud_cover":     row.get("cloud_cover_mean", 50),
-        "wind_100m":       row.get("wind_speed_100m_max", 20),
-        "soil_moisture":   row.get("soil_moisture_0_to_7cm_mean", 0.2),
-        "soil_temp":       row.get("soil_temperature_0_to_7cm_mean", 25),
-        "wet_bulb_temp":   row.get("wet_bulb_temperature_2m_mean", 20),
-        "vpd_max":         row.get("vapour_pressure_deficit_max", 2.0),
-        "vpd":             round(vpd, 4),
-        "temp_range":      row.get("temperature_2m_max", 30) - row.get("temperature_2m_min", 18),
-        "sunshine_ratio":  min(sh / max(dl, 1), 1.0),
-        "is_harmattan":    int(month in [11,12,1,2] and north),
-        "is_dry_season":   int(month in [11,12,1,2,3]),
-        "is_no_rain":      int(prec == 0),
-        "is_no_wind":      int(ws < 2),
-        "is_heat_stress":  int(tdm > 40),
-        "is_dust_event":   0,
-        "is_haze_fog":     int(row.get("weather_code", 3) in [45, 48]),
+        "sunshine_ratio":     min(sh / max(dl, 1), 1.0),
+        # ── Pressure / cloud ─────────────────────────────────────────────────
+        "surface_pressure": row.get("surface_pressure_mean", row.get("surface_pressure", 950)),
+        "cloud_cover":      row.get("cloud_cover_mean", 50),
+        "weather_code_cat": min(row.get("weather_code", 3), 9),
+        # ── Soil ─────────────────────────────────────────────────────────────
+        "soil_moisture": row.get("soil_moisture_0_to_7cm_mean", 0.2),
+        "soil_temp":     row.get("soil_temperature_0_to_7cm_mean", 25),
+        # ── Season / event flags ─────────────────────────────────────────────
+        "is_harmattan":   is_harm,
+        "is_dry_season":  is_dry,
+        "is_no_rain":     is_no_rain,
+        "is_no_wind":     is_no_wind,
+        "is_heat_stress": int(tdm > 40),
+        "is_dust_event":  0,
+        "is_haze_fog":    int(row.get("weather_code", 3) in [45, 48]),
+        "is_real_measurement": 1,   # live forecast → treat as real
+        # ── Interaction features (notebook Cell 6) ───────────────────────────
+        "harm_x_wind":           is_harm * ws,
+        "harm_x_gust":           is_harm * wg,
+        "harm_x_soil":           is_harm * row.get("soil_moisture_0_to_7cm_mean", 0.2),
+        "harm_x_lat":            is_harm * lat,
+        "harm_x_vpd":            is_harm * round(vpd, 4),
+        "stagnation":            is_no_wind * is_no_rain,
+        "city_x_month":          ce * month,
+        "vpd_x_dry_season":      round(vpd, 4) * is_dry,
+        "temp_range_x_humidity": temp_range * row.get("relative_humidity_2m_mean", 60),
+        # ── Extra features from features.json ────────────────────────────────
+        "weather_code":          row.get("weather_code", 3),
+        "weather_code_enc":      min(int(row.get("weather_code", 3)), 9),
+        "boundary_layer_height": 1500.0,
+        "blh_min":               500.0,
+        "nh3_proxy":             0.5,
+        "pm25_is_real":          1,
+        "region_x_dry_season":   re * is_dry,
+        "sample_weight":         1.0,
     }
 
 
@@ -165,14 +273,27 @@ def predict_7day(fd, city, region, lat, lon, model, enc, fi):
         except: ce, re, region = nearest_known_city_enc(lat, lon, enc) if enc else (0, 0, region)
         daily = fd.get("daily", {}); dates = daily.get("time", [])
         fl    = fi.get("features", [])
+        if not fl:
+            logger.error("predict_7day: features.json has empty features list")
+            return None
         preds = []
         for i, date in enumerate(dates):
             row   = {k: (v[i] if isinstance(v, list) and i < len(v) else 0)
                      for k, v in daily.items() if k != "time"}
             row["date"] = date
-            feats = build_features(row, ce, re, lat, lon, list(le_r.classes_))
-            fa    = np.array([[feats.get(f, 0) for f in fl]])
-            pred  = float(np.expm1(model.predict(fa)[0]))
+
+            # Try remote API first if configured
+            api_result = _api_predict(city, region, lat, lon, date, row)
+            if api_result:
+                pred = api_result["pm25"]
+            else:
+                feats = build_features(row, ce, re, lat, lon, list(le_r.classes_))
+                fa    = np.array([[feats.get(f, 0) for f in fl]])
+                try:
+                    pred = float(np.expm1(model.predict(fa)[0]))
+                except Exception as e:
+                    logger.error("predict_7day inference error: %s", e)
+                    return None
             preds.append({
                 "date":     date,
                 "pm25":     max(0.5, pred),

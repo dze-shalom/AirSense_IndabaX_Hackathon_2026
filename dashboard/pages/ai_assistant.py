@@ -8,6 +8,7 @@ from plotly.subplots import make_subplots
 from datetime import datetime
 
 from config import *
+from utils.api import call_claude
 from utils.helpers import (aqi, compute_bfai, bfai_label, bfai_col,
                             classify_source, health_impact, city_profile,
                             SOURCE_LABELS, SOURCE_COLORS, LNG)
@@ -16,6 +17,40 @@ from utils.models import (load_models, load_artefacts, get_conf_interval,
 from utils.api import fetch_forecast, geocode_city, wmo_icon
 from components.ui import sec, card, info_box, bfai_gauge_svg, harmattan_gauge_svg
 from components.charts import PLO
+
+def _cbg():
+    """Card background — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(255,252,248,0.95)"
+    from config import NAVY2
+    return NAVY2
+
+def _cborder():
+    """Card border — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(160,100,60,0.2)"
+    from config import BORDER
+    return BORDER
+
+def _ctxt():
+    """Primary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#1a0e04"
+    from config import TEXT1
+    return TEXT1
+
+def _ctxt2():
+    """Secondary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#5c3a1e"
+    from config import TEXT2
+    return TEXT2
+
+
 
 
 def page_ai():
@@ -30,7 +65,7 @@ def page_ai():
     _,ai_col,ai_ico,ai_raw = aqi(ai_pm,LNG())
     ai_cat = T[LNG()].get(ai_raw,T["en"][ai_raw])
 
-    st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};border-radius:10px;
+    st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};border-radius:10px;
   padding:.75rem;margin-bottom:.85rem;">
   <div style="font-size:.72rem;color:{TEXT2};">Asking about <strong style="color:{TEXT1};">{ai_city}</strong>
   ({ai_reg}) · PM2.5: <strong style="color:{ai_col};">{ai_pm:.1f} μg/m³</strong> · {ai_ico}

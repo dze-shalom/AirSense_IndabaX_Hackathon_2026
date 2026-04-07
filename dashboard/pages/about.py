@@ -7,6 +7,47 @@ from components.charts import PLO
 import plotly.graph_objects as go
 
 
+
+
+
+
+
+
+def _cbg():
+    """Card background — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(255,252,248,0.95)"
+    from config import NAVY2
+    return NAVY2
+
+def _cborder():
+    """Card border — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "rgba(160,100,60,0.2)"
+    from config import BORDER
+    return BORDER
+
+def _ctxt():
+    """Primary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#1a0e04"
+    from config import TEXT1
+    return TEXT1
+
+def _ctxt2():
+    """Secondary text — adapts to current theme."""
+    import streamlit as st
+    if st.session_state.get("theme","light") == "light":
+        return "#5c3a1e"
+    from config import TEXT2
+    return TEXT2
+
+
+
+
 # Inline SVG helpers — no emojis
 def _icon(path_d, size=16, stroke=None):
     s = stroke or TEAL
@@ -33,12 +74,21 @@ ICONS = {
 
 def page_about():
     lang = LNG()
+    _lt = st.session_state.get("theme","light") == "light"
+    def _T1(): return "#1a0e04" if _lt else TEXT1
+    def _T2(): return "#5c3a1e" if _lt else TEXT2
+    def _BD(): return "rgba(160,100,60,0.15)" if _lt else BORDER
+    def _IC(): return "rgba(181,97,63,0.12)" if _lt else "rgba(100,255,218,0.09)"
+    def _IB(): return "rgba(181,97,63,0.25)" if _lt else "rgba(100,255,218,0.2)"
+    def _HBG(): return "rgba(255,252,248,0.95)" if _lt else f"linear-gradient(135deg,{NAVY2},{NAVY3})"
+    def _HBD(): return "rgba(160,100,60,0.2)" if _lt else BORDER
+
     st.markdown('<div class="as-content">', unsafe_allow_html=True)
 
     # ── Hero ─────────────────────────────────────────────────────────────────
     st.markdown(f"""
-<div style="background:linear-gradient(135deg,{NAVY2},{NAVY3});
-  border:1px solid {BORDER};border-radius:14px;
+<div style="background:{_HBG()};
+  border:1px solid {_HBD()};border-radius:14px;
   padding:1.6rem 1.8rem;margin-bottom:1.4rem;position:relative;overflow:hidden;">
   <div style="position:absolute;top:0;left:0;right:0;height:3px;
     background:linear-gradient(90deg,{TEAL},{TEAL2},transparent);"></div>
@@ -46,20 +96,20 @@ def page_about():
     opacity:0.06;font-size:7rem;line-height:1;">
     {_icon(ICONS['globe'], 96, TEAL)}
   </div>
-  <div style="font-size:1.5rem;font-weight:700;color:{TEXT1};margin-bottom:.4rem;">
+  <div style="font-size:1.5rem;font-weight:700;color:{_T1()};margin-bottom:.4rem;">
     AirSense Cameroon
   </div>
   <div style="font-size:.8rem;color:{TEAL};font-weight:600;margin-bottom:.8rem;letter-spacing:.04em;">
     {"AI-Powered Air Quality Intelligence for Cameroon" if lang=="en"
      else "Intelligence de Qualité de l'Air par IA pour le Cameroun"}
   </div>
-  <div style="font-size:.78rem;color:{TEXT2};line-height:1.75;max-width:680px;">
-    {"AirSense monitors and predicts PM2.5 air pollution across 88 cities in all 10 regions "
+  <div style="font-size:.78rem;color:{_T2()};line-height:1.75;max-width:680px;">
+    {"AirSense monitors and predicts PM2.5 air pollution across 71 cities in all 10 regions "
      "of Cameroon — covering over 12 million people. It combines six years of satellite and "
      "weather data with an XGBoost model trained on real CAMS measurements, delivering daily "
      "forecasts, health advisories, school alerts, and climate projections in English and French."
      if lang=="en" else
-     "AirSense surveille et prédit la pollution PM2.5 dans 88 villes de toutes les 10 régions "
+     "AirSense surveille et prédit la pollution PM2.5 dans 71 villes de toutes les 10 régions "
      "du Cameroun — couvrant plus de 12 millions de personnes. Il combine six années de données "
      "satellitaires et météo avec un modèle XGBoost entraîné sur des mesures CAMS réelles, "
      "fournissant des prévisions quotidiennes, des avis sanitaires et des projections climatiques "
@@ -111,7 +161,7 @@ def page_about():
 
     features_fr = [
         ("map",     "Carte Nationale de Qualité de l'Air",
-         "Carte PM2.5 en direct pour 88 villes camerounaises avec flèches de vent, superposition "
+         "Carte PM2.5 en direct pour 71 villes camerounaises avec flèches de vent, superposition "
          "de densité et graphiques 7 jours par ville."),
         ("forecast","Prévision 7 Jours + Historique",
          "Prédictions XGBoost pour n'importe quel jour — prévision future ou reconstruction "
@@ -156,18 +206,18 @@ def page_about():
         for col_i, feat in enumerate(features[row_start:row_start+3]):
             ico_key, title, desc = feat
             with cols[col_i]:
-                st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};
+                st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-radius:10px;padding:.85rem 1rem;margin-bottom:.5rem;height:100%;
   transition:border-color .2s;">
   <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;">
     <div style="width:28px;height:28px;border-radius:7px;flex-shrink:0;
-      background:rgba(100,255,218,0.09);border:1px solid rgba(100,255,218,0.2);
+      background:{_IC()};border:1px solid {_IB()};
       display:flex;align-items:center;justify-content:center;">
       {_icon(ICONS[ico_key], 14)}
     </div>
-    <span style="font-size:.72rem;font-weight:700;color:{TEXT1};">{title}</span>
+    <span style="font-size:.72rem;font-weight:700;color:{_T1()};">{title}</span>
   </div>
-  <div style="font-size:.63rem;color:{TEXT2};line-height:1.65;">{desc}</div>
+  <div style="font-size:.63rem;color:{_T2()};line-height:1.65;">{desc}</div>
 </div>""", unsafe_allow_html=True)
 
     # ── Model stats strip ─────────────────────────────────────────────────────
@@ -180,18 +230,88 @@ def page_about():
         ("F1",  f"{MODEL_RL_F1}",     "Alert F1 @ P=0.50", GREEN),
         ("COV", "97.4%",              "Conformal coverage" if lang=="en" else "Couverture conforme", TEAL2),
         ("MAE↓","+26.5%",             "vs naive baseline" if lang=="en" else "vs référence naïve", AMBER),
-        ("CIT", "88",                 "Cities covered" if lang=="en" else "Villes couvertes", TEXT2),
+        ("CIT", "71",                 "Cities covered" if lang=="en" else "Villes couvertes", TEXT2),
     ]
     stat_cols = st.columns(len(stats))
     for col, (abbr, val, lbl, col_c) in zip(stat_cols, stats):
         with col:
-            st.markdown(f"""<div style="background:{NAVY2};border:1px solid {BORDER};
+            st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-radius:9px;padding:.6rem;text-align:center;">
   <div style="font-size:1.15rem;font-weight:700;font-family:'JetBrains Mono',monospace;
     color:{col_c};">{val}</div>
-  <div style="font-size:.52rem;color:{TEXT2};text-transform:uppercase;letter-spacing:.07em;
+  <div style="font-size:.52rem;color:{_T2()};text-transform:uppercase;letter-spacing:.07em;
     margin-top:.1rem;">{lbl}</div>
 </div>""", unsafe_allow_html=True)
+
+
+    # ── Key findings from training data ──────────────────────────────────────
+    st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+    sec("Key Findings from Training Data" if lang=="en" else "Résultats Clés des Données")
+
+    _is_lt = st.session_state.get("theme","light") == "light"
+    _bg    = "rgba(0,0,0,0)"
+    _txt   = _T1()
+    _txt2  = _T2()
+    _grid  = _BD()
+
+    # Chart 1 — WHO Exceedance by Region (Image 1)
+    _regions = ["South","Centre","South West","Littoral","Adamawa","East",
+                "North West","West","North","Far North"]
+    _exc     = [32,42,44,47,49,49,55,60,66,73]
+    _cols_rc = [REGION_COLORS.get(r, AMBER) for r in _regions]
+
+    import plotly.graph_objects as _go
+    fig_exc = _go.Figure(_go.Bar(
+        y=_regions, x=_exc, orientation="h",
+        marker=dict(color=_cols_rc, opacity=0.85),
+        text=[f"{v}%" for v in _exc], textposition="outside",
+        textfont=dict(color=_txt, size=10)))
+    fig_exc.add_vline(x=50, line=dict(color=RED, width=1.5, dash="dash"),
+                      annotation_text="50%", annotation_font_color=RED, annotation_font_size=9)
+    fig_exc.update_layout(**PLO(height=260,
+        title=dict(text="WHO 24h Exceedance by Region (2020–2025)", font=dict(color=_txt, size=12)),
+        xaxis=dict(title="% days exceeding WHO 24h limit (15 µg/m³)", color=_txt2,
+                   gridcolor=_grid, range=[0,90]),
+        yaxis=dict(color=_txt2, gridcolor="rgba(0,0,0,0)"),
+        margin=dict(l=0,r=55,t=30,b=8), showlegend=False))
+
+    # Chart 2 — Mean PM2.5 by Region (Image 2)
+    _pm25 = [13.3,16.0,17.0,17.2,17.8,17.9,21.2,22.6,21.5,24.1]
+    fig_pm = _go.Figure(_go.Bar(
+        y=_regions, x=_pm25, orientation="h",
+        marker=dict(color=_cols_rc, opacity=0.85),
+        text=[f"{v:.1f}" for v in _pm25], textposition="outside",
+        textfont=dict(color=_txt, size=10)))
+    fig_pm.add_vline(x=15, line=dict(color=RED, width=1.5, dash="dash"),
+                     annotation_text="WHO 24h", annotation_font_color=RED, annotation_font_size=9)
+    fig_pm.add_vline(x=5, line=dict(color=AMBER, width=1, dash="dot"),
+                     annotation_text="WHO Ann.", annotation_font_color=AMBER, annotation_font_size=9)
+    fig_pm.update_layout(**PLO(height=260,
+        title=dict(text="Mean PM2.5 by Region — all above WHO annual limit", font=dict(color=_txt, size=12)),
+        xaxis=dict(title="Mean PM2.5 (µg/m³)", color=_txt2, gridcolor=_grid, range=[0,28]),
+        yaxis=dict(color=_txt2, gridcolor="rgba(0,0,0,0)"),
+        margin=dict(l=0,r=55,t=30,b=8), showlegend=False))
+
+    # Chart 3 — National trend 2020-2025 (Image 3)
+    _years = [2020,2021,2022,2023,2024,2025]
+    _nat   = [17.0,17.1,16.2,18.7,22.9,21.2]
+    fig_tr = _go.Figure()
+    fig_tr.add_trace(_go.Scatter(x=_years, y=_nat, mode="lines+markers+text",
+        line=dict(color=TEAL, width=2.5), marker=dict(size=8, color=TEAL),
+        text=[f"{v:.1f}" for v in _nat], textposition="top center",
+        textfont=dict(color=_txt, size=9), name="National mean"))
+    fig_tr.add_hline(y=15, line=dict(color=RED, width=1.5, dash="dash"),
+                     annotation_text="WHO 24h limit", annotation_font_color=RED, annotation_font_size=9)
+    fig_tr.update_layout(**PLO(height=220,
+        title=dict(text="National Mean PM2.5 — +35% increase 2020–2025", font=dict(color=_txt, size=12)),
+        xaxis=dict(color=_txt2, gridcolor=_grid),
+        yaxis=dict(title="Mean PM2.5 (µg/m³)", color=_txt2, gridcolor=_grid),
+        margin=dict(l=0,r=20,t=30,b=8), showlegend=False))
+
+    ca, cb = st.columns(2)
+    with ca: st.plotly_chart(fig_exc, use_container_width=True)
+    with cb: st.plotly_chart(fig_pm,  use_container_width=True)
+    st.plotly_chart(fig_tr, use_container_width=True)
 
     # ── Data sources ──────────────────────────────────────────────────────────
     st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
@@ -212,23 +332,23 @@ def page_about():
 
     for name, desc in sources:
         st.markdown(f"""<div style="display:flex;gap:.7rem;padding:.4rem 0;
-  border-bottom:1px solid {BORDER};align-items:flex-start;">
-  <div style="width:7px;height:7px;border-radius:50%;background:{TEAL};
-    flex-shrink:0;margin-top:.3rem;box-shadow:0 0 4px {TEAL};"></div>
+  border-bottom:1px solid {_BD()};align-items:flex-start;">
+  <div style="width:7px;height:7px;border-radius:50%;background:{TEAL if st.session_state.get("theme","light")=="dark" else "#b5613f"};
+    flex-shrink:0;margin-top:.3rem;"></div>
   <div>
-    <span style="font-size:.7rem;font-weight:600;color:{TEXT1};">{name}</span>
-    <span style="font-size:.65rem;color:{TEXT2};margin-left:.4rem;">{desc}</span>
+    <span style="font-size:.7rem;font-weight:600;color:{_T1()};">{name}</span>
+    <span style="font-size:.65rem;color:{_T2()};margin-left:.4rem;">{desc}</span>
   </div>
 </div>""", unsafe_allow_html=True)
 
     info_box(
         "Built for <strong>IndabaX Cameroon 2026</strong> · "
         "<em>AI for Climate and Health Resilience in Cameroon</em> · "
-        "Author: <strong>Dze-Kum Shalom Chow</strong>"
+        "Developed by the <strong>AirSense Team</strong>"
         if lang=="en" else
         "Conçu pour <strong>IndabaX Cameroun 2026</strong> · "
         "<em>L'IA au service de la résilience climatique et sanitaire au Cameroun</em> · "
-        "Auteur: <strong>Dze-Kum Shalom Chow</strong>"
+        "Développé par l'équipe <strong>AirSense Team</strong>"
     )
 
     st.markdown('</div>', unsafe_allow_html=True)
