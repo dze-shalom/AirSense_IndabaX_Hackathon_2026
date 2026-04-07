@@ -6,186 +6,199 @@
 ## Run Order
 
 ```
-00_Data_Cleaning.ipynb  →  01_EDA.ipynb  →  02_Model_Training.ipynb  →  03_Pitch_Charts.ipynb
+00_Data_Cleaning_v3.ipynb  →  01_EDA_v3.ipynb  →  02_Modelling_v4.ipynb  →  03_Pitch_Charts.ipynb
 ```
 
-Run `00` first. Every other notebook simply loads the CSV it produces.
+Run `00` first. Every subsequent notebook reads the parquet file it produces.
 
 ---
 
-## 00 — Data Cleaning & Enrichment
+## 00 — Data Cleaning & Preparation
 
-**Input:** `data/Dataset_complet_Meteo.xlsx` (official hackathon dataset)
-**Output:** `data/cameroon_official_dataset.csv` — complete, 42 cities, zero nulls
+**Input:** `data/Dataset_complet_Meteo.csv` (official hackathon dataset, converted from Excel)
+**Output:** `data/airsense_eda_ready.parquet` — 87,240 rows × 80 columns, 0 nulls
 
-The official Excel dataset contains weather variables only for 40 cities.
-This notebook enriches it with real satellite-measured air quality compounds
-following the hackathon README tip: *"enrich your analysis with additional
-variables from open-meteo.com (hourly data, air quality, climate models, etc.)"*
+> **Why CSV and not Excel directly?** Excel silently auto-formats integers as dates.
+> Save the official `.xlsx` as CSV UTF-8 before running this notebook.
+
+The official dataset contains weather variables only. This notebook enriches it
+with real satellite-measured air quality compounds following the hackathon README tip:
+*"enrich your analysis with additional variables from open-meteo.com."*
 
 | Step | What it does |
 |------|-------------|
-| 1 | Install packages |
-| 2 | Load the official Excel and fix numeric columns stored as Excel date serials |
-| 3 | Fetch full weather for Banyo & Mora from Open-Meteo Archive API at their real coordinates |
-| 4 | Fetch PM2.5, PM10, Dust, CO, NO₂, O₃, AOD, AQI for all 42 cities from Open-Meteo Air Quality API (CAMS satellite data, 2020–2025) |
-| 5 | Build physics-based proxy compounds for any city where the API fetch failed — ensures zero nulls |
-| 6 | Merge weather and compounds into one dataset |
-| 7 | Rename columns and derive engineered features |
-| 8 | Build PM2.5 target variable (real CAMS values where available, proxy formula as fallback) |
-| 9 | Add Banyo and Mora rows using real weather from Step 3 |
-| 10 | Audit missing values, understand the pattern, then fill appropriately |
-| 11 | Quality check — view the data before saving |
-| 12 | Save final dataset |
+| 1 | Install packages and confirm library versions |
+| 2 | Load the official CSV — 87,240 rows × 26 columns, 0 nulls |
+| 3 | Inspect date range, city/region coverage, column types |
+| 4 | Variable audit — justify every keep/drop decision before touching the data |
+| 5 | Clean and rename — standardise to snake_case, regions to English |
+| 6 | Duplicate and coverage check — confirm 0 gaps and 0 duplicates |
+| 7 | Missing value assessment — quantify before deciding how to handle |
+| 8 | Feature engineering — cyclic time, wind components, season flags, nh3_proxy |
+| 9 | Weather code check and intermediate save |
+| 10 | Scientific justification for each additional variable to fetch |
+| 11 | Fetch 12 weather variables from Open-Meteo Archive API (humidity, VPD, BLH, etc.) |
+| 12 | Scientific justification for each air quality compound |
+| 13 | Fetch 8 CAMS compounds from Open-Meteo Air Quality API (PM2.5, PM10, dust, CO, NO₂, O₃, SO₂, AOD) |
+| 13d | Fetch Boundary Layer Height (hourly → daily min + mean aggregation) |
+| 14 | Build proxy targets for the 2020–2022 pre-CAMS period |
+| 15 | Validate all proxy formulas against real CAMS data before applying them |
+| 16 | Data provenance heatmap — visualise real vs proxy coverage per city |
+| 17 | Extreme value check and final save |
+| 18 | Citable provenance summary report |
+| 18b | Post-load fixes (sample_weight, eu_aqi fill) and final null-free export |
 
-**Compound variables fetched (not in official Excel):**
+**Why the 2020–2022 period uses proxy targets:**
+CAMS satellite data for Central Africa is only available from 2022-08-04 onwards.
+For the 37,840 earlier rows (43.4% of total), we build scientifically justified proxies
+per compound — then validate each proxy against the CAMS overlap period before applying it.
+The starter formula outperformed our custom formula for PM2.5 (MAE 8.36 vs 9.00 μg/m³),
+so we use it. Dust and O₃ proxies produced negative R² — replaced with city-month medians
+from real data. All decisions are documented and traceable.
 
-| Variable | Source | Relevance to Cameroon |
-|----------|--------|-----------------------|
-| `pm2_5_real` | CAMS satellite | Target variable — real measured PM2.5 |
-| `pm2_5_peak` | CAMS | Daily peak — captures intra-day dust storm spikes |
-| `pm10_mean` | CAMS | Coarse dust, peaks during Harmattan season |
-| `dust_mean` | CAMS | Saharan mineral dust from Bodélé Depression |
-| `dust_peak` | CAMS | Daily dust peak — early warning signal for storms |
-| `co_mean` | CAMS | Cooking fire emissions — dominant source in rural Cameroon |
-| `no2_mean` | CAMS | Traffic emissions — Douala and Yaounde |
-| `o3_mean` | CAMS | Photochemical smog formed by heat + sunlight + NO₂ |
-| `so2_mean` | CAMS | Douala/Limbe refinery emissions + Mount Cameroon volcanic activity |
-| `aod_mean` | CAMS | Aerosol optical depth — total particle load from satellite |
-| `eu_aqi` | CAMS | European composite air quality index |
-| `humidity` | Open-Meteo Archive | Not in official Excel, used in BFAI and health impact calculations |
+**Final dataset:**
 
-> **Note on NH₃ (ammonia):** Not fetched. CAMS provides no coverage for Central
-> Africa for this variable — the earlier test fetch returned 100% null for all
-> 42 cities. A fabricated feature adds noise to the model. Excluded entirely.
-
-> **Note on Banyo and Mora:** The official Excel has 40 cities. The hackathon
-> README states 42. Both cities are added by fetching their real weather data
-> at actual coordinates from Open-Meteo, not by interpolating from neighbours.
-> Their compound data is also fetched at their own coordinates. All data is real.
-
-> **Rate limiting:** Open-Meteo's free tier triggers 429 errors after ~5 rapid
-> requests. The fetch cell pauses 3s between cities and 20s every 5 cities.
-> Failed cities after 3 retries get physics-based proxy values — no city is
-> ever left with null compound values. A retry cell is available to re-fetch
-> failed cities after a 2-minute cooldown.
+| Property | Value |
+|----------|-------|
+| Rows | 87,240 |
+| Columns | 80 |
+| Cities / Regions | 40 / 10 |
+| Date range | 2020-01-01 → 2025-12-20 |
+| Real CAMS rows | 49,400 (56.6%) |
+| Proxy rows | 37,840 (43.4%) |
+| Nulls | 0 |
 
 ---
 
 ## 01 — Exploratory Data Analysis
 
-**Input:** `data/cameroon_official_dataset.csv`
-**Output:** Charts and findings — no files saved
+**Input:** `data/airsense_eda_ready.parquet`
+**Output:** Charts and findings — no files saved (outputs embedded in notebook)
 
-This notebook performs no cleaning. The dataset is guaranteed clean before
-it arrives here — zero nulls, all 42 cities, all compounds present.
-Every section can be re-run safely after kernel restart.
+Answers two mission questions before any modelling begins:
+1. **What does the target look like?** — distributions, skewness, WHO exceedance rates
+2. **What drives it?** — which climate factors correlate with PM2.5 by region and season
 
-| Section | What it answers |
-|---------|----------------|
-| 1 | Dataset overview — shape, cities per region, null check, PM2.5 summary |
-| 2 | PM2.5 distribution — overall histogram, regional boxplot, monthly bar chart |
-| 3 | Feature correlations with PM2.5 — Pearson r for every numeric variable, ranked |
-| 4 | Full correlation matrix — feature interdependencies, multicollinearity check |
-| 5 | Scatter plots — shape of relationship for top 6 features |
-| 6 | New features analysis — wind gusts, dust events, apparent temperature, haze flag |
-| 7 | Harmattan heatmap — PM2.5 by region × month, Harmattan months highlighted |
-| 8 | Feature importance preview — quick Random Forest + comparison with Pearson r |
-| 9 | City-level trends — 2020–2025 time series for 8 focus cities |
-| 10 | Interactive map — all 42 cities coloured by mean PM2.5 |
-| 11 | EDA summary — key numbers ready to quote in the pitch deck |
+Each section ends with an explicit modelling decision that connects directly to `02_Modelling`.
+
+| Section | Question answered |
+|---------|------------------|
+| 1 | Setup and load confirmation |
+| 2 | Dataset overview — compound stats, WHO exceedance rates, provenance split |
+| 3 | Target distributions — skewness 2.37 → log-transform decision |
+| 3b | NH3 proxy validation — r=0.572 with PM2.5, seasonal pattern confirmed |
+| 4 | Pollution by region — north-south gradient, two-regime discovery |
+| 5 | Seasonality — Harmattan peak, wet season trough, West anomaly |
+| 5b | Harmattan deep dive — 9.8% of days, 1.7× PM2.5 multiplier, all compounds |
+| 6 | Weather–PM2.5 correlations — humidity r=−0.551, full ranked table |
+| 6b | Weather code analysis — clear sky = highest PM2.5 (counter-intuitive finding) |
+| 7 | Compound interactions — dust cluster, two-regime confirmation |
+| 8 | City-level rankings — worst and best cities identified |
+| 8b | Year-over-year trend — 2024 worst year on record, +35% since 2020 |
+| 9 | Proxy vs real data validation — proxy compressed (std 5.24 vs CAMS 15.71) |
+| 9b | CAMS-only correlation validation — feature rankings stable, no proxy distortion |
+| 10 | v2 feature validation — vpd r=+0.484, wind_gust r=+0.186, blh_min r=−0.099 |
+| 10b | BLH min vs mean + VPD regime analysis |
+| 11 | Full feature correlation ranking — nh3_proxy tops at r=+0.572 |
+| 12 | EDA summary and modelling decisions table |
 
 **Key findings:**
-- Far North PM2.5 is ~2.8× higher than South on average
-- Harmattan season multiplies northern PM2.5 by ~2.5×
-- `dust_mean`, `aod_mean`, and `pm10_mean` are the strongest predictors
-- `wind_gusts` and `is_dust_event` have higher RF importance than Pearson r — non-linear threshold effects that correlation cannot capture
-- Over 43% of all city-days exceed the WHO annual limit of 15 μg/m³
-- Douala's NO₂ and CO are distinctly higher than other regions — traffic and industry signature
+- **51.9% of all city-days exceed the WHO 24h PM2.5 limit** — a genuine public health crisis
+- Two pollution regimes: northern Sahel (Saharan dust, Harmattan-driven) and highlands (West/North West, biomass burning year-round)
+- **2024 was the worst year on record** — national mean rose 35% from 2020 to 2024
+- Atmospheric dryness dominates: humidity, VPD, is_no_rain, evapotranspiration all in top 8 features
+- `nh3_proxy` (engineered burning index) outperforms every raw meteorological variable at r=+0.572
 
 ---
 
 ## 02 — Model Training & Evaluation
 
-**Input:** `data/cameroon_official_dataset.csv`
-**Output:** `models/xgb_model.joblib`, `models/rl_thresholds.json`, `models/shap_importance.pkl`, `data/cameroon_2050_projections.csv`
+**Input:** `data/airsense_eda_ready.parquet`
+**Output:** 20 model artefacts saved to `models/`
 
-Follows the starter notebook structure exactly. Section 4 is the required baseline.
-Section 5 covers every model suggested in the Going Further section.
-Sections 6–8 are our innovations beyond what the starter notebook suggests.
+Builds a complete air quality prediction and alert system. Starts from the competition
+baselines and systematically explores every architectural approach — documenting what
+was tried, what won, and why.
 
-| Section | Content | Scope | Addresses |
-|---------|---------|-------|-----------|
-| 1 | Setup | — | — |
-| 2 | Load dataset | — | — |
-| 3 | Feature engineering | — | — |
-| 4 | Random Forest | 42 cities | Baseline (starter notebook) |
-| 5a | LightGBM | 42 cities | Going Further — faster boosting |
-| 5b | XGBoost + SHAP | 42 cities | Going Further — best model, explains predictions |
-| 5c | ARIMA | Douala demo | Going Further — classical time series |
-| 5d | Prophet | Douala demo | Going Further — seasonal decomposition |
-| 5e | LSTM | Douala demo | Going Further — deep learning sequences |
-| 5f | TFT | 42 cities | Going Further — attention over time |
-| 5g | ConvLSTM | 42 cities | Going Further — spatial pollution transport |
-| 5h | GNN | 42 cities | Going Further — city-to-city graph model |
-| 5i | REINFORCE RL | 42 cities | Innovation — city-specific adaptive alert thresholds |
-| 6 | Model comparison | 42 cities only | Technical performance |
-| 7 | Save best model | — | — |
-| 8 | Climate 2050 projection | 42 cities | Innovation — CMIP6 future PM2.5 |
+| Step | Model / Analysis | Test MAE | Test R² | Decision |
+|------|-----------------|----------|---------|----------|
+| 4 | Baseline: starter formula | 9.047 | 0.208 | Benchmark |
+| 4 | Baseline: city-month mean | 7.521 | 0.454 | Benchmark |
+| 3b | Proxy data audit | — | — | CAMS-only = PRIMARY |
+| 5 | XGBoost CAMS-only | 6.274 | 0.609 | No circularity |
+| 5b | Regularised + Optuna (FINAL) | **5.936** | **0.660** | ★ Deployment model |
+| 5c | Conformal prediction intervals | ±17.34 μg/m³ | 97.7% coverage | Uncertainty for health tool |
+| 6 | Multi-output: all 8 compounds | 5.93–39.1 | −0.17–0.70 | 8 compound models |
+| 6b | Two-stage Harmattan model | 6.118 | 0.646 | ✗ Single XGB wins |
+| 6c | LightGBM + XGBoost ensemble | 5.969 | 0.651 | ✗ No gain over single |
+| 6d | GraphSAGE GNN (spatial) | 8.186 | 0.291 | Spatial propagation role |
+| 6e | Transformer (Day+1 / Day+3) | 7.048 / 7.260 | 0.597 / 0.569 | 72h early warning |
+| 7 | Calibrated alert system | AUC=0.921, F1=0.857 | — | Temperature scaling selected |
+| 7b | Rule-based threshold baseline | F1=0.905 | — | Calibrated catches more dangerous days |
+| 7c | XGBoost + lag features | **0.685** | **0.992** | Best for operational deployment |
+| 8 | SHAP global + per-region | — | — | vpd_x_dry_season is #1 driver |
+| 9–9e | Regional error + spatial gen. | L1 R²=0.52–0.68 | — | Deploy to any Cameroonian city |
+| 10 | CMIP6 2050 projections | — | — | −15% Maroua by 2050 (partial API data) |
+| 11 | Master comparison table | — | — | Full summary for judges |
+| 12 | Production inference function | — | — | Deployment-ready API wrapper |
+| 13 | Save all artefacts | — | — | 20 files to `models/` |
 
-**Why single-city models are in Section 5 but not Section 6:**
-ARIMA, Prophet, and LSTM are inherently per-series. A national system serving
-42 cities cannot maintain 42 separate time series models. They are included to
-demonstrate we explored every Going Further suggestion from the starter notebook,
-but the final selection only considers models that scale to all 42 cities.
+**Three complementary architectures deployed:**
 
-**REINFORCE RL — why it matters for Cameroon:**
-A fixed WHO threshold of 35 μg/m³ would trigger an alert every single day in
-Maroua where baseline PM2.5 is ~58 μg/m³. This causes alarm fatigue — health
-officers stop responding to alerts entirely. The REINFORCE policy gradient agent
-(Williams 1992) learns from the reward signal that a correct alert is worth +1.0,
-a missed dangerous event is worth -2.0, and a false alarm is worth -1.0. After
-20 training episodes per city, Maroua learns a threshold of ~62 μg/m³ while
-Buea learns ~28 μg/m³. The same system, correctly calibrated to each city.
+| Model | Role | Test MAE |
+|-------|------|---------|
+| XGBoost Optuna (CAMS-only) | Same-day nowcasting | 5.936 μg/m³ |
+| XGBoost + lag features | Operational (when real data available) | 0.685 μg/m³ |
+| Transformer (Day+1/2/3) | 72-hour early warning | 7.05–7.26 μg/m³ |
+| GraphSAGE GNN | Spatial interpolation to ungauged cities | 8.186 μg/m³ |
 
-**Temporal split — why not random:**
-PM2.5 has strong daily autocorrelation. A random split would allow the model to
-"see" PM2.5 from day t+1 during training while predicting day t. We use
-2020–2024 for training and 2025 as a strict holdout year — the model has never
-seen any 2025 data when evaluated.
+**Why we use real CAMS PM2.5 instead of the starter proxy:**
+The starter notebook explicitly invites this: *"Improve this with real data from
+the Open-Meteo Air Quality API."* Teams predicting the synthetic proxy formula
+train models that invert that formula — not models that learn atmospheric physics.
+Our model achieves R²=0.660 on real CAMS satellite measurements, a genuinely
+harder and more meaningful benchmark. Beating both baselines (R²=0.208 and 0.454)
+with real PM2.5 is a stronger result than achieving R²=0.99 on a synthetic target.
 
-**Climate 2050 projection — Section 8:**
-The hackathon README explicitly recommends: *"climate models from open-meteo.com."*
-This section follows that recommendation. The trained XGBoost model is applied to
-CMIP6 climate projections fetched from the Open-Meteo Climate API, covering four
-IPCC AR6 warming scenarios (SSP1-1.9 through SSP5-8.5) for years 2026–2100.
+**Saved artefacts (`models/`):**
 
-What it produces:
-- `data/cameroon_2050_projections.csv` — per-city PM2.5 projections
-- Comparison table: 2025 baseline vs any chosen future year
-- Identifies which regions face the largest PM2.5 increases
-
-Why this matters: northern Cameroon is projected to warm 1.5–2.5°C by 2050
-(IPCC AR6), directly extending the Harmattan season and increasing dust days.
-This section translates that warming into concrete PM2.5 numbers that health
-ministries and urban planners can use for 25-year adaptation planning.
-
-If the Climate API is unavailable, the section builds a physics-based simulation
-using IPCC AR6 regional warming rates — the dashboard Climate tab works either way.
+| File | Description |
+|------|-------------|
+| `xgb_pm25.json` / `.pkl` | Primary XGBoost PM2.5 model (Optuna-tuned, CAMS-only) |
+| `model_pm25_lag.pkl` | XGBoost with lag features (operational) |
+| `models_multi.pkl` | All 8 compound models |
+| `label_encoders.pkl` | Region and city encoders |
+| `features.json` | Final 68-feature list |
+| `conformal_intervals.json` | q_hat = ±17.34 μg/m³, 97.7% coverage |
+| `platt_alert_calibration.json` | Alert calibration coefficients (JSON) |
+| `platt_calibrator.pkl` | Alert calibration Python object |
+| `city_confidence_tiers.json` | High/Medium/Low reliability per city |
+| `region_shap.pkl` | Per-region SHAP values for dashboard Science tab |
+| `transformer_pm25.pt` | Transformer state dict (3-day ahead) |
+| `gnn_graphsage.pt` | GNN state dict (spatial propagation) |
+| `cmip6_projections_2050.csv` | PM2.5 projections to 2050 |
+| `spatial_generalization_results.csv` | Unseen city validation results |
 
 ---
 
 ## 03 — Pitch Charts
 
-**Input:** `data/cameroon_official_dataset.csv` + trained models
-**Output:** PNG charts for the pitch deck
+**Input:** `data/airsense_eda_ready.parquet` + `models/` artefacts
+**Output:** PNG charts saved to `outputs/` — ready for pitch deck and demo video
 
-Generates 5 publication-ready charts:
-1. The problem — PM2.5 exceedance statistics across Cameroon
-2. North-south divide — regional PM2.5 comparison with WHO reference
-3. System architecture diagram
-4. Model performance comparison — all 9 models
-5. REINFORCE RL threshold map — city-specific learned thresholds vs WHO fixed line
+Generates publication-ready visualisations covering the full project narrative.
+
+| Chart | File | What it shows |
+|-------|------|--------------|
+| 1 | `pitch_01_problem.png` | PM2.5 exceedance rates across all 40 cities |
+| 2 | `pitch_02_two_regimes.png` | Northern dust vs highland burning — two pollution regimes |
+| 3 | `pitch_03_trend.png` | Year-over-year worsening 2020–2025 |
+| 4 | `pitch_04_who_calendar.png` | WHO exceedance % by city × month heatmap |
+| 5 | `pitch_05_model_journey.png` | MAE improvement from baseline to final model |
+| 6 | `pitch_06_shap.png` | Top 10 SHAP drivers — global feature importance |
+| 7 | `pitch_07_alert_calibration.png` | Alert calibration curve — probability vs actual exceedance |
+| 8 | `pitch_08_spatial_gen.png` | Spatial generalisation — model on unseen cities |
+| 9 | `pitch_09_projections.png` | CMIP6 2050 projections under SSP2-4.5 and SSP5-8.5 |
 
 ---
 
@@ -193,4 +206,22 @@ Generates 5 publication-ready charts:
 
 The official starter notebook provided by IndabaX. Kept as reference only.
 Do not modify. Our notebooks follow its section structure and extend every
-model suggestion in its Going Further section.
+model suggestion in its *Going Further* section.
+
+---
+
+## Configuration
+
+Create `.streamlit/secrets.toml` before running the dashboard:
+```toml
+ANTHROPIC_API_KEY = "sk-ant-..."
+```
+
+Required model artefacts in `models/` for the dashboard to run:
+- `xgb_pm25.json`
+- `label_encoders.pkl`
+- `features.json`
+- `conformal_intervals.json`
+- `platt_alert_calibration.json`
+- `region_shap.pkl`
+- `city_confidence_tiers.json`
