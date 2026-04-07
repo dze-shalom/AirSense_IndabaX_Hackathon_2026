@@ -9,7 +9,12 @@ import pickle
 import logging
 from pathlib import Path
 import streamlit as st
-from config import CITIES, NORTHERN
+
+# ── Handle imports from both root and dashboard-relative contexts ──────────────
+try:
+    from config import CITIES, NORTHERN
+except ImportError:
+    from ..config import CITIES, NORTHERN
 
 logger = logging.getLogger("airsense")
 
@@ -81,7 +86,7 @@ def load_artefacts():
     out  = {}
     for k, fn in [
         ("conformal",  "conformal_intervals.json"),
-        ("city_conf",  "city_confidence.json"),
+        ("city_conf",  "city_confidence_tiers.json"),  # Fixed: was "city_confidence.json"
         ("platt",      "platt_alert_calibration.json"),
         ("region_shap","region_shap.pkl"),
         ("climate",    "climate_projections.json"),
@@ -92,7 +97,8 @@ def load_artefacts():
                 with open(fp, "rb") as f: out[k] = pickle.load(f)
             else:
                 with open(fp)        as f: out[k] = json.load(f)
-        except Exception:
+        except Exception as e:
+            logger.debug("load_artefacts: %s not found or unreadable: %s", fn, e)
             out[k] = None
     return out
 
@@ -383,7 +389,10 @@ def predict_7day_smart(fd, city, region, lat, lon, model, enc, fi):
     otherwise fall back to standard predict_7day().
     """
     from datetime import datetime as _dt
-    from config import NORTHERN, HIGHLAND
+    try:
+        from config import NORTHERN, HIGHLAND
+    except ImportError:
+        from ..config import NORTHERN, HIGHLAND
     detector, harm_mdl, non_harm = load_harmattan_models()
     month = _dt.now().month
     in_harmattan = month in (11, 12, 1, 2) and region in (NORTHERN | HIGHLAND)
