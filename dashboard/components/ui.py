@@ -33,6 +33,12 @@ def _info_accent():
 def _mono():
     return "Roboto Mono,monospace"
 
+# Short aliases used across page modules
+_cbg     = _card_bg
+_cborder = _card_border
+_ctxt    = _text_primary
+_ctxt2   = _text_secondary
+
 
 def sec(title):
     """Teal-dot section header — theme adaptive."""

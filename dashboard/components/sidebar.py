@@ -119,12 +119,9 @@ button[kind="primary"] {{
     # ── LIGHT THEME (default) — competition palette ───────────────────────────
     if st.session_state.get("theme", "light") == "light":
         st.markdown(f"""<style>
-@keyframes bgParchment{{0%,100%{{background-position:0% 50%;}}50%{{background-position:100% 50%;}}}}
 /* Background */
 body,.stApp{{
-    background:linear-gradient(-45deg,#fdf8f2,#f5ede0,#fdf3e8,#faf0e5,#fdf7f1)!important;
-    background-size:300% 300%!important;
-    animation:bgParchment 18s ease infinite!important;
+    background:#fdf8f2!important;
     color:#1a0e04!important;
     font-family:'Open Sans',sans-serif!important;
 }}
@@ -297,7 +294,6 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
 ::-webkit-scrollbar-thumb{{ background:{BORDER};border-radius:3px; }}
 </style>""", unsafe_allow_html=True)
 
-    st.markdown(PARTICLES, unsafe_allow_html=True)
 
 
 def render_nav():

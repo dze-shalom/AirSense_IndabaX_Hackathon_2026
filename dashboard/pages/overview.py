@@ -10,40 +10,9 @@ from utils.helpers import aqi, LNG
 from utils.models import load_models, load_artefacts, predict_7day
 from utils.api import fetch_forecast, wmo_icon
 from utils.live_data import live_all
-from components.ui import sec, card, info_box
+from components.ui import sec, card, info_box, _cbg, _cborder, _ctxt, _ctxt2
 from components.charts import PLO
 
-def _cbg():
-    """Card background — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "rgba(255,252,248,0.95)"
-    from config import NAVY2
-    return NAVY2
-
-def _cborder():
-    """Card border — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "rgba(160,100,60,0.2)"
-    from config import BORDER
-    return BORDER
-
-def _ctxt():
-    """Primary text — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "#1a0e04"
-    from config import TEXT1
-    return TEXT1
-
-def _ctxt2():
-    """Secondary text — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "#5c3a1e"
-    from config import TEXT2
-    return TEXT2
 
 
 
