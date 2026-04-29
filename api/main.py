@@ -53,6 +53,7 @@ import os
 import pickle
 import sys
 import time
+from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -239,29 +240,15 @@ def get_aqi_level(pm25: float) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 # APP STARTUP — load all artefacts once
 # ══════════════════════════════════════════════════════════════════════════════
-app = FastAPI(
-    title="AirSense Cameroon API",
-    description="AI-powered air quality prediction for Cameroon — IndabaX 2026",
-    version="2.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Global state
 STATE: Dict[str, Any] = {
     "model":       None,   # xgb.XGBRegressor
     "le_city":     None,   # LabelEncoder
     "le_region":   None,   # LabelEncoder
-    "features":    [],     # list of 44 feature names
+    "features":    [],     # list of feature names
     "conformal":   None,   # conformal_intervals.json
-    "city_conf":   None,   # city_confidence.json
+    "city_conf":   None,   # city_confidence_tiers.json
     "platt":       None,   # platt_alert_calibration.json
     "region_shap": None,   # region_shap.pkl
     "climate":     None,   # climate_projections.json
@@ -271,8 +258,7 @@ STATE: Dict[str, Any] = {
 sensor_buffer: List[Dict] = []   # ESP32 readings ring buffer
 
 
-@app.on_event("startup")
-def startup():
+def _load_artefacts() -> None:
     logger.info("Loading AirSense artefacts from %s …", MODELS)
 
     # XGBoost model
@@ -315,7 +301,7 @@ def startup():
 
     # City confidence tiers
     try:
-        with open(MODELS / "city_confidence.json") as f:
+        with open(MODELS / "city_confidence_tiers.json") as f:
             STATE["city_conf"] = json.load(f)
         logger.info("✓ City confidence tiers loaded (%d cities)", len(STATE["city_conf"]))
     except Exception as e:
@@ -359,6 +345,29 @@ def startup():
     logger.info("AirSense API ready.")
 
 
+@asynccontextmanager
+async def lifespan(app_: FastAPI):
+    _load_artefacts()
+    yield
+
+
+app = FastAPI(
+    title="AirSense Cameroon API",
+    description="AI-powered air quality prediction for Cameroon — IndabaX 2026",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # CORE HELPERS (mirror app.py functions exactly)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -386,9 +395,10 @@ def get_rl_threshold(city: str) -> float:
 def get_conf_interval(region: str) -> float:
     """90% conformal prediction interval half-width for a region."""
     if STATE["conformal"]:
-        return float(STATE["conformal"]
-                     .get("region_intervals", {})
-                     .get(region, STATE["conformal"].get("global_q_hat", 30.8)))
+        c = STATE["conformal"]
+        # Accept both 'global_q_hat' (full save) and 'q_hat' (simplified save)
+        global_q = c.get("global_q_hat") or c.get("q_hat", 30.8)
+        return float(c.get("region_intervals", {}).get(region, global_q))
     return CONFORMAL_FALLBACK["region_intervals"].get(region, 30.8)
 
 
@@ -805,7 +815,8 @@ def alert_status(city: str, lang: str = Query("en")):
     pm25   = stats["mean_pm25"]
     level  = get_aqi_level(pm25)
     rl_thr = get_rl_threshold(city)
-    tier   = (STATE["city_conf"] or {}).get(city, {}).get("tier", stats.get("tier", "Medium"))
+    _conf_entry = (STATE["city_conf"] or {}).get(city, stats.get("tier", "Medium"))
+    tier = _conf_entry.get("tier", "Medium") if isinstance(_conf_entry, dict) else str(_conf_entry)
 
     return {
         "city":                  city,
