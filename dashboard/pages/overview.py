@@ -305,18 +305,18 @@ def page_overview():
             padding:.35rem .5rem;border-radius:6px;
             background:{'rgba(255,252,248,0.7)' if _is_lt else 'rgba(10,25,47,0.5)'};
             border:1px solid {'rgba(160,100,60,0.15)' if _is_lt else 'rgba(100,255,218,0.08)'};">
-  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{GREEN};font-weight:700;"> {_t_lbl['good']}</span> &lt;{_lb1:.0f} µg/m³</span>
-  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{AMBER};font-weight:700;"> {_t_lbl['moderate']}</span> {_lb1:.0f}–{_lb2:.0f}</span>
-  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{ORANGE};font-weight:700;"> {_t_lbl['poor']}</span> {_lb2:.0f}–{_lb3:.0f}</span>
-  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{RED};font-weight:700;"> {_t_lbl['very_poor']}</span> {_lb3:.0f}–{_lb4:.0f}</span>
-  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{PURPLE};font-weight:700;"> {_t_lbl['hazardous']}</span> &gt;{_lb4:.0f}</span>
-  <span style="font-size:.62rem;color:{_wclr};">
+  <span style="font-size:.62rem;color:{_ltxt};display:flex;align-items:center;gap:3px;"><svg width="9" height="9" viewBox="0 0 9 9"><circle cx="4.5" cy="4.5" r="4.5" fill="{GREEN}"/></svg><span style="color:{GREEN};font-weight:700;"> {_t_lbl['good']}</span> &lt;{_lb1:.0f} µg/m³</span>
+  <span style="font-size:.62rem;color:{_ltxt};display:flex;align-items:center;gap:3px;"><svg width="9" height="9" viewBox="0 0 9 9"><circle cx="4.5" cy="4.5" r="4.5" fill="{AMBER}"/></svg><span style="color:{AMBER};font-weight:700;"> {_t_lbl['moderate']}</span> {_lb1:.0f}–{_lb2:.0f}</span>
+  <span style="font-size:.62rem;color:{_ltxt};display:flex;align-items:center;gap:3px;"><svg width="9" height="9" viewBox="0 0 9 9"><circle cx="4.5" cy="4.5" r="4.5" fill="{ORANGE}"/></svg><span style="color:{ORANGE};font-weight:700;"> {_t_lbl['poor']}</span> {_lb2:.0f}–{_lb3:.0f}</span>
+  <span style="font-size:.62rem;color:{_ltxt};display:flex;align-items:center;gap:3px;"><svg width="9" height="9" viewBox="0 0 9 9"><circle cx="4.5" cy="4.5" r="4.5" fill="{RED}"/></svg><span style="color:{RED};font-weight:700;"> {_t_lbl['very_poor']}</span> {_lb3:.0f}–{_lb4:.0f}</span>
+  <span style="font-size:.62rem;color:{_ltxt};display:flex;align-items:center;gap:3px;"><svg width="9" height="9" viewBox="0 0 9 9"><circle cx="4.5" cy="4.5" r="4.5" fill="{PURPLE}"/></svg><span style="color:{PURPLE};font-weight:700;"> {_t_lbl['hazardous']}</span> &gt;{_lb4:.0f}</span>
+  <span style="font-size:.62rem;color:{_wclr};display:flex;align-items:center;gap:3px;">
     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{_wclr}"
-      stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle;margin-right:2px;">
+      stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;">
       <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
     </svg>{_t('wind_note')}
   </span>
-  <span style="font-size:.62rem;color:{_ltxt};">● {_t('bubble_note')}</span>
+  <span style="font-size:.62rem;color:{_ltxt};display:flex;align-items:center;gap:3px;"><svg width="9" height="9" viewBox="0 0 9 9"><circle cx="4.5" cy="4.5" r="4.5" fill="{_ltxt}" opacity="0.5"/></svg> {_t('bubble_note')}</span>
 </div>""", unsafe_allow_html=True)
 
         # ── City selector — Cameroon only ────────────────────────────────────

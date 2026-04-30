@@ -402,36 +402,39 @@ it was applied to unseen cities at three difficulty levels:<br>
             r2_str  = f"{row['r2']:.3f}"  if row["r2"]  else "—"
             hm_str  = f"{row['harm_mae']:.2f}" if row["harm_mae"] else "—"
             best = row["flag"] == "primary" and row["mae"] and row["mae"] < 6.0
-            _best_bg     = "rgba(100,255,218,0.06)" if st.session_state.get("theme","light")=="dark" else "rgba(80,160,100,0.06)"
-            _border_col  = "rgba(100,255,218,0.3)" if best else _cborder()
-            _left_border = f"border-left:3px solid {TEAL};" if best else ""
-            st.markdown(f"""<div style="background:{_best_bg if best else _cbg()};
-  border:1px solid {_border_col};
-  {_left_border}
-  border-radius:8px;padding:.6rem .9rem;margin-bottom:.3rem;
-  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem;">
-  <div style="flex:1;min-width:200px;">
-    <span style="font-size:.78rem;font-weight:{'700' if best else '500'};color:{fc};">{row['model']}</span>
-    <span style="font-size:.58rem;color:{fc};margin-left:.5rem;opacity:.7;">{fl}</span>
-  </div>
-  <div style="display:flex;gap:1.4rem;">
-    <div style="text-align:center;">
-      <div style="font-size:.58rem;color:{_ctxt2()};">Test MAE</div>
-      <div style="font-size:.82rem;font-weight:700;color:{TEAL if best else _ctxt()};
-        font-family:'JetBrains Mono',monospace;">{mae_str}</div>
-    </div>
-    <div style="text-align:center;">
-      <div style="font-size:.58rem;color:{_ctxt2()};">R²</div>
-      <div style="font-size:.82rem;font-weight:700;color:{_ctxt()};
-        font-family:'JetBrains Mono',monospace;">{r2_str}</div>
-    </div>
-    <div style="text-align:center;">
-      <div style="font-size:.58rem;color:{_ctxt2()};">Harm MAE</div>
-      <div style="font-size:.82rem;font-weight:700;color:{ORANGE if hm_str!='—' else _ctxt2()};
-        font-family:'JetBrains Mono',monospace;">{hm_str}</div>
-    </div>
-  </div>
-</div>""", unsafe_allow_html=True)
+            _best_bg    = "rgba(100,255,218,0.06)" if st.session_state.get("theme","light")=="dark" else "rgba(80,160,100,0.06)"
+            _card_bg    = _best_bg if best else _cbg()
+            _border_col = "rgba(100,255,218,0.3)" if best else _cborder()
+            _card_style = (f"background:{_card_bg};border:1px solid {_border_col};"
+                           f"{'border-left:3px solid '+TEAL+';' if best else ''}"
+                           f"border-radius:8px;padding:.6rem .9rem;margin-bottom:.3rem;"
+                           f"display:flex;justify-content:space-between;align-items:center;"
+                           f"flex-wrap:wrap;gap:.4rem;")
+            _fw = "700" if best else "500"
+            _val_col = TEAL if best else _ctxt()
+            st.markdown(
+                f'<div style="{_card_style}">'
+                f'<div style="flex:1;min-width:200px;">'
+                f'<span style="font-size:.78rem;font-weight:{_fw};color:{fc};">{row["model"]}</span>'
+                f'<span style="font-size:.58rem;color:{fc};margin-left:.5rem;opacity:.7;">{fl}</span>'
+                f'</div>'
+                f'<div style="display:flex;gap:1.4rem;">'
+                f'<div style="text-align:center;">'
+                f'<div style="font-size:.58rem;color:{_ctxt2()};">Test MAE</div>'
+                f'<div style="font-size:.82rem;font-weight:700;color:{_val_col};font-family:\'JetBrains Mono\',monospace;">{mae_str}</div>'
+                f'</div>'
+                f'<div style="text-align:center;">'
+                f'<div style="font-size:.58rem;color:{_ctxt2()};">R²</div>'
+                f'<div style="font-size:.82rem;font-weight:700;color:{_ctxt()};font-family:\'JetBrains Mono\',monospace;">{r2_str}</div>'
+                f'</div>'
+                f'<div style="text-align:center;">'
+                f'<div style="font-size:.58rem;color:{_ctxt2()};">Harm MAE</div>'
+                f'<div style="font-size:.82rem;font-weight:700;color:{ORANGE if hm_str != "—" else _ctxt2()};font-family:\'JetBrains Mono\',monospace;">{hm_str}</div>'
+                f'</div>'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
         # MAE bar chart
         st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
