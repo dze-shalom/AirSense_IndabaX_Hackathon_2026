@@ -325,6 +325,30 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
 ::-webkit-scrollbar-thumb{{ background:{BORDER};border-radius:3px; }}
 </style>""", unsafe_allow_html=True)
 
+    # ── Sidebar width + transition (always inject, value depends on state) ──────
+    _collapsed = st.session_state.get("sidebar_collapsed", False)
+    _sb_w      = "64px"  if _collapsed else "220px"
+    _nav_pl    = "76px"  if _collapsed else "232px"
+    st.markdown(f"""<style>
+/* Sidebar expand/collapse animation */
+[data-testid="stSidebar"]{{
+    width:{_sb_w}!important;min-width:{_sb_w}!important;max-width:{_sb_w}!important;
+    transition:width .22s cubic-bezier(.4,0,.2,1)!important;overflow:hidden!important;
+}}
+[data-testid="stSidebar"]>div:first-child{{
+    padding:{'0.4rem 0.18rem' if _collapsed else '.95rem .6rem'}!important;
+    overflow:hidden!important;
+}}
+.as-fixed-nav{{padding-left:{_nav_pl}!important;}}
+{'/* ── COLLAPSED: icon-rail mode ── */' if _collapsed else ''}
+{'[data-testid="stSidebar"] button{text-align:center!important;justify-content:center!important;padding:.45rem .18rem!important;margin:0 auto .1rem!important;}' if _collapsed else ''}
+{'[data-testid="stSidebar"] button p{font-size:0!important;line-height:0!important;}' if _collapsed else ''}
+{'[data-testid="stSidebar"] button p::first-letter{font-size:1.25rem!important;line-height:1!important;}' if _collapsed else ''}
+{'[data-testid="stSidebar"] button:before{display:none!important;}' if _collapsed else ''}
+{'.as-sb-section-lbl,.as-sb-footer,.as-sb-brand-text,.as-sb-settings-panel{display:none!important;}' if _collapsed else ''}
+{'.as-sb-brand{justify-content:center!important;}' if _collapsed else ''}
+{'[data-testid="stSidebar"] .stSelectbox,[data-testid="stSidebar"] .stNumberInput{display:none!important;}' if _collapsed else ''}
+</style>""", unsafe_allow_html=True)
 
 
 def render_nav():
@@ -362,117 +386,130 @@ def render_nav():
   </div>
 </div>""", unsafe_allow_html=True)
 
-    # ── Hide ALL sidebar collapse/expand controls — sidebar always stays open ─
+    # ── Hide Streamlit's own collapse controls — we use our own toggle ─────────
     st.markdown("""<style>
-/* Hide the << collapse arrow — sidebar cannot be closed */
-[data-testid="stSidebar"] > div > div > button:first-child,
-[data-testid="stSidebar"] button[aria-label="Close sidebar"],
-[data-testid="stSidebar"] button[aria-label="Fermer le panneau latéral"],
-[data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"] {
-    display: none !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-}
+[data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"]{display:none!important;}
 </style>""", unsafe_allow_html=True)
 
 
 
+PAGE_EMOJI = {
+    "overview": "🗺",
+    "explorer": "📊",
+    "alerts":   "🔔",
+    "science":  "🔬",
+    "ai":       "💬",
+    "about":    "ℹ️",
+}
+
+
 def render_sidebar():
-    """Left sidebar — ordered nav + settings gear in header."""
-    lang    = LNG()
-    is_dark = st.session_state.get("theme","light") == "dark"
-    labels  = NAV_LABELS[lang]
-    subs    = NAV_SUBTITLES[lang]
+    """Left sidebar — collapsible icon-rail or full nav."""
+    lang      = LNG()
+    is_dark   = st.session_state.get("theme", "light") == "dark"
+    labels    = NAV_LABELS[lang]
+    subs      = NAV_SUBTITLES[lang]
+    collapsed = st.session_state.get("sidebar_collapsed", False)
 
     with st.sidebar:
-        # ── Brand header with settings gear ──────────────────────────────────
-        h1, h2 = st.columns([5, 1])
-        with h1:
-            st.markdown(f"""<div style="display:flex;align-items:center;gap:.45rem;
-  padding:.25rem 0 .7rem;">
-  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
-    fill="none" stroke="{TEAL}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
-  </svg>
-  <span style="font-family:'Roboto Mono',monospace;font-size:.85rem;
-    font-weight:700;color:{TEAL};">AirSense CM</span>
-</div>""", unsafe_allow_html=True)
-        with h2:
-            if st.button("⚙", key="sb_gear", help="Settings",
+        # ── Collapse / expand toggle ──────────────────────────────────────────
+        tog_icon = "›" if collapsed else "‹"
+        tog_help = ("Expand sidebar" if collapsed else "Collapse sidebar") if lang == "en" else ("Développer" if collapsed else "Réduire")
+        tc1, tc2 = st.columns([1, 1]) if collapsed else st.columns([5, 1])
+        with (tc1 if collapsed else tc2):
+            if st.button(tog_icon, key="sb_collapse", help=tog_help,
                          use_container_width=True):
-                st.session_state.show_settings = not st.session_state.get("show_settings", False)
-
-        # ── Settings panel (collapsible) ──────────────────────────────────────
-        if st.session_state.get("show_settings", False):
-            st.markdown(f"""<div style="background:rgba(100,255,218,0.05);
-  border:1px solid rgba(100,255,218,0.15);border-radius:8px;
-  padding:.6rem .7rem;margin-bottom:.6rem;">
-  <div style="font-size:.58rem;color:{TEAL};font-weight:700;
-    text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">
-    ⚙ Settings
-  </div>""", unsafe_allow_html=True)
-            sc1, sc2 = st.columns(2)
-            with sc1:
-                theme_lbl = ("Light mode" if is_dark else "Dark mode")
-                if st.button(theme_lbl, key="sb_theme", use_container_width=True):
-                    st.session_state.theme = "light" if is_dark else "dark"
-                    st.rerun()
-            with sc2:
-                lang_lbl = "FR" if lang == "en" else "EN"
-                if st.button(lang_lbl, key="sb_lang", use_container_width=True):
-                    st.session_state.lang = "fr" if lang == "en" else "en"
-                    st.rerun()
-
-            # ── PM2.5 threshold standard ──────────────────────────────────────
-            std_names = list(THRESHOLD_STANDARDS.keys())
-            cur_std   = st.session_state.get("threshold_std", "WHO 2021")
-            cur_idx   = std_names.index(cur_std) if cur_std in std_names else 0
-            new_std   = st.selectbox("PM2.5 Standard", std_names,
-                                     index=cur_idx, key="sb_std")
-            if new_std != cur_std:
-                st.session_state.threshold_std = new_std
-                if THRESHOLD_STANDARDS[new_std] is not None:
-                    st.session_state.threshold = THRESHOLD_STANDARDS[new_std]
+                st.session_state.sidebar_collapsed = not collapsed
                 st.rerun()
 
-            if THRESHOLD_STANDARDS[new_std] is None:  # Custom
-                custom_val = st.number_input(
-                    "Custom limit (µg/m³)",
-                    min_value=1.0, max_value=500.0,
-                    value=float(st.session_state.get("threshold", 15.0)),
-                    step=1.0, key="sb_custom_thr")
-                if custom_val != st.session_state.get("threshold"):
-                    st.session_state.threshold = custom_val
-                    st.rerun()
-            else:
-                thr = THRESHOLD_STANDARDS[new_std]
+        if not collapsed:
+            # ── Brand header with settings gear ──────────────────────────────
+            h1, h2 = st.columns([5, 1])
+            with h1:
                 st.markdown(
-                    f"<div style='font-size:.55rem;color:{TEAL};margin-top:-.3rem;"
-                    f"margin-bottom:.2rem;'>Limit: {thr:.0f} µg/m³</div>",
+                    f'<div class="as-sb-brand" style="display:flex;align-items:center;gap:.45rem;padding:.1rem 0 .6rem;">'
+                    f'<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"'
+                    f' fill="none" stroke="{TEAL}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                    f'<path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>'
+                    f'</svg>'
+                    f'<span class="as-sb-brand-text" style="font-family:\'Roboto Mono\',monospace;font-size:.85rem;font-weight:700;color:{TEAL};">AirSense CM</span>'
+                    f'</div>',
                     unsafe_allow_html=True)
+            with h2:
+                if st.button("⚙", key="sb_gear", help="Settings",
+                             use_container_width=True):
+                    st.session_state.show_settings = not st.session_state.get("show_settings", False)
 
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        st.markdown(f"<div style='height:1px;background:{BORDER};margin-bottom:.5rem;'></div>",
+        if not collapsed:
+            # ── Settings panel (collapsible) ──────────────────────────────────
+            if st.session_state.get("show_settings", False):
+                st.markdown(
+                    f'<div class="as-sb-settings-panel" style="background:rgba(100,255,218,0.05);'
+                    f'border:1px solid rgba(100,255,218,0.15);border-radius:8px;'
+                    f'padding:.6rem .7rem;margin-bottom:.6rem;">'
+                    f'<div style="font-size:.58rem;color:{TEAL};font-weight:700;'
+                    f'text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;">⚙ Settings</div>',
                     unsafe_allow_html=True)
+                sc1, sc2 = st.columns(2)
+                with sc1:
+                    theme_lbl = ("Light mode" if is_dark else "Dark mode")
+                    if st.button(theme_lbl, key="sb_theme", use_container_width=True):
+                        st.session_state.theme = "light" if is_dark else "dark"
+                        st.rerun()
+                with sc2:
+                    lang_lbl = "FR" if lang == "en" else "EN"
+                    if st.button(lang_lbl, key="sb_lang", use_container_width=True):
+                        st.session_state.lang = "fr" if lang == "en" else "en"
+                        st.rerun()
+
+                std_names = list(THRESHOLD_STANDARDS.keys())
+                cur_std   = st.session_state.get("threshold_std", "WHO 2021")
+                cur_idx   = std_names.index(cur_std) if cur_std in std_names else 0
+                new_std   = st.selectbox("PM2.5 Standard", std_names,
+                                         index=cur_idx, key="sb_std")
+                if new_std != cur_std:
+                    st.session_state.threshold_std = new_std
+                    if THRESHOLD_STANDARDS[new_std] is not None:
+                        st.session_state.threshold = THRESHOLD_STANDARDS[new_std]
+                    st.rerun()
+
+                if THRESHOLD_STANDARDS[new_std] is None:
+                    custom_val = st.number_input(
+                        "Custom limit (µg/m³)", min_value=1.0, max_value=500.0,
+                        value=float(st.session_state.get("threshold", 15.0)),
+                        step=1.0, key="sb_custom_thr")
+                    if custom_val != st.session_state.get("threshold"):
+                        st.session_state.threshold = custom_val
+                        st.rerun()
+                else:
+                    thr = THRESHOLD_STANDARDS[new_std]
+                    st.markdown(
+                        f"<div style='font-size:.55rem;color:{TEAL};margin-top:-.3rem;"
+                        f"margin-bottom:.2rem;'>Limit: {thr:.0f} µg/m³</div>",
+                        unsafe_allow_html=True)
+
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown(f"<div style='height:1px;background:{BORDER};margin-bottom:.5rem;'></div>",
+                        unsafe_allow_html=True)
 
         # ── Ordered navigation ────────────────────────────────────────────────
-        # Single st.button per page — styled left-aligned via CSS.
-        # No duplicate HTML. SVG icons injected via CSS content on button label.
         sections = [
             ("EXPLORE",  ["overview", "explorer"]),
             ("TOOLS",    ["alerts", "ai"]),
             ("RESEARCH", ["science", "about"]),
         ]
         for section_label, keys in sections:
-            st.markdown(
-                f'<p style="font-size:.47rem;font-weight:700;text-transform:uppercase;'                f'letter-spacing:.15em;color:{BORDER};padding:.5rem 0 .18rem;'                f'margin:0;line-height:1;">{section_label}</p>',
-                unsafe_allow_html=True,
-            )
+            if not collapsed:
+                st.markdown(
+                    f'<p class="as-sb-section-lbl" style="font-size:.47rem;font-weight:700;'
+                    f'text-transform:uppercase;letter-spacing:.15em;color:{BORDER};'
+                    f'padding:.5rem 0 .18rem;margin:0;line-height:1;">{section_label}</p>',
+                    unsafe_allow_html=True)
             for key in keys:
                 active = st.session_state.page == key
-                label  = labels[key]
+                emoji  = PAGE_EMOJI.get(key, "•")
+                label  = f"{emoji} {labels[key]}" if not collapsed else emoji
                 sub    = subs[key]
                 if st.button(
                     label,
@@ -499,22 +536,21 @@ def render_sidebar():
             data_note = f"<span style='color:{TEXT2};'>static baseline</span>"
             last_upd  = "—"
 
-        st.markdown(f"""<div style="margin-top:.8rem;padding:.5rem .1rem 0;
-  border-top:1px solid {BORDER};">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem;">
-    <span style="font-size:.56rem;color:{TEXT2};text-transform:uppercase;letter-spacing:.07em;">
-      {T.get(lang, T["en"]).get("alerts_label","Active alerts")}
-    </span>
-    <span style="font-size:.9rem;font-weight:700;color:{RED};
-      font-family:'Roboto Mono',monospace;">{n_alerts}</span>
-  </div>
-  <div style="font-size:.49rem;color:{TEXT2};line-height:1.8;margin-bottom:.45rem;">
-    {data_note}<br>
-    PM2.5 Prediction · Health Alerts · SHAP Analysis<br>
-    Climate Projections · AI Health Assistant<br>
-    <strong style="color:{TEAL};">AirSense Team · IndabaX 2026</strong>
-  </div>
-</div>""", unsafe_allow_html=True)
+        if not collapsed:
+            st.markdown(
+                f'<div class="as-sb-footer" style="margin-top:.8rem;padding:.5rem .1rem 0;border-top:1px solid {BORDER};">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem;">'
+                f'<span style="font-size:.56rem;color:{TEXT2};text-transform:uppercase;letter-spacing:.07em;">'
+                f'{T.get(lang, T["en"]).get("alerts_label","Active alerts")}</span>'
+                f'<span style="font-size:.9rem;font-weight:700;color:{RED};font-family:\'Roboto Mono\',monospace;">{n_alerts}</span>'
+                f'</div>'
+                f'<div style="font-size:.49rem;color:{TEXT2};line-height:1.8;margin-bottom:.45rem;">'
+                f'{data_note}<br>'
+                f'PM2.5 Prediction · Health Alerts · SHAP Analysis<br>'
+                f'Climate Projections · AI Health Assistant<br>'
+                f'<strong style="color:{TEAL};">AirSense Team · IndabaX 2026</strong>'
+                f'</div></div>',
+                unsafe_allow_html=True)
 
         # Refresh button — clears all caches and reruns
         if st.button(T.get(lang, T["en"]).get("refresh_live", "Refresh"), key="sb_refresh", use_container_width=True):
