@@ -53,6 +53,7 @@ def _wind_arrow(lat, lon, wdir_deg, wspd_kmh):
 
 def _circular_stats(stats):
     """Professional AQI distribution donut for 71 Cameroonian cities."""
+    from components.ui import _cbg, _ctxt, _ctxt2, _accent
     order  = ["good","moderate","poor","very_poor","hazardous"]
     colors = {"good":GREEN,"moderate":AMBER,"poor":ORANGE,"very_poor":RED,"hazardous":PURPLE}
     labels_en = {"good":"Healthy","moderate":"Moderate","poor":"Poor",
@@ -61,6 +62,7 @@ def _circular_stats(stats):
                  "very_poor":"Critique","hazardous":"Dangereux"}
     lang  = LNG()
     lbls  = labels_fr if lang=="fr" else labels_en
+    is_lt = st.session_state.get("theme", "light") == "light"
 
     counts = {k: 0 for k in order}
     for s in stats.values():
@@ -78,9 +80,13 @@ def _circular_stats(stats):
     total  = sum(vals)
     above  = sum(counts[k] for k in order if k != "good")
 
+    seg_border = "rgba(0,0,0,0.12)" if is_lt else "rgba(255,255,255,0.15)"
+    ann_col    = _ctxt()
+    leg_col    = _ctxt2()
+
     fig = go.Figure(go.Pie(
         labels=disp, values=vals,
-        marker=dict(colors=clrs, line=dict(color="rgba(255,255,255,0.2)", width=2)),
+        marker=dict(colors=clrs, line=dict(color=seg_border, width=2)),
         hole=0.64,
         direction="clockwise",
         sort=False,
@@ -96,7 +102,7 @@ def _circular_stats(stats):
               f"<span style='font-size:11px'>{('of' if lang=='en' else 'sur')} {total}</span><br>"
               f"<span style='font-size:9px'>{'above WHO' if lang=='en' else 'dépassent OMS'}</span>"),
         x=0.5, y=0.5, showarrow=False,
-        font=dict(color="#1c0f05", size=15, family="Montserrat"),
+        font=dict(color=ann_col, size=15, family="Montserrat"),
         align="center",
     )
     fig.update_layout(
@@ -105,10 +111,10 @@ def _circular_stats(stats):
         margin=dict(l=0, r=0, t=6, b=40),
         legend=dict(
             orientation="h", x=0.5, xanchor="center", y=-0.12,
-            font=dict(size=9, color="#1c0f05", family="Open Sans"),
+            font=dict(size=9, color=leg_col, family="Open Sans"),
             itemwidth=40,
         ),
-        font=dict(family="Open Sans"),
+        font=dict(family="Open Sans", color=ann_col),
     )
     return fig
 
@@ -272,7 +278,7 @@ def page_overview():
                     lat=[r["lat"]], lon=[r["lon"]], mode="markers+text",
                     marker=dict(size=r["bsize"], color=r["col"], opacity=0.9),
                     text=[r["city"]], textposition="top center",
-                    textfont=dict(size=8, color=TEXT1),
+                    textfont=dict(size=8, color="#ffffff"),
                     hovertemplate=(f"<b>{r['city']}{live_note}</b><br>{r['region']}<br>"
                                    f"PM2.5: {r['pm25']:.1f} μg/m³<br>"
                                    f"WHO Exc: {r['who_exc']:.1f}%<br>"

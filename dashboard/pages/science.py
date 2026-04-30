@@ -69,7 +69,7 @@ def page_science():
         badge_cfg = {
             "live":     (TEAL,  "🟢 Live — computed from today's Open-Meteo forecast"),
             "artefact": (AMBER, "🟡 From saved region_shap.pkl artefact"),
-            "static":   (TEXT2, "⚪ Static fallback — model artefacts not found"),
+            "static":   (_ctxt2(), "⚪ Static fallback — model artefacts not found"),
         }[data_src]
         st.markdown(f'<div style="font-size:.62rem;color:{badge_cfg[0]};margin-bottom:.6rem;">'
                     f'{badge_cfg[1]}</div>', unsafe_allow_html=True)
@@ -104,9 +104,9 @@ def page_science():
                 col  = REGION_COLORS.get(region, TEAL)
                 desc = SHAP_DESC.get(feat, feat)
                 st.markdown(f"""<div style="display:flex;align-items:center;gap:.85rem;padding:.5rem 0;
-  border-bottom:1px solid rgba(35,53,84,.6);">
+  border-bottom:1px solid {_cborder()};">
   <span style="font-size:.75rem;font-weight:600;width:165px;flex-shrink:0;">{feat}</span>
-  <div style="flex:1;height:7px;background:{BORDER};border-radius:3px;overflow:hidden;">
+  <div style="flex:1;height:7px;background:{_cborder()};border-radius:3px;overflow:hidden;">
     <div style="width:{pct:.0f}%;height:100%;background:{col};border-radius:3px;"></div></div>
   <span style="font-size:.72rem;font-weight:700;width:50px;text-align:right;color:{col};">{val:.3f}</span>
   <span style="font-size:.65rem;color:{_ctxt2()};flex:1;">{desc}</span>
@@ -296,7 +296,7 @@ it was applied to unseen cities at three difficulty levels:<br>
                 labels=donut_labels,
                 values=donut_r2_vals,
                 marker=dict(colors=donut_colors,
-                            line=dict(color=NAVY, width=3)),
+                            line=dict(color=_cbg(), width=3)),
                 hole=0.60,
                 direction="clockwise",
                 sort=False,
@@ -400,14 +400,15 @@ it was applied to unseen cities at three difficulty levels:<br>
         flag_labels = {"baseline":"Baseline","primary":"Primary","ensemble":"Ensemble","deep":"Deep Learning"}
 
         for row in MODEL_COMPARISON:
-            fc = flag_colors.get(row["flag"], TEXT2)
+            fc = flag_colors.get(row["flag"], _ctxt2())
             fl = flag_labels.get(row["flag"], "")
             mae_str = f"{row['mae']:.3f}" if row["mae"] else "—"
             r2_str  = f"{row['r2']:.3f}"  if row["r2"]  else "—"
             hm_str  = f"{row['harm_mae']:.2f}" if row["harm_mae"] else "—"
             best = row["flag"] == "primary" and row["mae"] and row["mae"] < 6.0
-            st.markdown(f"""<div style="background:{'rgba(100,255,218,0.05)' if best else NAVY2};
-  border:1px solid {'rgba(100,255,218,0.3)' if best else BORDER};
+            _best_bg  = "rgba(100,255,218,0.06)" if st.session_state.get("theme","light")=="dark" else "rgba(80,160,100,0.06)"
+            st.markdown(f"""<div style="background:{_best_bg if best else _cbg()};
+  border:1px solid {'rgba(100,255,218,0.3)' if best else _cborder()};
   {'border-left:3px solid '+TEAL+';' if best else ''}
   border-radius:8px;padding:.6rem .9rem;margin-bottom:.3rem;
   display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem;">
@@ -428,7 +429,7 @@ it was applied to unseen cities at three difficulty levels:<br>
     </div>
     <div style="text-align:center;">
       <div style="font-size:.58rem;color:{_ctxt2()};">Harm MAE</div>
-      <div style="font-size:.82rem;font-weight:700;color:{ORANGE if hm_str!='—' else TEXT2};
+      <div style="font-size:.82rem;font-weight:700;color:{ORANGE if hm_str!='—' else _ctxt2()};
         font-family:'JetBrains Mono',monospace;">{hm_str}</div>
     </div>
   </div>
