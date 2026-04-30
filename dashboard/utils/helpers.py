@@ -34,12 +34,27 @@ def LNG():
 
 
 
+def aqi_thresholds():
+    """Return (b1, b2, b3, b4) cut-points scaled from the active threshold.
+
+    At WHO baseline (T=15) these equal 15 / 35 / 55 / 80.
+    Every other standard scales proportionally so the colour bands always
+    represent equivalent health risk relative to the chosen limit.
+    """
+    T_val = get_threshold()
+    b1 = T_val
+    b2 = round(T_val * (35 / 15), 1)
+    b3 = round(T_val * (55 / 15), 1)
+    b4 = round(T_val * (80 / 15), 1)
+    return b1, b2, b3, b4
+
+
 def aqi(pm25, lang="en"):
-    # Competition guidelines: <15 green, 15-35 yellow, 35-55 orange, >55 red
-    if pm25 < 15:   k = "good"
-    elif pm25 < 35: k = "moderate"
-    elif pm25 < 55: k = "poor"
-    elif pm25 < 80: k = "very_poor"
+    b1, b2, b3, b4 = aqi_thresholds()
+    if pm25 < b1:   k = "good"
+    elif pm25 < b2: k = "moderate"
+    elif pm25 < b3: k = "poor"
+    elif pm25 < b4: k = "very_poor"
     else:           k = "hazardous"
     c = {"good":GREEN,"moderate":AMBER,"poor":ORANGE,"very_poor":RED,"hazardous":PURPLE}[k]
     l = T[lang].get(k, T["en"][k])

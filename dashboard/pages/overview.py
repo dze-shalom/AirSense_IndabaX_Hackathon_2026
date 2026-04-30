@@ -6,7 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from config import *
-from utils.helpers import aqi, LNG, get_threshold, threshold_label
+from utils.helpers import aqi, aqi_thresholds, LNG, get_threshold, threshold_label
 from utils.models import load_models, load_artefacts, predict_7day
 from utils.api import fetch_forecast, wmo_icon
 from utils.live_data import live_all
@@ -64,13 +64,14 @@ def _circular_stats(stats):
     lbls  = labels_fr if lang=="fr" else labels_en
     is_lt = st.session_state.get("theme", "light") == "light"
 
+    b1, b2, b3, b4 = aqi_thresholds()
     counts = {k: 0 for k in order}
     for s in stats.values():
         pm = s["mean_pm25"]
-        if   pm < 15: counts["good"]      += 1
-        elif pm < 35: counts["moderate"]  += 1
-        elif pm < 55: counts["poor"]      += 1
-        elif pm < 80: counts["very_poor"] += 1
+        if   pm < b1: counts["good"]      += 1
+        elif pm < b2: counts["moderate"]  += 1
+        elif pm < b3: counts["poor"]      += 1
+        elif pm < b4: counts["very_poor"] += 1
         else:         counts["hazardous"] += 1
 
     keys   = [k for k in order if counts[k] > 0]
@@ -293,19 +294,22 @@ def page_overview():
         sec(_t("national_map"))
         st.plotly_chart(fig, use_container_width=True)
 
-        # ── Legend — competition guide colours ────────────────────────────────
+        # ── Legend — dynamic AQI boundaries ──────────────────────────────────
         _is_lt = st.session_state.get("theme","light") == "light"
         _ltxt  = "#5c3a1e" if _is_lt else TEXT2
         _wclr  = "rgba(80,160,120,0.9)" if _is_lt else "rgba(100,255,218,0.8)"
+        _lb1, _lb2, _lb3, _lb4 = aqi_thresholds()
+        _t_lbl = {"good": _t("good"), "moderate": _t("moderate"), "poor": _t("poor"),
+                  "very_poor": _t("very_poor"), "hazardous": _t("hazardous")}
         st.markdown(f"""<div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.25rem;
             padding:.35rem .5rem;border-radius:6px;
             background:{'rgba(255,252,248,0.7)' if _is_lt else 'rgba(10,25,47,0.5)'};
             border:1px solid {'rgba(160,100,60,0.15)' if _is_lt else 'rgba(100,255,218,0.08)'};">
-  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{GREEN};font-weight:700;"> Healthy</span> &lt;15 µg/m³</span>
-  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{AMBER};font-weight:700;"> Moderate</span> 15-35</span>
-  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{ORANGE};font-weight:700;"> Poor</span> 35-55</span>
-  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{RED};font-weight:700;"> Critical</span> 55-80</span>
-  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{PURPLE};font-weight:700;"> Hazardous</span> &gt;80</span>
+  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{GREEN};font-weight:700;"> {_t_lbl['good']}</span> &lt;{_lb1:.0f} µg/m³</span>
+  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{AMBER};font-weight:700;"> {_t_lbl['moderate']}</span> {_lb1:.0f}–{_lb2:.0f}</span>
+  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{ORANGE};font-weight:700;"> {_t_lbl['poor']}</span> {_lb2:.0f}–{_lb3:.0f}</span>
+  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{RED};font-weight:700;"> {_t_lbl['very_poor']}</span> {_lb3:.0f}–{_lb4:.0f}</span>
+  <span style="font-size:.62rem;color:{_ltxt};">●<span style="color:{PURPLE};font-weight:700;"> {_t_lbl['hazardous']}</span> &gt;{_lb4:.0f}</span>
   <span style="font-size:.62rem;color:{_wclr};">
     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{_wclr}"
       stroke-width="2.5" stroke-linecap="round" style="vertical-align:middle;margin-right:2px;">
