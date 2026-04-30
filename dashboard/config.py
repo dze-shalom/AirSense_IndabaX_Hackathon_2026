@@ -148,6 +148,36 @@ T = {
         # ── Sidebar ──
         "refresh_live":"Refresh","cities_live":"cities live",
         "alerts_label":"Active alerts",
+        # ── Policy Simulator & Brief ──
+        "policy_sim_tab":"Policy Simulator",
+        "policy_brief_tab":"Policy Brief",
+        "policy_sim_hdr":"Air Quality Policy Simulator",
+        "traffic_reduction":"Traffic reduction (%)",
+        "industry_reduction":"Industrial reduction (%)",
+        "biomass_reduction":"Biomass burning reduction (%)",
+        "simulate_btn":"Simulate",
+        "policy_brief_hdr":"AI Policy Brief Generator",
+        "generate_brief_btn":"Generate Brief",
+        "generating_brief":"Generating policy brief…",
+        "policy_context":"Select a city to generate a tailored brief for health officials.",
+        "before_pm":"Before",
+        "after_pm":"After",
+        "pm_reduction":"Reduction",
+        "lives_saved":"Cases Prevented",
+        # ── Harmattan animation ──
+        "harmattan_anim_hdr":"Harmattan Dust Front — Monthly Animation",
+        # ── Exposure tracker ──
+        "exposure_tab":"My Exposure",
+        "exposure_hdr":"Personal Daily Exposure Tracker",
+        "exposure_info":"Track your cumulative PM2.5 exposure across multiple locations throughout the day.",
+        "hours_spent":"Hours spent there",
+        "add_location":"Add Location",
+        "daily_exposure":"Daily Avg PM2.5",
+        "total_hours":"Hours tracked",
+        "who_exceedance":"WHO Exceedance",
+        "locations_visited":"Locations",
+        "cities":"cities",
+        "clear_log":"Clear Log",
     },
     "fr": {
         # Niveaux IQA
@@ -254,6 +284,36 @@ T = {
         # ── Barre latérale ──
         "refresh_live":"Actualiser","cities_live":"villes en direct",
         "alerts_label":"Alertes actives",
+        # ── Simulateur & Rapport ──
+        "policy_sim_tab":"Simulateur de politique",
+        "policy_brief_tab":"Rapport politique",
+        "policy_sim_hdr":"Simulateur de politique qualité de l'air",
+        "traffic_reduction":"Réduction du trafic (%)",
+        "industry_reduction":"Réduction industrielle (%)",
+        "biomass_reduction":"Réduction feux de biomasse (%)",
+        "simulate_btn":"Simuler",
+        "policy_brief_hdr":"Générateur de rapport IA",
+        "generate_brief_btn":"Générer le rapport",
+        "generating_brief":"Génération du rapport…",
+        "policy_context":"Sélectionnez une ville pour générer un rapport pour les autorités sanitaires.",
+        "before_pm":"Avant",
+        "after_pm":"Après",
+        "pm_reduction":"Réduction",
+        "lives_saved":"Cas évités",
+        # ── Animation Harmattan ──
+        "harmattan_anim_hdr":"Front de Poussière Harmattan — Animation Mensuelle",
+        # ── Suivi d'exposition ──
+        "exposure_tab":"Mon Exposition",
+        "exposure_hdr":"Suivi d'exposition quotidienne",
+        "exposure_info":"Suivez votre exposition cumulative aux PM2.5 sur plusieurs lieux.",
+        "hours_spent":"Heures passées",
+        "add_location":"Ajouter un lieu",
+        "daily_exposure":"PM2.5 moy. journalier",
+        "total_hours":"Heures suivies",
+        "who_exceedance":"Dépassement OMS",
+        "locations_visited":"Lieux",
+        "cities":"villes",
+        "clear_log":"Effacer le journal",
     },
 }
 

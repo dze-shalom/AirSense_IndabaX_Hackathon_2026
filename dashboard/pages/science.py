@@ -28,7 +28,10 @@ from config import *
 from utils.helpers import aqi, LNG, get_threshold, threshold_label
 from utils.models import load_artefacts
 from utils.live_data import compute_live_shap, live_all
-from components.ui import sec, card, info_box, _cbg, _cborder, _ctxt, _ctxt2
+from components.ui import sec, card, info_box, _cbg, _cborder, _ctxt, _ctxt2, _accent
+from utils.helpers import city_profile, health_impact
+from utils.api import call_claude
+from utils.models import get_alert_prob
 from components.charts import PLO
 
 
@@ -44,8 +47,9 @@ def page_science():
     art = load_artefacts()
     st.markdown('<div class="as-content">', unsafe_allow_html=True)
 
-    tab_sh, tab_cl, tab_sp, tab_mc = st.tabs([
+    tab_sh, tab_cl, tab_sp, tab_mc, tab_pol, tab_brief = st.tabs([
         _t("shap_tab"), _t("climate_tab_sci"), _t("spatial_tab"), _t("model_tab"),
+        _t("policy_sim_tab"), _t("policy_brief_tab"),
     ])
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -458,5 +462,227 @@ it was applied to unseen cities at three difficulty levels:<br>
                  "trained only on real CAMS measurements, no proxy circularity. "
                  "The two-stage Harmattan model achieves the best Harmattan-season performance. "
                  "The Transformer provides interpretable multi-day uncertainty but higher MAE than XGBoost.")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # TAB 5 — POLICY SCENARIO SIMULATOR
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_pol:
+        sec(_t("policy_sim_hdr"))
+        lang = LNG()
+
+        c1, c2 = st.columns(2)
+        with c1: pol_region = st.selectbox(_t("select_region"), list(CITIES.keys()), key="pol_reg")
+        with c2: pol_city   = st.selectbox(_t("select_city"),   [c[0] for c in CITIES[pol_region]], key="pol_city")
+
+        with st.form("policy_sim_form"):
+            fc1, fc2, fc3 = st.columns(3)
+            with fc1:
+                traffic_pct  = st.slider(_t("traffic_reduction"),  0, 80, 20, key="pol_traffic")
+            with fc2:
+                industry_pct = st.slider(_t("industry_reduction"), 0, 80, 10, key="pol_industry")
+            with fc3:
+                biomass_pct  = st.slider(_t("biomass_reduction"),  0, 60, 15, key="pol_biomass")
+            submitted = st.form_submit_button(_t("simulate_btn"), use_container_width=True)
+
+        # Always show results (recalculate on every render)
+        _live_pol = live_all()
+        base_pm = _live_pol.get(pol_city, CITY_STATS.get(pol_city, {})).get("mean_pm25", 25.0)
+        profile  = city_profile(pol_city, pol_region, base_pm)
+        src      = profile["src"]
+
+        traffic_red  = base_pm * src.get("Traffic", 0.2)  * (traffic_pct / 100)
+        industry_red = base_pm * src.get("Industry", 0.1) * (industry_pct / 100)
+        biomass_red  = base_pm * src.get("Biomass Burning", src.get("Biomass", 0.2)) * (biomass_pct / 100)
+        new_pm       = max(WHO_ANN, base_pm - traffic_red - industry_red - biomass_red)
+        pm_delta     = base_pm - new_pm
+
+        # Health impact difference
+        hi_base = health_impact(base_pm)
+        hi_new  = health_impact(new_pm)
+        cases_prevented = round(hi_base[0] - hi_new[0], 1)
+
+        # ── 4 metric cards ────────────────────────────────────────────────────
+        m1, m2, m3, m4 = st.columns(4)
+        _card_style = (f"background:{_cbg()};border:1px solid {_cborder()};"
+                       f"border-radius:10px;padding:.75rem 1rem;text-align:center;")
+        with m1:
+            st.markdown(f'<div style="{_card_style}">'
+                        f'<div style="font-size:.65rem;color:{_ctxt2()};">{_t("before_pm")} PM2.5</div>'
+                        f'<div style="font-size:1.5rem;font-weight:800;color:{_ctxt()};">{base_pm:.1f}</div>'
+                        f'<div style="font-size:.65rem;color:{_ctxt2()};">µg/m³</div>'
+                        f'</div>', unsafe_allow_html=True)
+        with m2:
+            new_col = GREEN if new_pm < WHO_24H else AMBER if new_pm < 35 else RED
+            st.markdown(f'<div style="{_card_style}">'
+                        f'<div style="font-size:.65rem;color:{_ctxt2()};">{_t("after_pm")} PM2.5</div>'
+                        f'<div style="font-size:1.5rem;font-weight:800;color:{new_col};">{new_pm:.1f}</div>'
+                        f'<div style="font-size:.65rem;color:{_ctxt2()};">µg/m³</div>'
+                        f'</div>', unsafe_allow_html=True)
+        with m3:
+            st.markdown(f'<div style="{_card_style}">'
+                        f'<div style="font-size:.65rem;color:{_ctxt2()};">{_t("pm_reduction")}</div>'
+                        f'<div style="font-size:1.5rem;font-weight:800;color:{TEAL};">−{pm_delta:.1f}</div>'
+                        f'<div style="font-size:.65rem;color:{_ctxt2()};">µg/m³</div>'
+                        f'</div>', unsafe_allow_html=True)
+        with m4:
+            st.markdown(f'<div style="{_card_style}">'
+                        f'<div style="font-size:.65rem;color:{_ctxt2()};">{_t("lives_saved")}</div>'
+                        f'<div style="font-size:1.5rem;font-weight:800;color:{GREEN};">{cases_prevented:.1f}</div>'
+                        f'<div style="font-size:.65rem;color:{_ctxt2()};"> / 10k / yr</div>'
+                        f'</div>', unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+
+        # ── Before/after source breakdown bar chart ───────────────────────────
+        src_keys   = [k for k, v in src.items() if v > 0.02]
+        before_vals = [src[k] * base_pm for k in src_keys]
+
+        # Adjusted source contributions after policy levers
+        after_src = dict(src)
+        if "Traffic" in after_src:
+            raw_t = after_src["Traffic"] * base_pm * (1 - traffic_pct / 100)
+            after_src["Traffic"] = raw_t / base_pm if base_pm > 0 else after_src["Traffic"]
+        if "Industry" in after_src:
+            raw_i = after_src["Industry"] * base_pm * (1 - industry_pct / 100)
+            after_src["Industry"] = raw_i / base_pm if base_pm > 0 else after_src["Industry"]
+        for bk in ("Biomass Burning", "Biomass"):
+            if bk in after_src:
+                raw_b = after_src[bk] * base_pm * (1 - biomass_pct / 100)
+                after_src[bk] = raw_b / base_pm if base_pm > 0 else after_src[bk]
+
+        after_vals = [after_src.get(k, src[k]) * new_pm for k in src_keys]
+        bar_colors = [TEAL, AMBER, ORANGE, RED, PURPLE, _ctxt2()][:len(src_keys)]
+
+        fig_pol = go.Figure()
+        fig_pol.add_trace(go.Bar(
+            name=_t("before_pm"), y=src_keys, x=before_vals,
+            orientation="h", marker=dict(color=bar_colors, opacity=0.55),
+            hovertemplate="%{y}: %{x:.2f} µg/m³<extra>Before</extra>"))
+        fig_pol.add_trace(go.Bar(
+            name=_t("after_pm"), y=src_keys, x=after_vals,
+            orientation="h", marker=dict(color=bar_colors, opacity=0.9),
+            hovertemplate="%{y}: %{x:.2f} µg/m³<extra>After</extra>"))
+        fig_pol.update_layout(**PLO(
+            height=280, barmode="group",
+            xaxis=dict(gridcolor=_cborder(), title="PM2.5 contribution (µg/m³)"),
+            yaxis=dict(gridcolor="rgba(0,0,0,0)"),
+            legend=dict(font=dict(size=9, color=_ctxt2()), bgcolor="rgba(0,0,0,0)",
+                        orientation="h", yanchor="bottom", y=1.02),
+        ))
+        st.plotly_chart(fig_pol, use_container_width=True)
+
+        # ── AQI advisory text ─────────────────────────────────────────────────
+        if new_pm < WHO_24H:
+            adv_col, adv_key = GREEN, "health_good"
+        elif new_pm < 35:
+            adv_col, adv_key = AMBER, "health_moderate"
+        elif new_pm < 55:
+            adv_col, adv_key = ORANGE, "health_poor"
+        elif new_pm < 80:
+            adv_col, adv_key = RED, "health_very_poor"
+        else:
+            adv_col, adv_key = PURPLE, "health_hazardous"
+
+        st.markdown(
+            f'<div style="background:{adv_col}18;border:1px solid {adv_col}44;'
+            f'border-left:3px solid {adv_col};border-radius:8px;'
+            f'padding:.65rem .9rem;margin-top:.5rem;font-size:.78rem;color:{_ctxt()};">'
+            f'<strong style="color:{adv_col};">Advisory (post-policy):</strong> {_t(adv_key)}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # TAB 6 — AI POLICY BRIEF
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_brief:
+        sec(_t("policy_brief_hdr"))
+        lang = LNG()
+
+        st.markdown(f'<div style="font-size:.78rem;color:{_ctxt2()};margin-bottom:.8rem;">'
+                    f'{_t("policy_context")}</div>', unsafe_allow_html=True)
+
+        b1, b2 = st.columns(2)
+        with b1: brief_region = st.selectbox(_t("select_region"), list(CITIES.keys()), key="brief_reg")
+        with b2: brief_city   = st.selectbox(_t("select_city"),   [c[0] for c in CITIES[brief_region]], key="brief_city")
+
+        if st.button(_t("generate_brief_btn"), use_container_width=True, key="gen_brief_btn"):
+            with st.spinner(_t("generating_brief")):
+                _live_brief = live_all()
+                pm25_brief  = _live_brief.get(brief_city, CITY_STATS.get(brief_city, {})).get("mean_pm25", 25.0)
+                art_brief   = load_artefacts()
+                prob_brief  = get_alert_prob(pm25_brief, art_brief)
+                prof_brief  = city_profile(brief_city, brief_region, pm25_brief)
+
+                src_brief   = prof_brief["src"]
+                top_sources = ", ".join(
+                    f"{k} {v*100:.0f}%"
+                    for k, v in sorted(src_brief.items(), key=lambda x: -x[1])
+                    if v > 0.05
+                )
+
+                prompt = (
+                    f"Write a 2-paragraph policy brief for Cameroon health officials about air quality "
+                    f"in {brief_city} ({brief_region} region). "
+                    f"Current PM2.5: {pm25_brief:.1f} µg/m³ (WHO 24h limit: 15 µg/m³). "
+                    f"Exceedance probability: {prob_brief*100:.0f}%. "
+                    f"Main pollution sources: {top_sources}. "
+                    f"Paragraph 1: current situation and health risk. "
+                    f"Paragraph 2: 3 concrete policy recommendations. "
+                    f"Be specific to Cameroon context. Keep it under 200 words."
+                )
+
+                brief_text = call_claude(prompt, brief_city, brief_region, pm25_brief, lang)
+
+            # Display brief in styled card
+            if brief_text:
+                st.session_state["_last_brief"] = brief_text
+                st.session_state["_last_brief_city"] = brief_city
+
+        # Render the brief if stored
+        brief_text = st.session_state.get("_last_brief", "")
+        brief_city_stored = st.session_state.get("_last_brief_city", "")
+        if brief_text and brief_city_stored == brief_city:
+            _acc = _accent()
+            st.markdown(
+                f'<div style="background:{_cbg()};border:1px solid {_cborder()};"
+                f"border-left:4px solid {_acc};border-radius:10px;"
+                f"padding:1.1rem 1.3rem;margin-top:.8rem;">'
+                f'<div style="font-size:.65rem;font-weight:700;letter-spacing:.08em;'
+                f'color:{_acc};text-transform:uppercase;margin-bottom:.6rem;">'
+                f'POLICY BRIEF — {brief_city.upper()}</div>'
+                f'<div style="font-size:.82rem;line-height:1.7;color:{_ctxt()};">'
+                f'{brief_text.replace(chr(10), "<br>")}'
+                f'</div>'
+                f'<div style="margin-top:.75rem;font-size:.65rem;color:{_ctxt2()};">'
+                f'💡 Tip: Copy the text above to share with health officials.</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            # WhatsApp share link
+            wa_text = (
+                f"AirSense Policy Brief — {brief_city}: "
+                f"PM2.5 {st.session_state.get('_last_brief_pm25', pm25_brief):.1f} µg/m³. "
+                f"{brief_text[:200]}…"
+            )
+            import urllib.parse
+            wa_url = "https://wa.me/?text=" + urllib.parse.quote(wa_text)
+            st.markdown(
+                f'<a href="{wa_url}" target="_blank" style="display:inline-block;margin-top:.5rem;'
+                f'background:#25D366;color:#fff;border-radius:6px;padding:.35rem .9rem;'
+                f'font-size:.72rem;font-weight:600;text-decoration:none;">'
+                f'Share via WhatsApp</a>',
+                unsafe_allow_html=True,
+            )
+        elif not brief_text:
+            st.markdown(
+                f'<div style="background:{_cbg()};border:1px dashed {_cborder()};'
+                f'border-radius:10px;padding:1.5rem;text-align:center;'
+                f'font-size:.78rem;color:{_ctxt2()};">'
+                f'Press <strong>{_t("generate_brief_btn")}</strong> to generate an AI-powered policy brief.'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     st.markdown('</div>', unsafe_allow_html=True)

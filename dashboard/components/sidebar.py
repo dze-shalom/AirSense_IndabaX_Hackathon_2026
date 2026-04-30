@@ -195,6 +195,14 @@ def inject_css():
         '<link rel="manifest" href="manifest.json">'
         '<meta name="theme-color" content="#1a3c5e">',
         unsafe_allow_html=True)
+    st.markdown("""<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/app/static/sw.js')
+    .catch(function(err) {
+      // registration failed — silently ignore (Streamlit hosting may block it)
+    });
+}
+</script>""", unsafe_allow_html=True)
     st.markdown(CSS, unsafe_allow_html=True)
     is_light = st.session_state.get("theme", "light") == "light"
     st.markdown(_particles_html(is_light), unsafe_allow_html=True)

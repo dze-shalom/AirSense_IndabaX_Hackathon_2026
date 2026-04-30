@@ -497,4 +497,157 @@ def page_overview():
     st.plotly_chart(fig_h, use_container_width=True)
     info_box(_t("heatmap_guide"))
 
+    # ── Harmattan Dust Front Animation ───────────────────────────────────────────
+    st.markdown("<div style='margin-top:.8rem;'></div>", unsafe_allow_html=True)
+    sec(_t("harmattan_anim_hdr"))
+
+    with st.expander("🌪 Harmattan Dust Front Animation", expanded=False):
+        _is_dark_anim = st.session_state.get("theme", "light") == "dark"
+        _map_style    = "carto-darkmatter" if _is_dark_anim else "carto-positron"
+
+        _north_mul  = [1.8,2.1,1.4,1.0,0.8,0.65,0.55,0.55,0.50,0.65,1.2,1.6]
+        _highland_mul = [1.6,1.8,1.3,1.0,0.9,0.75,0.65,0.65,0.60,0.70,1.1,1.4]
+        _south_mul  = [1.3,1.5,1.2,0.9,0.75,0.65,0.55,0.55,0.45,0.60,0.9,1.2]
+
+        _northern_regs = {"Far North", "North", "Adamawa"}
+        _highland_regs = {"West", "North West"}
+
+        _months_en = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        _months_fr = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"]
+        _month_names = _months_fr if lang == "fr" else _months_en
+
+        # Collect all cities with their region group
+        _anim_cities = []
+        for _reg, _clist in CITIES.items():
+            for _cname, _clat, _clon in _clist:
+                _base_pm = CITY_STATS.get(_cname, {}).get("mean_pm25", 20.0)
+                if _reg in _northern_regs:
+                    _mul = _north_mul
+                elif _reg in _highland_regs:
+                    _mul = _highland_mul
+                else:
+                    _mul = _south_mul
+                _anim_cities.append((_cname, _clat, _clon, _base_pm, _mul))
+
+        # Build 12 frames
+        _frames = []
+        for _mi in range(12):
+            _lats, _lons, _sizes, _colors, _texts = [], [], [], [], []
+            for _cname, _clat, _clon, _base_pm, _mul in _anim_cities:
+                _pm = _base_pm * _mul[_mi]
+                _col = aqi(_pm)[1]
+                _sz  = max(6, min(30, _pm * 0.5))
+                _lats.append(_clat)
+                _lons.append(_clon)
+                _sizes.append(_sz)
+                _colors.append(_col)
+                _texts.append(f"{_cname}: {_pm:.1f} µg/m³")
+            _frames.append(go.Frame(
+                data=[go.Scattermapbox(
+                    lat=_lats, lon=_lons,
+                    mode="markers",
+                    marker=dict(size=_sizes, color=_colors, opacity=0.85),
+                    text=_texts,
+                    hovertemplate="%{text}<extra></extra>",
+                    showlegend=False,
+                )],
+                name=_month_names[_mi],
+                layout=go.Layout(
+                    mapbox=dict(
+                        style=_map_style,
+                        center=dict(lat=5.5, lon=12.3),
+                        zoom=4.8
+                    ),
+                    title=dict(
+                        text=_month_names[_mi],
+                        font=dict(size=13, color="#ffffff" if _is_dark_anim else "#1a0e04"),
+                        x=0.5,
+                    ),
+                ),
+            ))
+
+        # Initial frame data (January)
+        _init_lats, _init_lons, _init_sizes, _init_colors, _init_texts = [], [], [], [], []
+        for _cname, _clat, _clon, _base_pm, _mul in _anim_cities:
+            _pm = _base_pm * _mul[0]
+            _init_lats.append(_clat)
+            _init_lons.append(_clon)
+            _init_sizes.append(max(6, min(30, _pm * 0.5)))
+            _init_colors.append(aqi(_pm)[1])
+            _init_texts.append(f"{_cname}: {_pm:.1f} µg/m³")
+
+        _fig_anim = go.Figure(
+            data=[go.Scattermapbox(
+                lat=_init_lats, lon=_init_lons,
+                mode="markers",
+                marker=dict(size=_init_sizes, color=_init_colors, opacity=0.85),
+                text=_init_texts,
+                hovertemplate="%{text}<extra></extra>",
+                showlegend=False,
+            )],
+            frames=_frames,
+        )
+
+        _fig_anim.update_layout(
+            mapbox=dict(
+                style=_map_style,
+                center=dict(lat=5.5, lon=12.3),
+                zoom=4.8,
+            ),
+            updatemenus=[dict(
+                type="buttons",
+                showactive=False,
+                y=0.02,
+                x=0.5,
+                xanchor="center",
+                yanchor="bottom",
+                pad=dict(t=5),
+                buttons=[
+                    dict(
+                        label="▶ Play",
+                        method="animate",
+                        args=[None, dict(
+                            frame=dict(duration=900, redraw=True),
+                            fromcurrent=True,
+                            transition=dict(duration=300),
+                        )],
+                    ),
+                    dict(
+                        label="⏸ Pause",
+                        method="animate",
+                        args=[[None], dict(
+                            frame=dict(duration=0, redraw=False),
+                            mode="immediate",
+                            transition=dict(duration=0),
+                        )],
+                    ),
+                ],
+            )],
+            sliders=[dict(
+                active=0,
+                steps=[dict(
+                    label=_month_names[i],
+                    method="animate",
+                    args=[[_month_names[i]], dict(
+                        frame=dict(duration=0, redraw=True),
+                        mode="immediate",
+                        transition=dict(duration=0),
+                    )],
+                ) for i in range(12)],
+                x=0.0, y=0.0,
+                len=1.0,
+                pad=dict(b=10, t=5),
+                currentvalue=dict(
+                    prefix="Month: ",
+                    visible=True,
+                    xanchor="center",
+                    font=dict(size=11),
+                ),
+                transition=dict(duration=300),
+            )],
+            **PLO(height=420, margin=dict(l=0, r=0, t=28, b=60), showlegend=False),
+        )
+
+        st.plotly_chart(_fig_anim, use_container_width=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
