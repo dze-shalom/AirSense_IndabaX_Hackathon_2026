@@ -406,10 +406,12 @@ it was applied to unseen cities at three difficulty levels:<br>
             r2_str  = f"{row['r2']:.3f}"  if row["r2"]  else "—"
             hm_str  = f"{row['harm_mae']:.2f}" if row["harm_mae"] else "—"
             best = row["flag"] == "primary" and row["mae"] and row["mae"] < 6.0
-            _best_bg  = "rgba(100,255,218,0.06)" if st.session_state.get("theme","light")=="dark" else "rgba(80,160,100,0.06)"
+            _best_bg     = "rgba(100,255,218,0.06)" if st.session_state.get("theme","light")=="dark" else "rgba(80,160,100,0.06)"
+            _border_col  = "rgba(100,255,218,0.3)" if best else _cborder()
+            _left_border = f"border-left:3px solid {TEAL};" if best else ""
             st.markdown(f"""<div style="background:{_best_bg if best else _cbg()};
-  border:1px solid {'rgba(100,255,218,0.3)' if best else _cborder()};
-  {'border-left:3px solid '+TEAL+';' if best else ''}
+  border:1px solid {_border_col};
+  {_left_border}
   border-radius:8px;padding:.6rem .9rem;margin-bottom:.3rem;
   display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem;">
   <div style="flex:1;min-width:200px;">
