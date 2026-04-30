@@ -26,11 +26,13 @@ from pages.about         import page_about
 
 # ── Session state defaults ────────────────────────────────────────────────────
 _DEFAULTS = {
-    "lang":          "en",
-    "page":          "overview",
-    "theme":         "dark",
-    "ai_history":    [],
-    "show_settings": False,
+    "lang":           "en",
+    "page":           "overview",
+    "theme":          "dark",
+    "ai_history":     [],
+    "show_settings":  False,
+    "threshold":      15.0,
+    "threshold_std":  "WHO 2021",
 }
 for k, v in _DEFAULTS.items():
     if k not in st.session_state:

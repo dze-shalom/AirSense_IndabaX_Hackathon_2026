@@ -25,7 +25,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from config import *
-from utils.helpers import aqi, LNG
+from utils.helpers import aqi, LNG, get_threshold, threshold_label
 from utils.models import load_artefacts
 from utils.live_data import compute_live_shap, live_all
 from components.ui import sec, card, info_box, _cbg, _cborder, _ctxt, _ctxt2
@@ -184,8 +184,8 @@ def page_science():
                     line=dict(color=col, width=2 if ri==0 else 1.2, dash=["solid","dash","dot"][ri]),
                     name=f"{ssp_k[:8]} · {reg}",
                     hovertemplate=f"<b>{ssp_k[:9]} · {reg}</b><br>%{{x}}: %{{y:.1f}} μg/m³<extra></extra>"))
-        fig_ts.add_hline(y=WHO_24H,line=dict(color=RED,width=1.5,dash="dash"),
-                         annotation_text="WHO 24h (15)",annotation_font_color=RED,annotation_font_size=9)
+        fig_ts.add_hline(y=get_threshold(),line=dict(color=RED,width=1.5,dash="dash"),
+                         annotation_text=threshold_label(),annotation_font_color=RED,annotation_font_size=9)
         fig_ts.add_hline(y=WHO_ANN,line=dict(color=AMBER,width=1,dash="dot"),
                          annotation_text="WHO Annual (5)",annotation_font_color=AMBER,annotation_font_size=9)
         fig_ts.add_vrect(x0=BASE_YEAR,x1=BASE_YEAR+1,fillcolor="rgba(100,255,218,0.07)",line_width=0,
@@ -204,7 +204,7 @@ def page_science():
             lv   = [_live[c]["mean_pm25"] for c in rc if c in _live]
             base = float(np.mean(lv)) if lv else rd["pm25"]
             proj = project(base, reg, SSP_RATES[ssp_sel], yr_sel)
-            exc_now = rd.get("who_exc", min(base/WHO_24H*60,100))
+            exc_now = rd.get("who_exc", min(base/get_threshold()*60,100))
             bar_regs.append(reg); bar_now.append(round(exc_now,1)); bar_fut.append(round(min(exc_now*(proj/base),100),1))
         fig_bar = go.Figure()
         fig_bar.add_trace(go.Bar(name="Today",x=bar_regs,y=bar_now,

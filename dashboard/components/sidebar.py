@@ -5,7 +5,7 @@ from config import (
     WHO_24H, PAGE_KEYS, NAV_LABELS, NAV_SUBTITLES, NAV_ICONS,
     CITY_STATS, T,
 )
-from utils.helpers import LNG
+from utils.helpers import LNG, THRESHOLD_STANDARDS, get_threshold
 
 # lazy import to avoid circular at module load time
 def _get_live_stats():
@@ -288,9 +288,9 @@ def render_nav():
     try:
         from utils.live_data import get_live_stats
         live     = get_live_stats()
-        n_alerts = sum(1 for s in live.values() if s.get("mean_pm25", 0) > WHO_24H)
+        n_alerts = sum(1 for s in live.values() if s.get("mean_pm25", 0) > get_threshold())
     except Exception:
-        n_alerts = sum(1 for s in CITY_STATS.values() if s["mean_pm25"] > WHO_24H)
+        n_alerts = sum(1 for s in CITY_STATS.values() if s["mean_pm25"] > get_threshold())
 
     # ── Fixed decorative top bar ──────────────────────────────────────────────
     st.markdown(f"""
@@ -377,6 +377,35 @@ def render_sidebar():
                 if st.button(lang_lbl, key="sb_lang", use_container_width=True):
                     st.session_state.lang = "fr" if lang == "en" else "en"
                     st.rerun()
+
+            # ── PM2.5 threshold standard ──────────────────────────────────────
+            std_names = list(THRESHOLD_STANDARDS.keys())
+            cur_std   = st.session_state.get("threshold_std", "WHO 2021")
+            cur_idx   = std_names.index(cur_std) if cur_std in std_names else 0
+            new_std   = st.selectbox("PM2.5 Standard", std_names,
+                                     index=cur_idx, key="sb_std")
+            if new_std != cur_std:
+                st.session_state.threshold_std = new_std
+                if THRESHOLD_STANDARDS[new_std] is not None:
+                    st.session_state.threshold = THRESHOLD_STANDARDS[new_std]
+                st.rerun()
+
+            if THRESHOLD_STANDARDS[new_std] is None:  # Custom
+                custom_val = st.number_input(
+                    "Custom limit (µg/m³)",
+                    min_value=1.0, max_value=500.0,
+                    value=float(st.session_state.get("threshold", 15.0)),
+                    step=1.0, key="sb_custom_thr")
+                if custom_val != st.session_state.get("threshold"):
+                    st.session_state.threshold = custom_val
+                    st.rerun()
+            else:
+                thr = THRESHOLD_STANDARDS[new_std]
+                st.markdown(
+                    f"<div style='font-size:.55rem;color:{TEAL};margin-top:-.3rem;"
+                    f"margin-bottom:.2rem;'>Limit: {thr:.0f} µg/m³</div>",
+                    unsafe_allow_html=True)
+
             st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown(f"<div style='height:1px;background:{BORDER};margin-bottom:.5rem;'></div>",

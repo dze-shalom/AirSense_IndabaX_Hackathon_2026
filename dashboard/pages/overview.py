@@ -6,7 +6,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from config import *
-from utils.helpers import aqi, LNG
+from utils.helpers import aqi, LNG, get_threshold, threshold_label
 from utils.models import load_models, load_artefacts, predict_7day
 from utils.api import fetch_forecast, wmo_icon
 from utils.live_data import live_all
@@ -355,8 +355,8 @@ def page_overview():
                                     line=dict(color=TEAL, width=1.5)),
                         fill="tozeroy", fillcolor="rgba(100,255,218,0.06)",
                         hovertemplate="<b>%{x}</b><br>%{y:.1f} μg/m³<extra></extra>"))
-                    fig_sp.add_hline(y=WHO_24H, line=dict(color=RED, width=1.5, dash="dash"),
-                                     annotation_text="WHO 24h", annotation_font_color=RED,
+                    fig_sp.add_hline(y=get_threshold(), line=dict(color=RED, width=1.5, dash="dash"),
+                                     annotation_text=threshold_label(), annotation_font_color=RED,
                                      annotation_font_size=9)
                     fig_sp.update_layout(**PLO(height=155,
                         yaxis=dict(title="PM2.5"),
@@ -374,7 +374,7 @@ def page_overview():
 
         # ── Mini KPI cards ────────────────────────────────────────────────────
         live_count = sum(1 for s in _stats.values() if s.get("live"))
-        above_who  = sum(1 for s in _stats.values() if s["mean_pm25"] > WHO_24H)
+        above_who  = sum(1 for s in _stats.values() if s["mean_pm25"] > get_threshold())
         mean_pm    = np.mean([s["mean_pm25"] for s in _stats.values()])
         kc1, kc2 = st.columns(2)
         with kc1:
@@ -434,10 +434,10 @@ def page_overview():
             marker=dict(color=[REGION_COLORS.get(r[0], TEAL) for r in srt], opacity=0.82),
             text=[f"{r[1]['pm25']:.1f}" for r in srt], textposition="outside",
             textfont=dict(color=_ctxt2(), size=10)))
-        fig_bar.add_vline(x=WHO_24H, line=dict(color=RED,width=1.5,dash="dash"),
-                          annotation_text="WHO 24h",annotation_font_color=RED,annotation_font_size=9)
+        fig_bar.add_vline(x=get_threshold(), line=dict(color=RED,width=1.5,dash="dash"),
+                          annotation_text=threshold_label(),annotation_font_color=RED,annotation_font_size=9)
         fig_bar.add_vline(x=WHO_ANN, line=dict(color=AMBER,width=1,dash="dot"),
-                          annotation_text="WHO Ann.",annotation_font_color=AMBER,annotation_font_size=9)
+                          annotation_text="WHO Annual (5)",annotation_font_color=AMBER,annotation_font_size=9)
         fig_bar.update_layout(**PLO(height=280, margin=dict(l=0,r=55,t=8,b=8),
             xaxis_title="Mean PM2.5 (μg/m³)", showlegend=False,
             yaxis=dict(gridcolor="rgba(0,0,0,0)")))

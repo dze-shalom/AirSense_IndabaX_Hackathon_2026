@@ -4,6 +4,27 @@ from config import (T, WHO_24H, WHO_ANN, NORTHERN, HIGHLAND, URBAN,
                     GREEN, AMBER, ORANGE, RED, PURPLE, TEAL, TEAL2, TEXT2)
 import streamlit as st
 
+# ── PM2.5 threshold standards ─────────────────────────────────────────────────
+THRESHOLD_STANDARDS = {
+    "WHO 2021":  15.0,
+    "EU 2024":   25.0,
+    "US EPA":    35.0,
+    "ECOWAS":    50.0,
+    "Custom":    None,
+}
+
+
+def get_threshold() -> float:
+    """Return the active PM2.5 24h limit from session state (falls back to WHO 15)."""
+    return float(st.session_state.get("threshold", WHO_24H))
+
+
+def threshold_label() -> str:
+    """Return a short label like 'WHO 2021 · 15 µg/m³' for use in chart annotations."""
+    std = st.session_state.get("threshold_std", "WHO 2021")
+    val = get_threshold()
+    return f"{std} · {val:.0f} µg/m³"
+
 
 def LNG():
     """Return current UI language from Streamlit session state."""

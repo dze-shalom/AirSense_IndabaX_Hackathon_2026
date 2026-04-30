@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, date
 
 from config import *
 from utils.helpers import (aqi, compute_bfai, bfai_label, bfai_col,
-                           classify_source, health_impact, live_source_attribution, LNG)
+                           classify_source, health_impact, live_source_attribution, LNG,
+                           get_threshold, threshold_label)
 from utils.models import (load_models, load_artefacts, get_conf_interval, get_alert_prob,
                            predict_7day, predict_7day_smart, predict_compounds_today,
                            infer_region_from_lat)
@@ -215,8 +216,8 @@ def page_explorer():
             fig_fc.add_trace(go.Scatter(x=dates+dates[::-1], y=highs+lows[::-1],
                 fill="toself", fillcolor="rgba(100,255,218,0.06)",
                 line=dict(color="rgba(0,0,0,0)"), showlegend=False))
-            fig_fc.add_hline(y=WHO_24H, line=dict(color=RED,width=1.5,dash="dash"),
-                             annotation_text="WHO 24h", annotation_font_color=RED)
+            fig_fc.add_hline(y=get_threshold(), line=dict(color=RED,width=1.5,dash="dash"),
+                             annotation_text=threshold_label(), annotation_font_color=RED)
             fig_fc.add_trace(go.Scatter(x=dates, y=pms, mode="lines+markers",
                 line=dict(color=TEAL,width=2.5),
                 marker=dict(size=10, color=[aqi(p)[1] for p in pms],
@@ -250,11 +251,11 @@ def page_explorer():
                             line=dict(color=TEAL,width=1.5)),
                 fill="tozeroy", fillcolor="rgba(100,255,218,0.06)",
                 hovertemplate="<b>%{x}</b><br>PM2.5: %{y:.1f} μg/m³<extra></extra>"))
-            fig_s.add_hline(y=WHO_24H, line=dict(color=RED,width=1.5,dash="dash"),
-                            annotation_text="WHO 24h (15)", annotation_font_color=RED,
+            fig_s.add_hline(y=get_threshold(), line=dict(color=RED,width=1.5,dash="dash"),
+                            annotation_text=threshold_label(), annotation_font_color=RED,
                             annotation_position="top right")
             fig_s.add_hline(y=WHO_ANN, line=dict(color=AMBER,width=1,dash="dot"),
-                            annotation_text="WHO Annual (5)", annotation_font_color=AMBER,
+                            annotation_text=f"WHO Annual · {WHO_ANN:.0f} µg/m³", annotation_font_color=AMBER,
                             annotation_position="bottom right")
             if region in NORTHERN | HIGHLAND:
                 fig_s.add_vrect(x0="Nov", x1="Feb",
@@ -266,7 +267,7 @@ def page_explorer():
 
             # WHO exceedance calendar — per-city monthly
             sec(f"Monthly WHO Exceedance Calendar — {city}")
-            exc_vals = [round(max(0, (v - WHO_24H) / WHO_24H * 100), 1) if v > WHO_24H else 0
+            exc_vals = [round(max(0, (v - get_threshold()) / get_threshold() * 100), 1) if v > get_threshold() else 0
                         for v in seasonal]
             fig_cal = go.Figure(go.Bar(
                 x=months, y=exc_vals,
@@ -343,7 +344,7 @@ def page_explorer():
                 line=dict(color=TEAL,width=2),
                 marker=dict(size=5,color=[aqi(v)[1] for v in seasonal_c]),
                 showlegend=False),row=1,col=1)
-            fig_cl.add_hline(y=WHO_24H,line=dict(color=RED,width=1,dash="dash"),row=1,col=1)
+            fig_cl.add_hline(y=get_threshold(),line=dict(color=RED,width=1,dash="dash"),row=1,col=1)
             fig_cl.add_trace(go.Scatter(x=months,y=temp_m,mode="lines+markers",
                 line=dict(color=ORANGE,width=2),marker=dict(size=5,color=ORANGE),
                 showlegend=False),row=1,col=2)
@@ -551,8 +552,8 @@ def page_explorer():
                               width=[2 if cm else 0 for cm in is_cm])),
                 text=[f"{v} μg/m³" for v in vals_b],textposition="outside",
                 textfont=dict(color=_ctxt2(),size=10)))
-            fig_af.add_vline(x=WHO_24H,line=dict(color=RED,width=1.5,dash="dash"),
-                             annotation_text="WHO 24h (15)",annotation_font_color=RED)
+            fig_af.add_vline(x=get_threshold(),line=dict(color=RED,width=1.5,dash="dash"),
+                             annotation_text=threshold_label(),annotation_font_color=RED)
             fig_af.update_layout(**PLO(height=370,margin=dict(l=0,r=70,t=10,b=10),
                 xaxis_title="Annual Mean PM2.5 (μg/m³)",
                 yaxis=dict(gridcolor="rgba(0,0,0,0)"),showlegend=False))
@@ -596,8 +597,8 @@ def page_explorer():
         fig_cmp.add_trace(go.Scatter(x=months2,y=sea_b,mode="lines+markers",
             line=dict(color=colb2,width=2.5,dash="dash"),marker=dict(size=6,color=colb2),
             name=cmp_cb,fill="tozeroy",fillcolor="rgba(0,0,0,0.05)"))
-        fig_cmp.add_hline(y=WHO_24H,line=dict(color=RED,width=1.5,dash="dash"),
-                          annotation_text="WHO 24h",annotation_font_color=RED)
+        fig_cmp.add_hline(y=get_threshold(),line=dict(color=RED,width=1.5,dash="dash"),
+                          annotation_text=threshold_label(),annotation_font_color=RED)
         fig_cmp.update_layout(**PLO(height=250,yaxis_title="PM2.5 (μg/m³)",
             legend=dict(font=dict(size=9),bgcolor="rgba(0,0,0,0)"),hovermode="x unified"))
         st.plotly_chart(fig_cmp, use_container_width=True)

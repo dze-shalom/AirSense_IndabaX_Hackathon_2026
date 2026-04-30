@@ -11,7 +11,8 @@ from config import *
 from utils.live_data import live_all, live_city
 from utils.helpers import (aqi, compute_bfai, bfai_label, bfai_col,
                             classify_source, health_impact, city_profile,
-                            SOURCE_LABELS, SOURCE_COLORS, LNG)
+                            SOURCE_LABELS, SOURCE_COLORS, LNG,
+                            get_threshold, threshold_label)
 from utils.models import (load_models, load_artefacts, get_conf_interval,
                            get_alert_prob, predict_7day, infer_region_from_lat)
 from utils.api import fetch_forecast, geocode_city, wmo_icon
@@ -47,8 +48,8 @@ def page_alerts_health():
 
         a1,a2 = st.columns(2)
         with a1:
-            sec("Active Alerts — Cities Above WHO 24h")
-            for city,s in sorted([(c,s) for c,s in _stats.items() if s["mean_pm25"]>WHO_24H],
+            sec(f"Active Alerts — Cities Above {threshold_label()}")
+            for city,s in sorted([(c,s) for c,s in _stats.items() if s["mean_pm25"]>get_threshold()],
                                    key=lambda x: x[1]["mean_pm25"],reverse=True)[:12]:
                 _,col,ico,_ = aqi(s["mean_pm25"])
                 st.markdown(f"""<div class="as-alert-item">
@@ -177,8 +178,8 @@ def page_alerts_health():
                           accent=RED if r["hr"]>10 else AMBER)
             with k4: card("Alert Prob.",f"{r['ap']*100:.0f}","% P(exceed WHO)",
                           accent=RED if r["ap"]>.5 else (AMBER if r["ap"]>.25 else GREEN))
-            if pm_sl<WHO_ANN:     rec,rc="Excellent. No restrictions.",GREEN
-            elif pm_sl<WHO_24H:   rec,rc="Moderate. Sensitive groups monitor.",AMBER
+            if pm_sl<WHO_ANN:              rec,rc="Excellent. No restrictions.",GREEN
+            elif pm_sl<get_threshold():    rec,rc="Moderate. Sensitive groups monitor.",AMBER
             elif pm_sl<30:        rec,rc="Unhealthy for sensitive groups.",ORANGE
             elif pm_sl<60:        rec,rc="Unhealthy. Avoid outdoor exertion.",RED
             else:                 rec,rc="Very unhealthy. Stay indoors.",PURPLE
