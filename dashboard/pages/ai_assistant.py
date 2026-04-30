@@ -15,40 +15,9 @@ from utils.helpers import (aqi, compute_bfai, bfai_label, bfai_col,
 from utils.models import (load_models, load_artefacts, get_conf_interval,
                            get_alert_prob, predict_7day, infer_region_from_lat)
 from utils.api import fetch_forecast, geocode_city, wmo_icon
-from components.ui import sec, card, info_box, bfai_gauge_svg, harmattan_gauge_svg
+from components.ui import sec, card, info_box, bfai_gauge_svg, harmattan_gauge_svg, \
+    _cbg, _cborder, _ctxt, _ctxt2, _accent
 from components.charts import PLO
-
-def _cbg():
-    """Card background — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "rgba(255,252,248,0.95)"
-    from config import NAVY2
-    return NAVY2
-
-def _cborder():
-    """Card border — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "rgba(160,100,60,0.2)"
-    from config import BORDER
-    return BORDER
-
-def _ctxt():
-    """Primary text — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "#1a0e04"
-    from config import TEXT1
-    return TEXT1
-
-def _ctxt2():
-    """Secondary text — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "#5c3a1e"
-    from config import TEXT2
-    return TEXT2
 
 
 
@@ -67,14 +36,14 @@ def page_ai():
 
     st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};border-radius:10px;
   padding:.75rem;margin-bottom:.85rem;">
-  <div style="font-size:.72rem;color:{TEXT2};">Asking about <strong style="color:{TEXT1};">{ai_city}</strong>
+  <div style="font-size:.72rem;color:{_ctxt2()};">Asking about <strong style="color:{_ctxt()};">{ai_city}</strong>
   ({ai_reg}) · PM2.5: <strong style="color:{ai_col};">{ai_pm:.1f} μg/m³</strong> · {ai_ico}
   <strong style="color:{ai_col};">{ai_cat}</strong></div>
 </div>""", unsafe_allow_html=True)
 
     qs=["Is it safe to exercise outdoors today?","Main pollution sources here?",
         "Best month to visit?","Should children wear masks outside?"]
-    st.markdown(f"<div style='font-size:.6rem;color:{TEXT2};margin-bottom:.3rem;'>Quick questions:</div>",
+    st.markdown(f"<div style='font-size:.6rem;color:{_ctxt2()};margin-bottom:.3rem;'>Quick questions:</div>",
                 unsafe_allow_html=True)
     qcols = st.columns(len(qs))
     for qcol,q in zip(qcols,qs):
@@ -86,7 +55,7 @@ def page_ai():
         if msg["role"]=="user":
             st.markdown(f'<div class="as-chat-user">{msg["content"]}</div>', unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="as-chat-ai"><div style="font-size:.58rem;color:{TEAL};font-weight:700;letter-spacing:.08em;margin-bottom:.2rem;">AIRSENSE AI</div>{msg["content"]}</div>',
+            st.markdown(f'<div class="as-chat-ai"><div style="font-size:.58rem;color:{_accent()};font-weight:700;letter-spacing:.08em;margin-bottom:.2rem;">AIRSENSE AI</div>{msg["content"]}</div>',
                         unsafe_allow_html=True)
 
     ui = st.text_input("Ask about air quality, health, or pollution…", key="ai_inp",

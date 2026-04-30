@@ -10,7 +10,7 @@ from utils.helpers import aqi, LNG
 from utils.models import load_models, load_artefacts, predict_7day
 from utils.api import fetch_forecast, wmo_icon
 from utils.live_data import live_all
-from components.ui import sec, card, info_box, _cbg, _cborder, _ctxt, _ctxt2
+from components.ui import sec, card, info_box, _cbg, _cborder, _ctxt, _ctxt2, _accent
 from components.charts import PLO
 
 
@@ -130,8 +130,8 @@ def page_overview():
            f'L\'Extrême-Nord est à <strong style="color:{RED};">28,7 μg/m³</strong> — '
            f'près de <strong style="color:{RED};">6× la limite OMS annuelle</strong> de 5 μg/m³.')
     st.markdown(f"""<div style="padding:.8rem 0 .5rem;">
-  <div style="font-size:1.3rem;font-weight:700;color:{TEXT1};line-height:1.3;">{headline}</div>
-  <div style="font-size:.78rem;color:{TEXT2};margin-top:.3rem;">{sub}</div>
+  <div style="font-size:1.3rem;font-weight:700;color:{_ctxt()};line-height:1.3;">{headline}</div>
+  <div style="font-size:.78rem;color:{_ctxt2()};margin-top:.3rem;">{sub}</div>
 </div>""", unsafe_allow_html=True)
 
     # ── Stat strip ────────────────────────────────────────────────────────────
@@ -359,10 +359,10 @@ def page_overview():
                                      annotation_text="WHO 24h", annotation_font_color=RED,
                                      annotation_font_size=9)
                     fig_sp.update_layout(**PLO(height=155,
-                        yaxis=dict(gridcolor=BORDER, title="PM2.5"),
+                        yaxis=dict(title="PM2.5"),
                         margin=dict(l=0,r=0,t=18,b=0), showlegend=False,
                         title=dict(text=f"7-Day — {detail_city}",
-                                   font=dict(size=11, color=TEXT2), x=0)))
+                                   font=dict(size=11, color=_ctxt2()), x=0)))
                     st.plotly_chart(fig_sp, use_container_width=True)
 
     # ── Right panel ───────────────────────────────────────────────────────────
@@ -382,15 +382,15 @@ def page_overview():
   border-radius:8px;padding:.5rem .7rem;text-align:center;margin-bottom:.4rem;">
   <div style="font-size:1.2rem;font-weight:700;font-family:'JetBrains Mono',monospace;
     color:{RED};">{above_who}</div>
-  <div style="font-size:.52rem;color:{TEXT2};text-transform:uppercase;letter-spacing:.07em;">
+  <div style="font-size:.52rem;color:{_ctxt2()};text-transform:uppercase;letter-spacing:.07em;">
     {"Above WHO" if lang=="en" else "Dépassant OMS"}</div>
 </div>""", unsafe_allow_html=True)
         with kc2:
             st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-radius:8px;padding:.5rem .7rem;text-align:center;margin-bottom:.4rem;">
   <div style="font-size:1.2rem;font-weight:700;font-family:'JetBrains Mono',monospace;
-    color:{TEAL};">{live_count}</div>
-  <div style="font-size:.52rem;color:{TEXT2};text-transform:uppercase;letter-spacing:.07em;">
+    color:{_accent()};">{live_count}</div>
+  <div style="font-size:.52rem;color:{_ctxt2()};text-transform:uppercase;letter-spacing:.07em;">
     {"Live Cities" if lang=="en" else "Villes en Direct"}</div>
 </div>""", unsafe_allow_html=True)
 
@@ -401,11 +401,11 @@ def page_overview():
         for i, (city, s) in enumerate(top8):
             _, col, _, _ = aqi(s["mean_pm25"])
             pct = s["mean_pm25"] / mx * 100
-            live_dot = f' <span style="font-size:.5rem;color:{TEAL};">●</span>' if s.get("live") else ""
+            live_dot = f' <span style="font-size:.5rem;color:{_accent()};">●</span>' if s.get("live") else ""
             st.markdown(f"""<div class="as-city-row">
-  <span style="font-size:.58rem;color:{TEXT2};width:14px;">{i+1}</span>
+  <span style="font-size:.58rem;color:{_ctxt2()};width:14px;">{i+1}</span>
   <span style="font-size:.72rem;flex:1;">{city}{live_dot}</span>
-  <div style="flex:1;min-width:50px;height:3px;background:{BORDER};border-radius:2px;margin:0 .4rem;overflow:hidden;">
+  <div style="flex:1;min-width:50px;height:3px;background:{_cborder()};border-radius:2px;margin:0 .4rem;overflow:hidden;">
     <div style="width:{pct:.0f}%;height:100%;background:{col};border-radius:2px;"></div></div>
   <span style="font-size:.66rem;font-family:'JetBrains Mono',monospace;color:{col};">{s['mean_pm25']:.1f}</span>
 </div>""", unsafe_allow_html=True)
@@ -416,9 +416,9 @@ def page_overview():
             _, col, _, _ = aqi(s["mean_pm25"])
             pct = s["mean_pm25"] / 20 * 100
             st.markdown(f"""<div class="as-city-row">
-  <span style="font-size:.58rem;color:{TEXT2};width:14px;">{i+1}</span>
+  <span style="font-size:.58rem;color:{_ctxt2()};width:14px;">{i+1}</span>
   <span style="font-size:.72rem;flex:1;">{city}</span>
-  <div style="flex:1;min-width:50px;height:3px;background:{BORDER};border-radius:2px;margin:0 .4rem;overflow:hidden;">
+  <div style="flex:1;min-width:50px;height:3px;background:{_cborder()};border-radius:2px;margin:0 .4rem;overflow:hidden;">
     <div style="width:{pct:.0f}%;height:100%;background:{col};border-radius:2px;"></div></div>
   <span style="font-size:.66rem;font-family:'JetBrains Mono',monospace;color:{col};">{s['mean_pm25']:.1f}</span>
 </div>""", unsafe_allow_html=True)
@@ -433,7 +433,7 @@ def page_overview():
             y=[r[0] for r in srt], x=[r[1]["pm25"] for r in srt], orientation="h",
             marker=dict(color=[REGION_COLORS.get(r[0], TEAL) for r in srt], opacity=0.82),
             text=[f"{r[1]['pm25']:.1f}" for r in srt], textposition="outside",
-            textfont=dict(color=TEXT2, size=10)))
+            textfont=dict(color=_ctxt2(), size=10)))
         fig_bar.add_vline(x=WHO_24H, line=dict(color=RED,width=1.5,dash="dash"),
                           annotation_text="WHO 24h",annotation_font_color=RED,annotation_font_size=9)
         fig_bar.add_vline(x=WHO_ANN, line=dict(color=AMBER,width=1,dash="dot"),
@@ -450,9 +450,9 @@ def page_overview():
             y=list(re.keys()), x=list(re.values()), orientation="h",
             marker=dict(color=[REGION_COLORS.get(r, TEAL) for r in re], opacity=0.70),
             text=[f"{v:.0f}%" for v in re.values()], textposition="outside",
-            textfont=dict(color=TEXT2, size=10)))
+            textfont=dict(color=_ctxt2(), size=10)))
         fig_exc.update_layout(**PLO(height=280, margin=dict(l=0,r=55,t=8,b=8),
-            xaxis=dict(gridcolor=BORDER,gridwidth=0.5,title=exc_lbl,range=[0,100]),
+            xaxis=dict(title=exc_lbl,range=[0,100]),
             yaxis=dict(gridcolor="rgba(0,0,0,0)"), showlegend=False))
         st.plotly_chart(fig_exc, use_container_width=True)
 
@@ -462,14 +462,17 @@ def page_overview():
     months = (["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"]
               if lang=="fr" else
               ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"])
+    _is_lt = st.session_state.get("theme","light") == "light"
+    _hm_cs = ([[0.0,"#fdf8f2"],[0.2,"#f0d8c0"],[0.45,AMBER],[0.72,ORANGE],[1.0,RED]] if _is_lt
+              else [[0.0,NAVY2],[0.2,BORDER],[0.45,AMBER],[0.72,ORANGE],[1.0,RED]])
     fig_h = go.Figure(data=go.Heatmap(
         z=list(MONTHLY_BY_REGION.values()), x=months, y=list(MONTHLY_BY_REGION.keys()),
-        colorscale=[[0.0,NAVY2],[0.2,BORDER],[0.45,AMBER],[0.72,ORANGE],[1.0,RED]],
+        colorscale=_hm_cs,
         text=[[f"{v}" for v in row] for row in MONTHLY_BY_REGION.values()],
-        texttemplate="%{text}", textfont={"size":10,"color":TEXT1},
+        texttemplate="%{text}", textfont={"size":10,"color":_ctxt()},
         hovertemplate="<b>%{y}</b> — %{x}<br>PM2.5: %{z:.0f} μg/m³<extra></extra>",
-        colorbar=dict(title=dict(text="PM2.5<br>μg/m³", font=dict(color=TEXT2)),
-                      tickfont=dict(color=TEXT2))))
+        colorbar=dict(title=dict(text="PM2.5<br>μg/m³", font=dict(color=_ctxt2())),
+                      tickfont=dict(color=_ctxt2()))))
     fig_h.update_layout(**PLO(height=295, xaxis=dict(side="top")))
     st.plotly_chart(fig_h, use_container_width=True)
     info_box(_t("heatmap_guide"))

@@ -14,7 +14,7 @@ from utils.models import (load_models, load_artefacts, get_conf_interval, get_al
                            infer_region_from_lat)
 from utils.api import fetch_forecast, fetch_historical, geocode_city, wmo_icon
 from utils.live_data import live_city
-from components.ui import sec, card, info_box, bfai_gauge_svg, _cbg, _cborder, _ctxt, _ctxt2
+from components.ui import sec, card, info_box, bfai_gauge_svg, _cbg, _cborder, _ctxt, _ctxt2, _accent
 from components.charts import PLO
 
 
@@ -50,8 +50,8 @@ def page_explorer():
         tier_c  = {"High":GREEN,"Medium":AMBER,"Low":ORANGE}.get(s.get("tier","Medium"),AMBER)
         live_dot = f'<span class="as-live-dot"></span>' if s.get("live") else ""
         st.markdown(f"""<div style="padding:.35rem 0;">
-  <div style="font-size:.68rem;color:{TEXT2};">{live_dot}
-    <strong style="color:{TEXT1};font-size:.82rem;">{city}</strong>
+  <div style="font-size:.68rem;color:{_ctxt2()};">{live_dot}
+    <strong style="color:{_ctxt()};font-size:.82rem;">{city}</strong>
     · {region} · {lat:.2f}°N {lon:.2f}°E
   </div>
   <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.3rem;align-items:center;">
@@ -59,8 +59,8 @@ def page_explorer():
       border-radius:4px;padding:.1rem .4rem;font-size:.65rem;font-weight:700;">
       {ico_aqi} {pm25:.1f} μg/m³ · {cat_aqi}
     </span>
-    <span style="background:rgba(100,255,218,.07);border:1px solid rgba(100,255,218,.2);
-      color:{TEAL};border-radius:4px;padding:.1rem .4rem;font-size:.62rem;">
+    <span style="background:{_accent()}18;border:1px solid {_accent()}44;
+      color:{_accent()};border-radius:4px;padding:.1rem .4rem;font-size:.62rem;">
       P(exceed) {ap*100:.0f}%
     </span>
     <span style="background:{tier_c}22;border:1px solid {tier_c}55;color:{tier_c};
@@ -163,7 +163,7 @@ def page_explorer():
             sec(_t("bfai_hdr"))
             if forecasts:
                 st.markdown(
-                    f'<div style="font-size:.58rem;color:{TEAL};margin-bottom:.3rem;">' +
+                    f'<div style="font-size:.58rem;color:{_accent()};margin-bottom:.3rem;">' +
                     ('🟢 Live — today\'s forecast' if LNG()=='en' else '🟢 En direct — prévision du jour') +
                     '</div>', unsafe_allow_html=True)
             st.markdown(bfai_gauge_svg(bfai_sc, bfai_label(bfai_sc, LNG()), bfai_col(bfai_sc)),
@@ -177,12 +177,12 @@ def page_explorer():
   align-items:center;justify-content:space-between;">
   <div>
     <div style="font-size:.9rem;font-weight:700;color:{src_col};">{src_lbl}</div>
-    <div style="font-size:.72rem;color:{TEXT2};margin-top:5px;">{src_sub}</div>
-    <div style="font-size:.65rem;color:{TEXT2};margin-top:8px;">Wind: {wind:.1f} km/h · Month {month_now}</div>
+    <div style="font-size:.72rem;color:{_ctxt2()};margin-top:5px;">{src_sub}</div>
+    <div style="font-size:.65rem;color:{_ctxt2()};margin-top:8px;">Wind: {wind:.1f} km/h · Month {month_now}</div>
   </div>
   <div style="text-align:right;">
     <div style="font-size:2.4rem;font-weight:900;color:{src_col};">{src_pct}%</div>
-    <div style="font-size:.65rem;color:{TEXT2};">attributed</div>
+    <div style="font-size:.65rem;color:{_ctxt2()};">attributed</div>
   </div>
 </div>""", unsafe_allow_html=True)
 
@@ -223,7 +223,7 @@ def page_explorer():
                             line=dict(color=TEAL,width=2)),
                 hovertemplate="<b>%{x}</b><br>PM2.5: %{y:.1f} μg/m³<extra></extra>"))
             fig_fc.update_layout(**PLO(height=240,
-                yaxis=dict(gridcolor=BORDER,title="PM2.5 (μg/m³)"),
+                yaxis=dict(title="PM2.5 (μg/m³)"),
                 hovermode="x unified", showlegend=False))
             st.plotly_chart(fig_fc, use_container_width=True)
             info_box(f"<strong>±{q_hat:.0f} μg/m³</strong> calibrated 90% conformal interval for {region}. "
@@ -261,7 +261,7 @@ def page_explorer():
                     fillcolor="rgba(245,158,11,0.07)", line_width=0,
                     annotation_text="Harmattan", annotation_font_color=AMBER)
             fig_s.update_layout(**PLO(height=260,
-                yaxis=dict(gridcolor=BORDER,title="PM2.5 (μg/m³)"),showlegend=False))
+                yaxis=dict(title="PM2.5 (μg/m³)"),showlegend=False))
             st.plotly_chart(fig_s, use_container_width=True)
 
             # WHO exceedance calendar — per-city monthly
@@ -273,10 +273,10 @@ def page_explorer():
                 marker=dict(color=[RED if v>50 else ORANGE if v>20 else AMBER if v>0 else GREEN
                                    for v in exc_vals], opacity=0.82),
                 text=[f"{v:.0f}%" if v>0 else "OK" for v in exc_vals],
-                textposition="outside", textfont=dict(size=9,color=TEXT2),
+                textposition="outside", textfont=dict(size=9,color=_ctxt2()),
                 hovertemplate="<b>%{x}</b><br>%{y:.1f}% above WHO<extra></extra>"))
             fig_cal.update_layout(**PLO(height=200,
-                yaxis=dict(gridcolor=BORDER,title="% above WHO 24h"),
+                yaxis=dict(title="% above WHO 24h"),
                 xaxis=dict(gridcolor="rgba(0,0,0,0)"),showlegend=False))
             st.plotly_chart(fig_cal, use_container_width=True)
 
@@ -353,13 +353,14 @@ def page_explorer():
                 line=dict(color=PURPLE,width=2),marker=dict(size=5,color=PURPLE),
                 fill="tozeroy",fillcolor="rgba(139,92,246,0.08)",
                 showlegend=False),row=2,col=2)
+            _grid = "rgba(160,100,60,0.18)" if st.session_state.get("theme","light")=="light" else BORDER
             fig_cl.update_layout(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)",
                 height=370,showlegend=False,margin=dict(l=0,r=0,t=38,b=0),
-                font=dict(family="Space Grotesk",color=TEXT2,size=9))
+                font=dict(family="Space Grotesk",color=_ctxt2(),size=9))
             for ri in [1,2]:
                 for ci in [1,2]:
-                    fig_cl.update_xaxes(gridcolor=BORDER,gridwidth=0.5,row=ri,col=ci)
-                    fig_cl.update_yaxes(gridcolor=BORDER,gridwidth=0.5,row=ri,col=ci)
+                    fig_cl.update_xaxes(gridcolor=_grid,gridwidth=0.5,row=ri,col=ci)
+                    fig_cl.update_yaxes(gridcolor=_grid,gridwidth=0.5,row=ri,col=ci)
             st.plotly_chart(fig_cl, use_container_width=True)
 
         # ── Compounds ─────────────────────────────────────────────────────────
@@ -414,16 +415,16 @@ def page_explorer():
                           f'EXCEEDS</span>') if exceed else ""
                 mae_note = f"MAE={COMPOUND_TEST_MAE.get(k,'?'):.2f}  R²={COMPOUND_TEST_R2.get(k,'?'):.3f}" if comp_vals else ""
                 st.markdown(f"""<div style="display:flex;align-items:center;gap:.8rem;padding:.38rem 0;
-  border-bottom:1px solid rgba(35,53,84,.5);">
-  <span style="font-size:.68rem;color:{TEXT2};width:52px;flex-shrink:0;
+  border-bottom:1px solid {_cborder()};">
+  <span style="font-size:.68rem;color:{_ctxt2()};width:52px;flex-shrink:0;
     font-family:'JetBrains Mono',monospace;">{COMPOUND_LABELS[k]}</span>
-  <div style="flex:1;height:5px;background:{BORDER};border-radius:3px;overflow:hidden;">
+  <div style="flex:1;height:5px;background:{_cborder()};border-radius:3px;overflow:hidden;">
     <div style="width:{pct:.0f}%;height:100%;background:{col};border-radius:3px;"></div></div>
   <span style="font-size:.68rem;font-family:'JetBrains Mono',monospace;
-    color:{'#f87171' if exceed else TEXT1};width:72px;text-align:right;">{v:.2f} {COMPOUND_UNITS.get(k,'')}</span>
-  <span style="font-size:.6rem;color:{TEXT2};width:60px;">
+    color:{'#f87171' if exceed else _ctxt()};width:72px;text-align:right;">{v:.2f} {COMPOUND_UNITS.get(k,'')}</span>
+  <span style="font-size:.6rem;color:{_ctxt2()};width:60px;">
     {"WHO: "+str(lim) if lim else "No limit"}</span>
-  <span style="font-size:.58rem;color:{TEXT2};">{mae_note}</span>
+  <span style="font-size:.58rem;color:{_ctxt2()};">{mae_note}</span>
   {flag}
 </div>""", unsafe_allow_html=True)
 
@@ -499,11 +500,12 @@ def page_explorer():
                     fillcolor="rgba(100,255,218,0.07)",
                     line=dict(color=TEAL, width=2.5),
                     hovertemplate="<b>%{theta}</b><br>%{r:.1f}%<extra></extra>"))
+                _grid = "rgba(160,100,60,0.18)" if st.session_state.get("theme","light")=="light" else BORDER
                 fig_r.update_layout(
                     polar=dict(bgcolor="rgba(0,0,0,0)",
                         radialaxis=dict(visible=True, range=[0, 70], ticksuffix="%",
-                            tickfont=dict(color=TEXT2, size=8), gridcolor=BORDER),
-                        angularaxis=dict(tickfont=dict(color=TEXT1, size=9), gridcolor=BORDER)),
+                            tickfont=dict(color=_ctxt2(), size=8), gridcolor=_grid),
+                        angularaxis=dict(tickfont=dict(color=_ctxt(), size=9), gridcolor=_grid)),
                     paper_bgcolor="rgba(0,0,0,0)", height=295, showlegend=False,
                     margin=dict(l=40, r=40, t=25, b=15))
                 st.plotly_chart(fig_r, use_container_width=True)
@@ -514,14 +516,14 @@ def page_explorer():
                     pct_v  = src[src_k] * 100
                     is_dom = src_k == dom
                     sc     = SRC_COLORS.get(src_k, TEAL)
-                    st.markdown(f"""<div style="padding:.35rem 0;border-bottom:1px solid rgba(35,53,84,.4);">
+                    st.markdown(f"""<div style="padding:.35rem 0;border-bottom:1px solid {_cborder()};">
   <div style="display:flex;justify-content:space-between;margin-bottom:.2rem;align-items:center;">
     <span style="font-size:.72rem;font-weight:{'700' if is_dom else '500'};
-      color:{'#e6f1ff' if is_dom else TEXT2};">{src_k}</span>
+      color:{_ctxt() if is_dom else _ctxt2()};">{src_k}</span>
     <span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;
       font-weight:700;color:{sc};">{pct_v:.0f}%</span>
   </div>
-  <div style="height:4px;background:{BORDER};border-radius:2px;overflow:hidden;">
+  <div style="height:4px;background:{_cborder()};border-radius:2px;overflow:hidden;">
     <div style="width:{pct_v:.0f}%;height:100%;background:{sc};
       opacity:{'.9' if is_dom else '.5'};border-radius:2px;"></div></div>
 </div>""", unsafe_allow_html=True)
@@ -548,7 +550,7 @@ def page_explorer():
                     line=dict(color=[TEAL if cm else "rgba(0,0,0,0)" for cm in is_cm],
                               width=[2 if cm else 0 for cm in is_cm])),
                 text=[f"{v} μg/m³" for v in vals_b],textposition="outside",
-                textfont=dict(color=TEXT2,size=10)))
+                textfont=dict(color=_ctxt2(),size=10)))
             fig_af.add_vline(x=WHO_24H,line=dict(color=RED,width=1.5,dash="dash"),
                              annotation_text="WHO 24h (15)",annotation_font_color=RED)
             fig_af.update_layout(**PLO(height=370,margin=dict(l=0,r=70,t=10,b=10),

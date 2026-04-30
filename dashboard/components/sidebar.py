@@ -125,33 +125,16 @@ body,.stApp{{
     color:#1a0e04!important;
     font-family:'Open Sans',sans-serif!important;
 }}
-/* Universal text override — force dark text everywhere in content area */
-.stApp *:not([data-testid="stSidebar"]):not([data-testid="stSidebar"] *){{
-    color:#1a0e04!important;
-}}
-/* Catch any remaining white/light-blue text from dark theme variables */
-.stApp [style*="color: rgb(230"],
-.stApp [style*="color: rgb(136"],
-.stApp [style*="color: #e6f1ff"],
-.stApp [style*="color: #8892b0"]{{
-    color:#1a0e04!important;
-}}
-/* Specific Streamlit elements that bypass the universal selector */
+/* Streamlit's own text containers — leave inline style="" colours intact */
 [data-testid="stText"],[data-testid="stText"] *,
 [data-testid="stMarkdownContainer"] p,
-[data-testid="stMarkdownContainer"] span,
 [data-testid="stMarkdownContainer"] li,
 [data-testid="stMarkdownContainer"] h1,
 [data-testid="stMarkdownContainer"] h2,
 [data-testid="stMarkdownContainer"] h3,
-[data-testid="stMarkdownContainer"] strong,
 [data-testid="stMarkdownContainer"] em,
-.element-container,.element-container *,
-.stAlert,.stAlert *,
-.stSuccess,.stSuccess *,
-.stInfo,.stInfo *,
-.stWarning,.stWarning *,
-.stException,.stException *,
+.stAlert p,.stAlert li,
+.stSuccess p,.stInfo p,.stWarning p,.stException p,
 p,li,td,th,caption,figcaption{{
     color:#1a0e04!important;
 }}

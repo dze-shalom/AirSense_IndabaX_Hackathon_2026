@@ -15,40 +15,9 @@ from utils.helpers import (aqi, compute_bfai, bfai_label, bfai_col,
 from utils.models import (load_models, load_artefacts, get_conf_interval,
                            get_alert_prob, predict_7day, infer_region_from_lat)
 from utils.api import fetch_forecast, geocode_city, wmo_icon
-from components.ui import sec, card, info_box, bfai_gauge_svg, harmattan_gauge_svg
+from components.ui import sec, card, info_box, bfai_gauge_svg, harmattan_gauge_svg, \
+    _cbg, _cborder, _ctxt, _ctxt2, _accent
 from components.charts import PLO
-
-def _cbg():
-    """Card background — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "rgba(255,252,248,0.95)"
-    from config import NAVY2
-    return NAVY2
-
-def _cborder():
-    """Card border — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "rgba(160,100,60,0.2)"
-    from config import BORDER
-    return BORDER
-
-def _ctxt():
-    """Primary text — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "#1a0e04"
-    from config import TEXT1
-    return TEXT1
-
-def _ctxt2():
-    """Secondary text — adapts to current theme."""
-    import streamlit as st
-    if st.session_state.get("theme","light") == "light":
-        return "#5c3a1e"
-    from config import TEXT2
-    return TEXT2
 
 
 
@@ -85,7 +54,7 @@ def page_alerts_health():
                 st.markdown(f"""<div class="as-alert-item">
   <div class="as-alert-dot" style="background:{col};box-shadow:0 0 5px {col}80;"></div>
   <div><div style="font-size:.78rem;font-weight:600;">{city}</div>
-  <div style="font-size:.63rem;color:{TEXT2};">{s["region"]} · {s["who_exc"]:.0f}% days exceed WHO</div></div>
+  <div style="font-size:.63rem;color:{_ctxt2()};">{s["region"]} · {s["who_exc"]:.0f}% days exceed WHO</div></div>
   <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.76rem;
     font-weight:600;color:{col};">{s["mean_pm25"]:.1f} μg/m³</span>
   <span style="font-size:.85rem;">{ico}</span>
@@ -104,7 +73,7 @@ def page_alerts_health():
                 st.markdown(f"""<div class="as-alert-item">
   <div class="as-alert-dot" style="background:{col};"></div>
   <div style="flex:1;"><div style="font-size:.76rem;font-weight:600;">{city}</div>
-  <div style="font-size:.62rem;color:{TEXT2};">{s.get("region","—")} · {s["mean_pm25"]:.1f} μg/m³</div></div>
+  <div style="font-size:.62rem;color:{_ctxt2()};">{s.get("region","—")} · {s["mean_pm25"]:.1f} μg/m³</div></div>
   <div style="text-align:right;">
     <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:700;color:{tc};">{prob*100:.0f}%</div>
     <div style="font-size:.55rem;color:{tc};font-weight:600;">{tl}</div>
@@ -130,13 +99,13 @@ def page_alerts_health():
             st.markdown(f"""<div class="as-school-card" style="background:{sb};border-color:{sc};">
   <div style="font-size:.62rem;color:{sc};text-transform:uppercase;letter-spacing:.7px;font-weight:700;">School Advisory</div>
   <div style="font-size:.88rem;font-weight:700;color:{sc};margin:6px 0;">{sl}</div>
-  <div style="font-size:.68rem;color:{TEXT2};">PM2.5: {adv_pm:.1f} μg/m³ · O₃ est.: {o3_proxy:.0f} μg/m³</div>
+  <div style="font-size:.68rem;color:{_ctxt2()};">PM2.5: {adv_pm:.1f} μg/m³ · O₃ est.: {o3_proxy:.0f} μg/m³</div>
 </div>""", unsafe_allow_html=True)
         with sb_c:
             st.markdown(f"""<div class="as-school-card" style="border-color:{agri_c};">
   <div style="font-size:.62rem;color:{agri_c};text-transform:uppercase;letter-spacing:.7px;font-weight:700;">Agricultural Advisory</div>
   <div style="font-size:.88rem;font-weight:600;color:{agri_c};margin:6px 0;">{agri_m}</div>
-  <div style="font-size:.68rem;color:{TEXT2};">Region: {adv_region}</div>
+  <div style="font-size:.68rem;color:{_ctxt2()};">Region: {adv_region}</div>
 </div>""", unsafe_allow_html=True)
 
         # SMS preview
@@ -150,13 +119,13 @@ def page_alerts_health():
                f"Vulnerable groups: avoid prolonged outdoor exposure. airsense-cm.org")
         st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};border-radius:12px;padding:14px;">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-    <div style="width:34px;height:34px;background:{TEAL};border-radius:50%;display:flex;
-      align-items:center;justify-content:center;font-size:11px;font-weight:800;color:{NAVY};flex-shrink:0;">AS</div>
-    <div><div style="font-size:.8rem;font-weight:700;">AirSense-CM</div>
-    <div style="font-size:.62rem;color:{TEXT2};">Ministry of Public Health · Automated</div></div>
-    <div style="margin-left:auto;font-size:.65rem;color:{TEXT2};">{now.strftime('%H:%M')}</div>
+    <div style="width:34px;height:34px;background:{_accent()};border-radius:50%;display:flex;
+      align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;">AS</div>
+    <div><div style="font-size:.8rem;font-weight:700;color:{_ctxt()};">AirSense-CM</div>
+    <div style="font-size:.62rem;color:{_ctxt2()};">Ministry of Public Health · Automated</div></div>
+    <div style="margin-left:auto;font-size:.65rem;color:{_ctxt2()};">{now.strftime('%H:%M')}</div>
   </div>
-  <div style="font-size:.76rem;line-height:1.65;color:{TEXT1};">{sms}</div>
+  <div style="font-size:.76rem;line-height:1.65;color:{_ctxt()};">{sms}</div>
 </div>""", unsafe_allow_html=True)
 
         # Seasonal advisory calendar
@@ -166,13 +135,16 @@ def page_alerts_health():
         cal={"Far North":[48,54,32,28,24,19,14,13,13,22,34,47],"North":[43,48,28,23,18,15,12,12,11,18,28,40],
              "Adamawa":[33,40,24,17,14,13,10,10,9,13,21,30],"West":[37,45,30,23,21,19,15,14,15,19,27,37],
              "North West":[36,44,28,20,18,15,12,12,12,16,24,35],"South":[15,20,12,9,9,9,8,8,5,6,9,14]}
+        _is_lt = st.session_state.get("theme","light") == "light"
+        _hm_cs = ([[0.0,"#fdf8f2"],[0.3,"#f0d8c0"],[0.5,AMBER],[0.75,ORANGE],[1.0,RED]] if _is_lt
+                  else [[0.0,NAVY2],[0.3,BORDER],[0.5,AMBER],[0.75,ORANGE],[1.0,RED]])
         fig_cal=go.Figure(data=go.Heatmap(
             z=list(cal.values()),x=months_cal,y=list(cal.keys()),
-            colorscale=[[0.0,NAVY2],[0.3,BORDER],[0.5,AMBER],[0.75,ORANGE],[1.0,RED]],
+            colorscale=_hm_cs,
             text=[[f"{v}" for v in row] for row in cal.values()],texttemplate="%{text}",
-            textfont={"size":10,"color":TEXT1},
+            textfont={"size":10,"color":_ctxt()},
             hovertemplate="<b>%{y}</b> — %{x}<br>PM2.5: %{z:.0f} μg/m³<extra></extra>",
-            colorbar=dict(title=dict(text="PM2.5<br>μg/m³",font=dict(color=TEXT2)),tickfont=dict(color=TEXT2))))
+            colorbar=dict(title=dict(text="PM2.5<br>μg/m³",font=dict(color=_ctxt2())),tickfont=dict(color=_ctxt2()))))
         fig_cal.update_layout(**PLO(height=260,xaxis=dict(side="top")))
         st.plotly_chart(fig_cal, use_container_width=True)
 
@@ -212,9 +184,9 @@ def page_alerts_health():
             else:                 rec,rc="Very unhealthy. Stay indoors.",PURPLE
             st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-left:3px solid {rc};border-radius:0 9px 9px 0;padding:.8rem 1rem;
-  margin-top:.85rem;font-size:.8rem;color:{TEXT2};">{rec}</div>""", unsafe_allow_html=True)
+  margin-top:.85rem;font-size:.8rem;color:{_ctxt2()};">{rec}</div>""", unsafe_allow_html=True)
             info_box(f"<strong>Alert formula:</strong> P(exceed WHO) = sigmoid(0.222 × PM2.5 − 3.037) "
-                     f"= <strong style='color:{TEAL};'>{r['ap']*100:.1f}%</strong> at {pm_sl} μg/m³.")
+                     f"= <strong style='color:{_accent()};'>{r['ap']*100:.1f}%</strong> at {pm_sl} μg/m³.")
 
     st.markdown('</div>', unsafe_allow_html=True)
 

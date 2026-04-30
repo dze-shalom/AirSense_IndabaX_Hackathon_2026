@@ -38,6 +38,7 @@ _cbg     = _card_bg
 _cborder = _card_border
 _ctxt    = _text_primary
 _ctxt2   = _text_secondary
+_accent  = _info_accent     # theme accent: #b5613f light / TEAL dark
 
 
 def sec(title):
