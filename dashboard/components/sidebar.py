@@ -420,11 +420,12 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
 
 
 def render_nav():
-    """Fixed top bar + always-visible horizontal page nav strip."""
+    """Fixed top bar."""
     page     = st.session_state.page
     lang     = LNG()
     labels   = NAV_LABELS[lang]
     page_lbl = labels.get(page, page.title())
+    is_light = st.session_state.get("theme", "light") == "light"
     try:
         from utils.live_data import get_live_stats
         live     = get_live_stats()
@@ -433,25 +434,36 @@ def render_nav():
     except Exception:
         n_alerts = sum(1 for s in CITY_STATS.values() if s["mean_pm25"] > get_threshold())
 
-    # ── Fixed decorative top bar ──────────────────────────────────────────────
-    st.markdown(f"""
-<div class="as-fixed-nav">
-  <div style="display:flex;align-items:center;gap:.5rem;">
-    <div class="as-logo">
-      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
-        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
-      </svg>
-      AirSense Cameroon
-    </div>
-    <div style="width:1px;height:16px;background:rgba(0,0,0,0.15);margin:0 .2rem;"></div>
-    <span style="font-size:.72rem;opacity:.7;">{page_lbl}</span>
-  </div>
-  <div style="display:flex;align-items:center;gap:.5rem;">
-    <span class="as-alert-badge">{n_alerts} {'alerts' if lang=='en' else 'alertes'}</span>
-    <span style="font-size:.55rem;display:flex;align-items:center;gap:3px;opacity:.8;"><span class="as-live-dot"></span>{"LIVE" if lang=="en" else "EN DIRECT"}</span>
-  </div>
-</div>""", unsafe_allow_html=True)
+    # Explicit colours — never rely on CSS inheritance so theme can't hide text
+    logo_col  = "#b5613f" if is_light else TEAL
+    text_col  = "#3d1f06" if is_light else TEXT1
+    muted_col = "#7a5c40" if is_light else TEXT2
+    live_word = "LIVE" if lang == "en" else "EN DIRECT"
+    alert_lbl = "alerts" if lang == "en" else "alertes"
+
+    nav_html = (
+        '<div class="as-fixed-nav">'
+        '<div style="display:flex;align-items:center;gap:.5rem;">'
+        f'<div class="as-logo" style="color:{logo_col};">'
+        '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"'
+        f' fill="none" stroke="{logo_col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>'
+        '</svg>'
+        f'<span style="color:{logo_col};font-family:Montserrat,sans-serif;font-size:.9rem;font-weight:700;">AirSense Cameroon</span>'
+        '</div>'
+        f'<div style="width:1px;height:16px;background:rgba(0,0,0,0.15);margin:0 .2rem;"></div>'
+        f'<span style="font-size:.72rem;color:{muted_col};">{page_lbl}</span>'
+        '</div>'
+        '<div style="display:flex;align-items:center;gap:.5rem;">'
+        f'<span class="as-alert-badge" style="color:{RED};">{n_alerts} {alert_lbl}</span>'
+        f'<span style="font-size:.55rem;color:{muted_col};display:flex;align-items:center;gap:3px;">'
+        '<span class="as-live-dot"></span>'
+        f'<span style="color:{muted_col};">{live_word}</span>'
+        '</span>'
+        '</div>'
+        '</div>'
+    )
+    st.markdown(nav_html, unsafe_allow_html=True)
 
     # ── Hide Streamlit's own collapse controls — we use our own toggle ─────────
     st.markdown("""<style>
