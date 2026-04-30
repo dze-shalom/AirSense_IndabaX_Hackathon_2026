@@ -131,7 +131,14 @@ def page_explorer():
             wdir    = fd["daily"].get("wind_direction_10m_dominant",[180])[0] if fd else 180
             month_now = datetime.strptime(today["date"],"%Y-%m-%d").month
         else:
-            fc_pm25 = pm25; wind = 6; hum = 65; wdir = 180
+            fc_pm25 = pm25
+            if fd:
+                _hr = fd.get("hourly", {})
+                wind = round(float(_hr.get("wind_speed_10m", [6])[0]), 1)
+                hum  = round(float(_hr.get("relative_humidity_2m", [65])[0]))
+                wdir = fd["daily"].get("wind_direction_10m_dominant", [180])[0] if fd.get("daily") else 180
+            else:
+                wind = 6; hum = 65; wdir = 180
             month_now = datetime.now().month
 
         _, fc_col, fc_ico, fc_raw = aqi(fc_pm25, LNG())

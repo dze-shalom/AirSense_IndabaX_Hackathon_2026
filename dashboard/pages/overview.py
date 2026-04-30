@@ -165,45 +165,53 @@ def page_overview():
         sec(_t("filter_regions"))
         all_regions = list(CITIES.keys())
 
-        # Select All / Deselect All toggle buttons
-        cb1, cb2, cb3 = st.columns([1, 1, 5])
-        with cb1:
-            if st.button("All" if lang=="en" else "Tout", key="ov_all",
-                         use_container_width=True):
-                for r in all_regions:
-                    st.session_state[f"ov_r_{r}"] = True
-        with cb2:
-            if st.button("Clear" if lang=="en" else "Effacer", key="ov_none",
-                         use_container_width=True):
-                for r in all_regions:
-                    st.session_state[f"ov_r_{r}"] = False
+        with st.expander("Filters" if lang == "en" else "Filtres", expanded=False):
+            # Select All / Deselect All toggle buttons
+            cb1, cb2, cb3 = st.columns([1, 1, 5])
+            with cb1:
+                if st.button("All" if lang=="en" else "Tout", key="ov_all",
+                             use_container_width=True):
+                    for r in all_regions:
+                        st.session_state[f"ov_r_{r}"] = True
+            with cb2:
+                if st.button("Clear" if lang=="en" else "Effacer", key="ov_none",
+                             use_container_width=True):
+                    for r in all_regions:
+                        st.session_state[f"ov_r_{r}"] = False
 
-        # Compact two-column checkbox grid
-        n_cols = 2
-        reg_cols = st.columns(n_cols)
-        sel_regions = []
-        for i, reg in enumerate(all_regions):
-            default = st.session_state.get(f"ov_r_{reg}", True)
-            with reg_cols[i % n_cols]:
-                dot_col = REGION_COLORS.get(reg, TEAL)
-                checked = st.checkbox(
-                    reg, value=default, key=f"ov_r_{reg}",
-                    help=f"{len(CITIES[reg])} cities"
-                )
-            if checked:
-                sel_regions.append(reg)
+            # Compact two-column checkbox grid
+            n_cols = 2
+            reg_cols = st.columns(n_cols)
+            for i, reg in enumerate(all_regions):
+                default = st.session_state.get(f"ov_r_{reg}", True)
+                with reg_cols[i % n_cols]:
+                    dot_col = REGION_COLORS.get(reg, TEAL)
+                    st.checkbox(
+                        reg, value=default, key=f"ov_r_{reg}",
+                        help=f"{len(CITIES[reg])} cities"
+                    )
 
-        # AQI + Layer filters on one row
-        fa1, fa2 = st.columns(2)
-        with fa1:
-            aqi_opts_en = ["All","Good","Moderate","Poor","Very Poor","Hazardous"]
-            aqi_opts_fr = ["Tous","Bon","Modéré","Mauvais","Très Mauvais","Dangereux"]
-            aqi_opts = aqi_opts_fr if lang == "fr" else aqi_opts_en
-            aqi_f    = st.selectbox(_t("filter_aqi"), aqi_opts, key="ov_aqi")
-            aqi_f_en = aqi_opts_en[aqi_opts.index(aqi_f)] if aqi_f in aqi_opts else "All"
-        with fa2:
-            layer_opts = [_t("cities_heatmap"), _t("cities_only"), _t("heatmap_only")]
-            map_layer  = st.selectbox(_t("map_layer"), layer_opts, key="ov_layer")
+            # AQI + Layer filters on one row
+            fa1, fa2 = st.columns(2)
+            with fa1:
+                aqi_opts_en = ["All","Good","Moderate","Poor","Very Poor","Hazardous"]
+                aqi_opts_fr = ["Tous","Bon","Modéré","Mauvais","Très Mauvais","Dangereux"]
+                aqi_opts = aqi_opts_fr if lang == "fr" else aqi_opts_en
+                aqi_f    = st.selectbox(_t("filter_aqi"), aqi_opts, key="ov_aqi")
+                aqi_f_en = aqi_opts_en[aqi_opts.index(aqi_f)] if aqi_f in aqi_opts else "All"
+            with fa2:
+                layer_opts = [_t("cities_heatmap"), _t("cities_only"), _t("heatmap_only")]
+                map_layer  = st.selectbox(_t("map_layer"), layer_opts, key="ov_layer")
+
+        # Rebuild sel_regions from session state after expander
+        sel_regions = [r for r in all_regions if st.session_state.get(f"ov_r_{r}", True)]
+        aqi_f    = st.session_state.get("ov_aqi", aqi_opts[0] if lang == "fr" else "All")
+        aqi_opts_en = ["All","Good","Moderate","Poor","Very Poor","Hazardous"]
+        aqi_opts_fr = ["Tous","Bon","Modéré","Mauvais","Très Mauvais","Dangereux"]
+        aqi_opts = aqi_opts_fr if lang == "fr" else aqi_opts_en
+        aqi_f_en = aqi_opts_en[aqi_opts.index(aqi_f)] if aqi_f in aqi_opts else "All"
+        layer_opts = [_t("cities_heatmap"), _t("cities_only"), _t("heatmap_only")]
+        map_layer  = st.session_state.get("ov_layer", layer_opts[0])
 
         # ── Build city dataframe ──────────────────────────────────────────────
         rows = []

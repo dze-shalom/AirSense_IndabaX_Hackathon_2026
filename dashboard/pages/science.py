@@ -95,15 +95,15 @@ def page_science():
             fig_grid.update_yaxes(gridcolor="rgba(0,0,0,0)",row=(i-1)//5+1,col=(i-1)%5+1)
         st.plotly_chart(fig_grid, use_container_width=True)
 
-        sec(f"{_t('deep_dive')} — {region}")
-        reg_data = _norm_shap(region_shap.get(region, REGION_SHAP_FALLBACK.get(region, [])))
-        if reg_data:
-            max_v = reg_data[0][1] if reg_data and len(reg_data[0]) > 1 and reg_data[0][1] > 0 else 1.0
-            for feat, val in reg_data:
-                pct  = val / max_v * 100
-                col  = REGION_COLORS.get(region, TEAL)
-                desc = SHAP_DESC.get(feat, feat)
-                st.markdown(f"""<div style="display:flex;align-items:center;gap:.85rem;padding:.5rem 0;
+        with st.expander(f"{_t('deep_dive')} — {region}", expanded=False):
+            reg_data = _norm_shap(region_shap.get(region, REGION_SHAP_FALLBACK.get(region, [])))
+            if reg_data:
+                max_v = reg_data[0][1] if reg_data and len(reg_data[0]) > 1 and reg_data[0][1] > 0 else 1.0
+                for feat, val in reg_data:
+                    pct  = val / max_v * 100
+                    col  = REGION_COLORS.get(region, TEAL)
+                    desc = SHAP_DESC.get(feat, feat)
+                    st.markdown(f"""<div style="display:flex;align-items:center;gap:.85rem;padding:.5rem 0;
   border-bottom:1px solid {_cborder()};">
   <span style="font-size:.75rem;font-weight:600;width:165px;flex-shrink:0;">{feat}</span>
   <div style="flex:1;height:7px;background:{_cborder()};border-radius:3px;overflow:hidden;">
@@ -111,9 +111,9 @@ def page_science():
   <span style="font-size:.72rem;font-weight:700;width:50px;text-align:right;color:{col};">{val:.3f}</span>
   <span style="font-size:.65rem;color:{_ctxt2()};flex:1;">{desc}</span>
 </div>""", unsafe_allow_html=True)
-        info_box("<strong>Key finding:</strong> <em>year</em> dominates 7 of 10 regions — "
-                 "a genuine multi-year pollution trend. <em>South</em> driven by <em>latitude</em> (SHAP≈0.23). "
-                 "<em>West</em> flags <em>region_enc</em> — highland burning not in weather data.")
+            info_box("<strong>Key finding:</strong> <em>year</em> dominates 7 of 10 regions — "
+                     "a genuine multi-year pollution trend. <em>South</em> driven by <em>latitude</em> (SHAP≈0.23). "
+                     "<em>West</em> flags <em>region_enc</em> — highland burning not in weather data.")
 
     # ══════════════════════════════════════════════════════════════════════════
     # TAB 2 — CLIMATE 2050

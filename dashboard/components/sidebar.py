@@ -316,10 +316,7 @@ def render_nav():
   </div>
   <div style="display:flex;align-items:center;gap:.5rem;">
     <span class="as-alert-badge">{n_alerts} {'alerts' if lang=='en' else 'alertes'}</span>
-    <span style="font-size:.6rem;opacity:.65;font-family:'Roboto Mono',monospace;
-      display:flex;align-items:center;gap:.2rem;">
-      <span class="as-live-dot"></span>Live
-    </span>
+    <span style="font-size:.55rem;display:flex;align-items:center;gap:3px;opacity:.8;"><span class="as-live-dot"></span>{"LIVE" if lang=="en" else "EN DIRECT"}</span>
   </div>
 </div>""", unsafe_allow_html=True)
 
