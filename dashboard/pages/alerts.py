@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 from datetime import datetime
+import urllib.parse as _up
 
 from config import *
 from utils.live_data import live_all, live_city
@@ -35,7 +36,9 @@ def page_alerts_health():
     with st.spinner("Loading live predictions…"):
         _stats = live_all()
 
-    tab_al, tab_hc = st.tabs([_t("alert_centre_tab"), _t("health_calc_tab")])
+    tab_al, tab_hc, tab_exp = st.tabs([
+        _t("alert_centre_tab"), _t("health_calc_tab"), _t("exposure_tab")
+    ])
 
     with tab_al:
         # city selector
@@ -60,6 +63,21 @@ def page_alerts_health():
     font-weight:600;color:{col};">{s["mean_pm25"]:.1f} μg/m³</span>
   <span style="font-size:.85rem;">{ico}</span>
 </div>""", unsafe_allow_html=True)
+
+            # WhatsApp share link for selected city alert
+            _city_sms = (f"AIRSENSE-CM: {adv_city} — PM2.5 = {adv_pm:.1f} µg/m³. "
+                         f"{'Exceeded WHO limit' if adv_pm > get_threshold() else 'Within limit'}. "
+                         f"airsense-cm.org")
+            _wa = f"https://wa.me/?text={_up.quote(_city_sms)}"
+            lang = LNG()
+            st.markdown(
+                f'<div style="margin-top:.5rem;">'
+                f'<a href="{_wa}" target="_blank" rel="noopener" '
+                f'style="font-size:.65rem;color:#25D366;text-decoration:none;display:inline-flex;'
+                f'align-items:center;gap:4px;">📲 '
+                + ('Share alert via WhatsApp' if lang == 'en' else 'Partager l\'alerte WhatsApp')
+                + '</a></div>',
+                unsafe_allow_html=True)
 
         with a2:
             sec(_t("calibrated_alert_hdr"))
@@ -133,6 +151,30 @@ def page_alerts_health():
   </div>
   <div style="font-size:.76rem;line-height:1.65;color:{_ctxt()};">{sms}</div>
 </div>""", unsafe_allow_html=True)
+            wa_text = _up.quote(sms)
+            wa_url  = f"https://wa.me/?text={wa_text}"
+            st.markdown(
+                f'<a href="{wa_url}" target="_blank" rel="noopener" '
+                f'style="display:inline-flex;align-items:center;gap:6px;margin-top:.6rem;'
+                f'background:#25D366;color:#fff;padding:.4rem .9rem;border-radius:8px;'
+                f'text-decoration:none;font-size:.75rem;font-weight:600;">'
+                f'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">'
+                f'<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15'
+                f'-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475'
+                f'-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52'
+                f'.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207'
+                f'-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372'
+                f'-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2'
+                f' 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719'
+                f' 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>'
+                f'<path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.555 4.112 1.528 5.837L0 24l6.335-1.508'
+                f'A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818'
+                f'a9.818 9.818 0 0 1-5.006-1.374l-.36-.214-3.728.888.916-3.618-.236-.373'
+                f'A9.818 9.818 0 0 1 2.182 12c0-5.426 4.392-9.818 9.818-9.818 5.426 0 9.818 4.392'
+                f' 9.818 9.818 0 0 1-9.818 9.818z"/></svg>'
+                f'{"Share on WhatsApp" if lang=="en" else "Partager sur WhatsApp"}</a>',
+                unsafe_allow_html=True
+            )
 
         # Seasonal advisory calendar
         st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
@@ -199,6 +241,130 @@ def page_alerts_health():
   margin-top:.85rem;font-size:.8rem;color:{_ctxt2()};">{rec}</div>""", unsafe_allow_html=True)
             info_box(f"<strong>Alert formula:</strong> P(exceed WHO) = sigmoid(0.222 × PM2.5 − 3.037) "
                      f"= <strong style='color:{_accent()};'>{r['ap']*100:.1f}%</strong> at {pm_sl} μg/m³.")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # TAB 3 — PERSONAL EXPOSURE ACCUMULATOR
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_exp:
+        lang = LNG()
+        sec(_t("exposure_hdr"))
+        info_box(_t("exposure_info"))
+
+        if "exposure_log" not in st.session_state:
+            st.session_state.exposure_log = []
+
+        with st.form("exp_form", clear_on_submit=True):
+            ec1, ec2, ec3 = st.columns(3)
+            with ec1:
+                exp_region = st.selectbox(_t("select_region"), list(CITIES.keys()), key="exp_reg")
+            with ec2:
+                exp_city = st.selectbox(_t("select_city"), [c[0] for c in CITIES[exp_region]], key="exp_city")
+            with ec3:
+                exp_hours = st.slider(_t("hours_spent"), 0.5, 16.0, 2.0, step=0.5, key="exp_hrs")
+            add_ok = st.form_submit_button(_t("add_location"), use_container_width=True)
+
+        if add_ok:
+            pm_val = _stats.get(exp_city, CITY_STATS.get(exp_city, {"mean_pm25": 20.0}))["mean_pm25"]
+            st.session_state.exposure_log.append({
+                "city": exp_city, "region": exp_region,
+                "hours": exp_hours, "pm25": pm_val,
+            })
+
+        if st.session_state.exposure_log:
+            log         = st.session_state.exposure_log
+            total_hours = sum(e["hours"] for e in log)
+            weighted_pm = sum(e["pm25"] * e["hours"] for e in log) / total_hours
+            exceed_pct  = max(0.0, (weighted_pm - WHO_24H) / WHO_24H * 100)
+
+            # Entry list
+            for entry in log:
+                _, ecol, eico, _ = aqi(entry["pm25"])
+                st.markdown(
+                    f'<div class="as-alert-item">'
+                    f'<div class="as-alert-dot" style="background:{ecol};"></div>'
+                    f'<div style="flex:1;">'
+                    f'<div style="font-size:.78rem;font-weight:600;">{entry["city"]}</div>'
+                    f'<div style="font-size:.62rem;color:{_ctxt2()};">'
+                    f'{entry["region"]} · {entry["hours"]:.1f}h · {entry["pm25"]:.1f} µg/m³</div>'
+                    f'</div><span style="font-size:.8rem;">{eico}</span></div>',
+                    unsafe_allow_html=True)
+
+            st.markdown("<div style='margin-top:.8rem;'></div>", unsafe_allow_html=True)
+            m1, m2, m3, m4 = st.columns(4)
+            with m1: card(_t("daily_exposure"),   f"{weighted_pm:.1f}", "µg/m³",
+                          accent=RED if weighted_pm > WHO_24H else GREEN)
+            with m2: card(_t("total_hours"),      f"{total_hours:.1f}", "hrs",   accent=TEAL)
+            with m3: card(_t("who_exceedance"),   f"{exceed_pct:.0f}",  "%",
+                          accent=RED if exceed_pct > 0 else GREEN)
+            with m4: card(_t("locations_visited"), str(len(log)),       _t("cities"), accent=AMBER)
+
+            # Per-location bar chart
+            fig_exp = go.Figure(go.Bar(
+                x=[e["city"] for e in log],
+                y=[e["pm25"] for e in log],
+                marker_color=[aqi(e["pm25"])[1] for e in log],
+                text=[f"{e['hours']:.1f}h" for e in log],
+                textposition="outside",
+            ))
+            fig_exp.add_hline(y=WHO_24H, line_dash="dash", line_color=GREEN,
+                              annotation_text="WHO 15 µg/m³",
+                              annotation_font_color=GREEN)
+            fig_exp.update_layout(**PLO(height=220, yaxis_title="PM2.5 µg/m³"))
+            st.plotly_chart(fig_exp, use_container_width=True)
+
+            # Health advisory
+            if weighted_pm <= WHO_24H:
+                rec = ("✅ Your exposure today is within safe limits." if lang == "en"
+                       else "✅ Votre exposition aujourd'hui est dans les limites sûres.")
+                rc = GREEN
+            elif weighted_pm <= 35:
+                rec = ("⚠️ Moderate exposure — sensitive groups should limit outdoor time." if lang == "en"
+                       else "⚠️ Exposition modérée — groupes sensibles: limiter le temps extérieur.")
+                rc = AMBER
+            elif weighted_pm <= 55:
+                rec = ("🟠 High exposure — consider wearing a mask and reducing outdoor activities." if lang == "en"
+                       else "🟠 Exposition élevée — envisagez un masque et réduisez les activités extérieures.")
+                rc = ORANGE
+            else:
+                rec = ("🔴 Very high exposure — stay indoors and consult a doctor if symptoms develop." if lang == "en"
+                       else "🔴 Exposition très élevée — restez à l'intérieur si possible.")
+                rc = RED
+
+            st.markdown(
+                f'<div style="border-left:3px solid {rc};padding:.7rem 1rem;'
+                f'border-radius:0 8px 8px 0;margin-top:.5rem;font-size:.8rem;color:{_ctxt2()};">'
+                f'{rec}</div>',
+                unsafe_allow_html=True)
+
+            # WhatsApp share
+            _exp_wa_msg = (
+                f"My air quality exposure today: {weighted_pm:.1f} µg/m³ avg "
+                f"across {len(log)} location{'s' if len(log)!=1 else ''} "
+                f"({'EXCEEDS' if weighted_pm > WHO_24H else 'within'} WHO limit). "
+                f"Tracked via AirSense CM — airsense-cm.org"
+            )
+            _exp_wa_url = f"https://wa.me/?text={_up.quote(_exp_wa_msg)}"
+            st.markdown(
+                f'<a href="{_exp_wa_url}" target="_blank" rel="noopener" '
+                f'style="font-size:.65rem;color:#25D366;text-decoration:none;'
+                f'display:inline-flex;align-items:center;gap:4px;margin-top:.4rem;">'
+                f'📲 '
+                + ("Share my daily exposure" if lang == "en" else "Partager mon exposition")
+                + "</a>",
+                unsafe_allow_html=True)
+
+            st.markdown("<div style='margin-top:.5rem;'></div>", unsafe_allow_html=True)
+            if st.button(_t("clear_log"), key="exp_clear"):
+                st.session_state.exposure_log = []
+                st.rerun()
+        else:
+            st.markdown(
+                f'<div style="text-align:center;padding:2rem;color:{_ctxt2()};font-size:.8rem;">'
+                + ("Add locations above to track your daily air quality exposure."
+                   if lang == "en" else
+                   "Ajoutez des lieux ci-dessus pour suivre votre exposition quotidienne.")
+                + "</div>",
+                unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 

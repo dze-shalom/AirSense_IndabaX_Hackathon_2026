@@ -644,10 +644,10 @@ it was applied to unseen cities at three difficulty levels:<br>
         brief_city_stored = st.session_state.get("_last_brief_city", "")
         if brief_text and brief_city_stored == brief_city:
             _acc = _accent()
-            st.markdown(
-                f'<div style="background:{_cbg()};border:1px solid {_cborder()};"
-                f"border-left:4px solid {_acc};border-radius:10px;"
-                f"padding:1.1rem 1.3rem;margin-top:.8rem;">'
+            _brief_html = (
+                f'<div style="background:{_cbg()};border:1px solid {_cborder()};'
+                f'border-left:4px solid {_acc};border-radius:10px;'
+                f'padding:1.1rem 1.3rem;margin-top:.8rem;">'
                 f'<div style="font-size:.65rem;font-weight:700;letter-spacing:.08em;'
                 f'color:{_acc};text-transform:uppercase;margin-bottom:.6rem;">'
                 f'POLICY BRIEF — {brief_city.upper()}</div>'
@@ -655,10 +655,10 @@ it was applied to unseen cities at three difficulty levels:<br>
                 f'{brief_text.replace(chr(10), "<br>")}'
                 f'</div>'
                 f'<div style="margin-top:.75rem;font-size:.65rem;color:{_ctxt2()};">'
-                f'💡 Tip: Copy the text above to share with health officials.</div>'
-                f'</div>',
-                unsafe_allow_html=True,
+                f'&#128161; Tip: Copy the text above to share with health officials.</div>'
+                f'</div>'
             )
+            st.markdown(_brief_html, unsafe_allow_html=True)
 
             # WhatsApp share link
             wa_text = (
