@@ -294,7 +294,8 @@ def render_nav():
     try:
         from utils.live_data import get_live_stats
         live     = get_live_stats()
-        n_alerts = sum(1 for s in live.values() if s.get("mean_pm25", 0) > get_threshold())
+        source   = live if live else CITY_STATS
+        n_alerts = sum(1 for s in source.values() if s.get("mean_pm25", 0) > get_threshold())
     except Exception:
         n_alerts = sum(1 for s in CITY_STATS.values() if s["mean_pm25"] > get_threshold())
 
@@ -449,11 +450,13 @@ def render_sidebar():
             get_live_stats, compute_live_shap, fetch_forecast = _get_live_stats()
             live = get_live_stats()
             n_live    = len(live)
-            n_alerts  = sum(1 for s in live.values() if s.get("mean_pm25", 0) > WHO_24H)
+            src       = live if live else CITY_STATS
+            n_alerts  = sum(1 for s in src.values() if s.get("mean_pm25", 0) > get_threshold())
             last_upd  = st.session_state.get("last_refresh", "—")
-            data_note = f"<strong style='color:{TEAL};'>{n_live}</strong>/40 {T.get(lang,T['en']).get('cities_live','cities live')}"
+            data_note = (f"<strong style='color:{TEAL};'>{n_live}</strong>/40 {T.get(lang,T['en']).get('cities_live','cities live')}"
+                         if live else f"<span style='color:{TEXT2};'>static baseline</span>")
         except Exception:
-            n_alerts  = sum(1 for s in CITY_STATS.values() if s["mean_pm25"] > WHO_24H)
+            n_alerts  = sum(1 for s in CITY_STATS.values() if s["mean_pm25"] > get_threshold())
             data_note = f"<span style='color:{TEXT2};'>static baseline</span>"
             last_upd  = "—"
 
