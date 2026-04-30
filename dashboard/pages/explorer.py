@@ -73,7 +73,7 @@ def page_explorer():
 
     st.markdown("<div style='margin-top:.5rem;'></div>", unsafe_allow_html=True)
 
-    tab_fc, tab_an, tab_cmp = st.tabs(["Forecast","Analytics","Compare"])
+    tab_fc, tab_an, tab_cmp = st.tabs([t["forecast_tab"], t["analytics_tab"], t["compare_tab"]])
 
     # ══════════════════════════════════════════════════════════════════════════
     # TAB 1 — FORECAST  (7-day + historical date picker)
@@ -84,12 +84,12 @@ def page_explorer():
         # ── Mode toggle ───────────────────────────────────────────────────────
         mode_col, ref_col = st.columns([3, 1])
         with mode_col:
-            fc_mode = st.radio("Mode", ["7-Day Forecast", "Historical Date"],
+            fc_mode = st.radio(t.get("mode_label","Mode"), [t["mode_forecast"], t["mode_historical"]],
                                horizontal=True, key="fc_mode")
         with ref_col:
             if st.button("↺", key="ex_ref", help="Refresh forecast"): fetch_forecast.clear(); st.rerun()
 
-        if fc_mode == "7-Day Forecast":
+        if fc_mode == t["mode_forecast"]:
             with st.spinner(t["loading"]):
                 fd = fetch_forecast(lat, lon)
             forecasts = predict_7day_smart(fd, city, region, lat, lon, model, enc, fi) if fd and model else None
@@ -98,18 +98,18 @@ def page_explorer():
             # Historical mode
             hc1, hc2 = st.columns(2)
             with hc1:
-                hist_start = st.date_input("Start date", value=datetime.today() - timedelta(days=14),
+                hist_start = st.date_input(t["start_date"], value=datetime.today() - timedelta(days=14),
                                            max_value=datetime.today() - timedelta(days=1),
                                            key="hist_start")
             with hc2:
-                hist_end = st.date_input("End date",
+                hist_end = st.date_input(t["end_date"],
                                          value=datetime.today() - timedelta(days=1),
                                          max_value=datetime.today() - timedelta(days=1),
                                          key="hist_end")
             if (hist_end - hist_start).days > 30:
-                st.warning("Max 30-day range for historical mode.")
+                st.warning(t["max_range_warn"])
                 hist_end = hist_start + timedelta(days=30)
-            with st.spinner("Fetching historical weather from Open-Meteo archive…"):
+            with st.spinner(t["fetching_archive"]):
                 fd = fetch_historical(lat, lon, str(hist_start), str(hist_end))
             forecasts = predict_7day(fd, city, region, lat, lon, model, enc, fi) if fd and model else None
             date_label = f"Historical: {hist_start} → {hist_end}"
@@ -238,7 +238,8 @@ def page_explorer():
     with tab_an:
         months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
-        an_tabs = st.tabs(["Seasonal","Climate vs AQ","Compounds","Source","Health","Africa"])
+        an_tabs = st.tabs([t["seasonal_tab"], t["climate_tab"], t["compounds_tab"],
+                           t["source_tab"], t["health_tab"], t["africa_tab"]])
 
         # ── Seasonal ──────────────────────────────────────────────────────────
         with an_tabs[0]:
@@ -563,14 +564,14 @@ def page_explorer():
     # TAB 3 — COMPARE
     # ══════════════════════════════════════════════════════════════════════════
     with tab_cmp:
-        sec("Compare Two Cities")
+        sec(t["compare_hdr"])
         cc1, cc2 = st.columns(2)
         with cc1:
-            cmp_ra = st.selectbox("Region A", list(CITIES.keys()), key="cmp_ra2")
-            cmp_ca = st.selectbox("City A",   [c[0] for c in CITIES[cmp_ra]], key="cmp_ca2")
+            cmp_ra = st.selectbox(t["region_a"], list(CITIES.keys()), key="cmp_ra2")
+            cmp_ca = st.selectbox(t["city_a"],   [c[0] for c in CITIES[cmp_ra]], key="cmp_ca2")
         with cc2:
-            cmp_rb = st.selectbox("Region B", list(CITIES.keys()), index=3, key="cmp_rb2")
-            cmp_cb = st.selectbox("City B",   [c[0] for c in CITIES[cmp_rb]], key="cmp_cb2")
+            cmp_rb = st.selectbox(t["region_b"], list(CITIES.keys()), index=3, key="cmp_rb2")
+            cmp_cb = st.selectbox(t["city_b"],   [c[0] for c in CITIES[cmp_rb]], key="cmp_cb2")
 
         sa2 = live_city(cmp_ca, cmp_ra)
         sb2 = live_city(cmp_cb, cmp_rb)

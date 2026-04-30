@@ -23,27 +23,31 @@ from components.charts import PLO
 
 
 def page_ai():
-    t = T[LNG()]
+    lang = LNG()
+    t = T[lang]
     st.markdown('<div class="as-content">', unsafe_allow_html=True)
-    sec("AI Health Assistant — Powered by Claude (Anthropic)")
+    sec(t["ai_assistant_hdr"])
     c1,c2=st.columns(2)
     with c1: ai_reg  = st.selectbox(t["select_region"], list(CITIES.keys()), key="ai_reg")
     with c2: ai_city = st.selectbox(t["select_city"],   [c[0] for c in CITIES[ai_reg]], key="ai_city")
     ai_s  = CITY_STATS.get(ai_city,{"mean_pm25":15.0})
     ai_pm = ai_s["mean_pm25"]
-    _,ai_col,ai_ico,ai_raw = aqi(ai_pm,LNG())
-    ai_cat = T[LNG()].get(ai_raw,T["en"][ai_raw])
+    _,ai_col,ai_ico,ai_raw = aqi(ai_pm, lang)
+    ai_cat = t.get(ai_raw, T["en"][ai_raw])
 
     st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};border-radius:10px;
   padding:.75rem;margin-bottom:.85rem;">
-  <div style="font-size:.72rem;color:{_ctxt2()};">Asking about <strong style="color:{_ctxt()};">{ai_city}</strong>
+  <div style="font-size:.72rem;color:{_ctxt2()};">{t["asking_about"]} <strong style="color:{_ctxt()};">{ai_city}</strong>
   ({ai_reg}) · PM2.5: <strong style="color:{ai_col};">{ai_pm:.1f} μg/m³</strong> · {ai_ico}
   <strong style="color:{ai_col};">{ai_cat}</strong></div>
 </div>""", unsafe_allow_html=True)
 
-    qs=["Is it safe to exercise outdoors today?","Main pollution sources here?",
-        "Best month to visit?","Should children wear masks outside?"]
-    st.markdown(f"<div style='font-size:.6rem;color:{_ctxt2()};margin-bottom:.3rem;'>Quick questions:</div>",
+    qs_en = ["Is it safe to exercise outdoors today?","Main pollution sources here?",
+             "Best month to visit?","Should children wear masks outside?"]
+    qs_fr = ["Est-il sûr de faire du sport dehors aujourd'hui ?","Principales sources de pollution ici ?",
+             "Meilleur mois pour visiter ?","Les enfants doivent-ils porter un masque dehors ?"]
+    qs = qs_fr if lang=="fr" else qs_en
+    st.markdown(f"<div style='font-size:.6rem;color:{_ctxt2()};margin-bottom:.3rem;'>{t['quick_questions']}</div>",
                 unsafe_allow_html=True)
     qcols = st.columns(len(qs))
     for qcol,q in zip(qcols,qs):
@@ -58,26 +62,24 @@ def page_ai():
             st.markdown(f'<div class="as-chat-ai"><div style="font-size:.58rem;color:{_accent()};font-weight:700;letter-spacing:.08em;margin-bottom:.2rem;">AIRSENSE AI</div>{msg["content"]}</div>',
                         unsafe_allow_html=True)
 
-    ui = st.text_input("Ask about air quality, health, or pollution…", key="ai_inp",
-                        placeholder="e.g. What precautions for asthma patients?")
+    ui = st.text_input(t["ai_input_label"], key="ai_inp", placeholder=t["ai_placeholder"])
     cs,cc = st.columns([.15,.85])
-    with cs: send = st.button("Send", key="ai_snd", use_container_width=True, type="primary")
+    with cs: send = st.button(t["send"], key="ai_snd", use_container_width=True, type="primary")
     with cc:
-        if st.button("Clear", key="ai_clr"): st.session_state.ai_history=[]; st.rerun()
+        if st.button(t["clear"], key="ai_clr"): st.session_state.ai_history=[]; st.rerun()
 
     if "ai_pending" in st.session_state: ui=st.session_state.pop("ai_pending"); send=True
     if send and ui.strip():
         st.session_state.ai_history.append({"role":"user","content":ui})
-        with st.spinner("Thinking…"):
-            reply = call_claude(ui, ai_city, ai_reg, ai_pm, LNG())
+        with st.spinner(t["thinking"]):
+            reply = call_claude(ui, ai_city, ai_reg, ai_pm, lang)
         if reply: st.session_state.ai_history.append({"role":"assistant","content":reply})
         else:
-            fb=T[LNG()].get(f"health_{ai_raw}",T["en"].get(f"health_{ai_raw}","Consult local health authorities."))
+            fb = t.get(f"health_{ai_raw}", T["en"].get(f"health_{ai_raw}", "Consult local health authorities."))
             st.session_state.ai_history.append({"role":"assistant",
                 "content":f"Based on PM2.5 of {ai_pm:.1f} μg/m³ in {ai_city}: {fb}"})
         st.rerun()
-    info_box("<strong>About:</strong> AirSense AI is grounded in real PM2.5 data for the selected city. "
-             "Not a substitute for medical advice.")
+    info_box(t["ai_about"])
     st.markdown('</div>', unsafe_allow_html=True)
 
 

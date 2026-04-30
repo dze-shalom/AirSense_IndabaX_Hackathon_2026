@@ -40,15 +40,15 @@ def page_alerts_health():
     with tab_al:
         # city selector
         c1,c2 = st.columns(2)
-        with c1: adv_region = st.selectbox("Region", list(CITIES.keys()), key="al_reg")
-        with c2: adv_city   = st.selectbox("City", [c[0] for c in CITIES[adv_region]], key="al_city")
+        with c1: adv_region = st.selectbox(_t("select_region"), list(CITIES.keys()), key="al_reg")
+        with c2: adv_city   = st.selectbox(_t("select_city"), [c[0] for c in CITIES[adv_region]], key="al_city")
         adv_s  = _stats.get(adv_city, CITY_STATS.get(adv_city, {"mean_pm25":15.0,"region":adv_region}))
         adv_pm = adv_s["mean_pm25"]
         _,adv_col,adv_ico,adv_raw = aqi(adv_pm, LNG())
 
         a1,a2 = st.columns(2)
         with a1:
-            sec(f"Active Alerts — Cities Above {threshold_label()}")
+            sec(f"{_t('active_alerts_hdr').split('—')[0].strip()} — {threshold_label()}")
             for city,s in sorted([(c,s) for c,s in _stats.items() if s["mean_pm25"]>get_threshold()],
                                    key=lambda x: x[1]["mean_pm25"],reverse=True)[:12]:
                 _,col,ico,_ = aqi(s["mean_pm25"])
@@ -62,7 +62,7 @@ def page_alerts_health():
 </div>""", unsafe_allow_html=True)
 
         with a2:
-            sec("Calibrated Alert System — P(Exceed WHO) per City")
+            sec(_t("calibrated_alert_hdr"))
             art_al = load_artefacts()
             for city,s in sorted(_stats.items(),
                                   key=lambda x: get_alert_prob(x[1]["mean_pm25"],load_artefacts()),
@@ -84,34 +84,39 @@ def page_alerts_health():
                      f"City-specific Platt calibration. Alert F1 = <strong>{MODEL_RL_F1}</strong> @ P=0.50.")
 
         st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-        sec(f"School & Agricultural Advisory — {adv_city} · PM2.5 {adv_pm:.1f} μg/m³")
+        sec(f"{_t('school_agri_hdr')} — {adv_city} · PM2.5 {adv_pm:.1f} μg/m³")
         import datetime as _dtt
+        lang = LNG()
         temp_c = 28.0; o3_proxy = max(0,30+(temp_c-25)*2.8)
-        if adv_pm<=15 and o3_proxy<=60:      sl,sc,sb="SAFE — All outdoor activities normal","#4ade80","rgba(74,222,128,0.08)"
-        elif adv_pm<=35 and o3_proxy<=80:    sl,sc,sb="CAUTION — Limit vigorous outdoor activity","#fbbf24","rgba(251,191,36,0.08)"
-        elif adv_pm<=55 or o3_proxy>100:     sl,sc,sb="RESTRICTED — No PE outdoors; short breaks only","#f97316","rgba(249,115,22,0.08)"
-        else:                                 sl,sc,sb="CLOSE OUTDOOR AREAS — Indoors only","#f87171","rgba(248,113,113,0.08)"
+        if adv_pm<=15 and o3_proxy<=60:      sl,sc,sb=_t("safe_outdoor"),"#4ade80","rgba(74,222,128,0.08)"
+        elif adv_pm<=35 and o3_proxy<=80:    sl,sc,sb=_t("caution_outdoor"),"#fbbf24","rgba(251,191,36,0.08)"
+        elif adv_pm<=55 or o3_proxy>100:     sl,sc,sb=_t("restricted_outdoor"),"#f97316","rgba(249,115,22,0.08)"
+        else:                                 sl,sc,sb=_t("close_outdoor"),"#f87171","rgba(248,113,113,0.08)"
         is_cattle = adv_region in NORTHERN
-        agri_m,agri_c = (("DUST STORM ALERT — Shelter livestock",RED) if adv_pm>80 else
-                         ("DROUGHT + DUST RISK — Monitor irrigation",ORANGE) if adv_pm>40 else
-                         ("Normal — cattle corridor",GREEN)) if is_cattle else ("No agricultural dust alert",AMBER)
+        _dust_storm   = "ALERTE TEMPÊTE DE SABLE — Abriter le bétail" if lang=="fr" else "DUST STORM ALERT — Shelter livestock"
+        _drought_risk = "RISQUE SÉCHERESSE + POUSSIÈRE — Surveiller irrigation" if lang=="fr" else "DROUGHT + DUST RISK — Monitor irrigation"
+        _normal_cattle= "Normal — couloir pastoral" if lang=="fr" else "Normal — cattle corridor"
+        _no_agri      = "Aucune alerte agricole" if lang=="fr" else "No agricultural dust alert"
+        agri_m,agri_c = ((_dust_storm,RED) if adv_pm>80 else
+                         (_drought_risk,ORANGE) if adv_pm>40 else
+                         (_normal_cattle,GREEN)) if is_cattle else (_no_agri,AMBER)
         sa_c,sb_c = st.columns(2)
         with sa_c:
             st.markdown(f"""<div class="as-school-card" style="background:{sb};border-color:{sc};">
-  <div style="font-size:.62rem;color:{sc};text-transform:uppercase;letter-spacing:.7px;font-weight:700;">School Advisory</div>
+  <div style="font-size:.62rem;color:{sc};text-transform:uppercase;letter-spacing:.7px;font-weight:700;">{_t("school_advisory")}</div>
   <div style="font-size:.88rem;font-weight:700;color:{sc};margin:6px 0;">{sl}</div>
   <div style="font-size:.68rem;color:{_ctxt2()};">PM2.5: {adv_pm:.1f} μg/m³ · O₃ est.: {o3_proxy:.0f} μg/m³</div>
 </div>""", unsafe_allow_html=True)
         with sb_c:
             st.markdown(f"""<div class="as-school-card" style="border-color:{agri_c};">
-  <div style="font-size:.62rem;color:{agri_c};text-transform:uppercase;letter-spacing:.7px;font-weight:700;">Agricultural Advisory</div>
+  <div style="font-size:.62rem;color:{agri_c};text-transform:uppercase;letter-spacing:.7px;font-weight:700;">{_t("agri_advisory")}</div>
   <div style="font-size:.88rem;font-weight:600;color:{agri_c};margin:6px 0;">{agri_m}</div>
-  <div style="font-size:.68rem;color:{_ctxt2()};">Region: {adv_region}</div>
+  <div style="font-size:.68rem;color:{_ctxt2()};">{"Région" if lang=="fr" else "Region"}: {adv_region}</div>
 </div>""", unsafe_allow_html=True)
 
         # SMS preview
         st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-        sec("SMS Alert Preview — Automated Bilingual Format")
+        sec(_t("sms_preview_hdr"))
         alert_prob_sms = get_alert_prob(adv_pm, load_artefacts())
         now = _dtt.datetime.now()
         sms = (f"AIRSENSE-CM ALERT: {adv_city} — PM2.5 = {adv_pm:.1f} μg/m³ "
@@ -131,7 +136,7 @@ def page_alerts_health():
 
         # Seasonal advisory calendar
         st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-        sec("Seasonal Advisory Calendar")
+        sec(_t("seasonal_cal_hdr"))
         months_cal=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
         cal={"Far North":[48,54,32,28,24,19,14,13,13,22,34,47],"North":[43,48,28,23,18,15,12,12,11,18,28,40],
              "Adamawa":[33,40,24,17,14,13,10,10,9,13,21,30],"West":[37,45,30,23,21,19,15,14,15,19,27,37],
@@ -150,18 +155,18 @@ def page_alerts_health():
         st.plotly_chart(fig_cal, use_container_width=True)
 
     with tab_hc:
-        sec("Health Impact Calculator — WHO Concentration-Response")
+        sec(_t("health_calc_hdr"))
         with st.form("hf2"):
             c1,c2 = st.columns(2)
             with c1:
-                pop   = st.slider("Population Exposed (thousands)",1,1000,100,key="hf_pop2")
-                hrs   = st.slider("Daily Exposure Hours",1,24,8,key="hf_hrs2")
-                pm_sl = st.slider("PM2.5 Level (μg/m³)",0,100,25,key="hf_pm2")
+                pop   = st.slider(_t("pop_exposed"),1,1000,100,key="hf_pop2")
+                hrs   = st.slider(_t("daily_hours"),1,24,8,key="hf_hrs2")
+                pm_sl = st.slider(_t("pm25_level"),0,100,25,key="hf_pm2")
             with c2:
-                sens  = st.selectbox("Sensitivity Group",
-                    ["General Public","Children & Elderly","Respiratory Patients"],key="hf_sens2")
-            ok = st.form_submit_button("Calculate", use_container_width=True)
-        smult={"General Public":1.0,"Children & Elderly":1.4,"Respiratory Patients":1.8}
+                _sens_opts = [_t("general_public"), _t("children_elderly"), _t("resp_patients")]
+                sens  = st.selectbox(_t("sensitivity"), _sens_opts, key="hf_sens2")
+            ok = st.form_submit_button(_t("calculate"), use_container_width=True)
+        smult={_t("general_public"):1.0, _t("children_elderly"):1.4, _t("resp_patients"):1.8}
         if ok or "hf_res2" in st.session_state:
             if ok:
                 risk  = max(0,(pm_sl-WHO_ANN)*0.002)
@@ -171,18 +176,24 @@ def page_alerts_health():
             r=st.session_state.hf_res2; pm_sl=r["pm"]
             _,rc_aqi,_,_ = aqi(pm_sl)
             k1,k2,k3,k4=st.columns(4)
-            with k1: card("Est. Annual Cases",f"{r['cases']:.0f}","resp. cases/yr",
+            with k1: card(_t("annual_cases"),f"{r['cases']:.0f}",_t("resp_cases_yr"),
                           accent=RED if r["cases"]>500 else AMBER)
-            with k2: card("Excess Resp.",f"{r['er']:.1f}","per 10,000",accent=ORANGE)
-            with k3: card("Hospital Risk",f"{r['hr']:.1f}","%",
+            with k2: card(_t("excess_resp_10k"),f"{r['er']:.1f}",_t("per_10k"),accent=ORANGE)
+            with k3: card(_t("hospital_risk"),f"{r['hr']:.1f}","%",
                           accent=RED if r["hr"]>10 else AMBER)
-            with k4: card("Alert Prob.",f"{r['ap']*100:.0f}","% P(exceed WHO)",
+            with k4: card(_t("alert_prob"),f"{r['ap']*100:.0f}",_t("p_exceed"),
                           accent=RED if r["ap"]>.5 else (AMBER if r["ap"]>.25 else GREEN))
-            if pm_sl<WHO_ANN:              rec,rc="Excellent. No restrictions.",GREEN
-            elif pm_sl<get_threshold():    rec,rc="Moderate. Sensitive groups monitor.",AMBER
-            elif pm_sl<30:        rec,rc="Unhealthy for sensitive groups.",ORANGE
-            elif pm_sl<60:        rec,rc="Unhealthy. Avoid outdoor exertion.",RED
-            else:                 rec,rc="Very unhealthy. Stay indoors.",PURPLE
+            _lang = LNG()
+            if pm_sl<WHO_ANN:
+                rec,rc=("Excellent. Aucune restriction." if _lang=="fr" else "Excellent. No restrictions."),GREEN
+            elif pm_sl<get_threshold():
+                rec,rc=("Modéré. Groupes sensibles vigilants." if _lang=="fr" else "Moderate. Sensitive groups monitor."),AMBER
+            elif pm_sl<30:
+                rec,rc=("Malsain pour groupes sensibles." if _lang=="fr" else "Unhealthy for sensitive groups."),ORANGE
+            elif pm_sl<60:
+                rec,rc=("Malsain. Éviter l'effort extérieur." if _lang=="fr" else "Unhealthy. Avoid outdoor exertion."),RED
+            else:
+                rec,rc=("Très malsain. Restez à l'intérieur." if _lang=="fr" else "Very unhealthy. Stay indoors."),PURPLE
             st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-left:3px solid {rc};border-radius:0 9px 9px 0;padding:.8rem 1rem;
   margin-top:.85rem;font-size:.8rem;color:{_ctxt2()};">{rec}</div>""", unsafe_allow_html=True)

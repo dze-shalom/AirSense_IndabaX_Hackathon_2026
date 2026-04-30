@@ -53,10 +53,10 @@ def page_science():
     # ══════════════════════════════════════════════════════════════════════════
     with tab_sh:
         c1, c2 = st.columns(2)
-        with c1: region = st.selectbox("Region", list(CITIES.keys()), key="sh_reg2")
-        with c2: city   = st.selectbox("City",   [c[0] for c in CITIES[region]], key="sh_city2")
+        with c1: region = st.selectbox(_t("select_region"), list(CITIES.keys()), key="sh_reg2")
+        with c2: city   = st.selectbox(_t("select_city"),   [c[0] for c in CITIES[region]], key="sh_city2")
 
-        with st.spinner("Computing live SHAP values…"):
+        with st.spinner(_t("computing_shap")):
             live_shap = compute_live_shap()
 
         if live_shap:
@@ -74,7 +74,7 @@ def page_science():
         st.markdown(f'<div style="font-size:.62rem;color:{badge_cfg[0]};margin-bottom:.6rem;">'
                     f'{badge_cfg[1]}</div>', unsafe_allow_html=True)
 
-        sec("Per-Region SHAP — Climate Drivers")
+        sec(_t("per_region_shap"))
         regions_list = sorted(region_shap.keys())
         n_cols = 5
         fig_grid = make_subplots(rows=2, cols=n_cols, subplot_titles=regions_list[:10],
@@ -95,7 +95,7 @@ def page_science():
             fig_grid.update_yaxes(gridcolor="rgba(0,0,0,0)",row=(i-1)//5+1,col=(i-1)%5+1)
         st.plotly_chart(fig_grid, use_container_width=True)
 
-        sec(f"Deep-Dive — {region}")
+        sec(f"{_t('deep_dive')} — {region}")
         reg_data = _norm_shap(region_shap.get(region, REGION_SHAP_FALLBACK.get(region, [])))
         if reg_data:
             max_v = reg_data[0][1] if reg_data and len(reg_data[0]) > 1 and reg_data[0][1] > 0 else 1.0
@@ -119,15 +119,11 @@ def page_science():
     # TAB 2 — CLIMATE 2050
     # ══════════════════════════════════════════════════════════════════════════
     with tab_cl:
-        sec("Climate 2050 PM2.5 Projection — CMIP6 SSP Scenarios")
-        st.markdown(f"<div style='font-size:.76rem;color:{_ctxt2()};margin-bottom:.9rem;'>"
-                    "IPCC AR6 warming rates × empirical PM2.5/temperature sensitivity × "
-                    "regional amplification. Indicative — not certified climate model output.</div>",
-                    unsafe_allow_html=True)
+        sec(_t("climate_2050_hdr"))
         c1,c2,c3 = st.columns([2,1.5,1.5])
-        with c1: ssp_sel = st.selectbox("Scenario",list(SSP_RATES.keys()),index=1,key="cl_ssp2")
-        with c2: yr_sel  = st.slider("Target Year",2026,2100,2050,key="cl_yr2")
-        with c3: all_ssp = st.checkbox("Compare all SSPs",value=True,key="cl_all2")
+        with c1: ssp_sel = st.selectbox(_t("scenario_label"),list(SSP_RATES.keys()),index=1,key="cl_ssp2")
+        with c2: yr_sel  = st.slider(_t("target_year"),2026,2100,2050,key="cl_yr2")
+        with c3: all_ssp = st.checkbox(_t("compare_all_ssps"),value=True,key="cl_all2")
 
         BASE_YEAR = 2025
         _live = live_all()
@@ -136,7 +132,7 @@ def page_science():
             return round(base * (1 + rate * REGION_WARM.get(reg,1.0) * (yr-BASE_YEAR)/75), 2)
 
         rate = SSP_RATES[ssp_sel]
-        sec(f"Regional Projections — {ssp_sel} @ {yr_sel}")
+        sec(f"{_t('regional_projections')} — {ssp_sel} @ {yr_sel}")
         reg_rows = []
         for reg, rd in sorted(REGIONS_DATA.items(), key=lambda x: x[1]["pm25"], reverse=True):
             rc   = [c[0] for c in CITIES.get(reg,[])]
@@ -168,7 +164,7 @@ def page_science():
 </div>""", unsafe_allow_html=True)
 
         st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-        sec("PM2.5 Trajectory 2025 → 2100")
+        sec(_t("pm25_trajectory"))
         years = list(range(BASE_YEAR, 2101, 5))
         top3  = [r[0] for r in sorted(REGIONS_DATA.items(), key=lambda x: x[1]["pm25"], reverse=True)[:3]]
         fig_ts = go.Figure()
@@ -197,7 +193,7 @@ def page_science():
             hovermode="x unified"))
         st.plotly_chart(fig_ts, use_container_width=True)
 
-        sec(f"Projected WHO Exceedance by {yr_sel} — {ssp_sel}")
+        sec(f"{_t('projected_exceedance')} {yr_sel} — {ssp_sel}")
         bar_regs, bar_now, bar_fut = [], [], []
         for reg, rd in sorted(REGIONS_DATA.items(), key=lambda x: x[1]["pm25"], reverse=True):
             rc   = [c[0] for c in CITIES.get(reg,[])]
@@ -225,7 +221,7 @@ def page_science():
     # TAB 3 — SPATIAL GENERALIZATION
     # ══════════════════════════════════════════════════════════════════════════
     with tab_sp:
-        sec("Spatial Generalization — Can the Model Predict Cities It Has Never Seen?")
+        sec(_t("spatial_hdr"))
         st.markdown(f"""<div style="font-size:.78rem;color:{_ctxt2()};margin-bottom:1rem;line-height:1.6;">
 The model was trained on <strong>40 Cameroonian cities</strong>. To test generalization,
 it was applied to unseen cities at three difficulty levels:<br>
@@ -266,7 +262,7 @@ it was applied to unseen cities at three difficulty levels:<br>
             st.plotly_chart(fig_sp, use_container_width=True)
 
         with donut_col:
-            sec("R² by Generalization Level")
+            sec(_t("r2_by_level"))
 
             # Compute average R² per level for donut
             from collections import defaultdict
@@ -327,7 +323,7 @@ it was applied to unseen cities at three difficulty levels:<br>
             st.plotly_chart(fig_donut, use_container_width=True)
 
             # MAE bar chart below the donut
-            sec("Mean MAE by Level")
+            sec(_t("mean_mae_by_level"))
             fig_mae = go.Figure(go.Bar(
                 x=["L1","L2","L3"],
                 y=donut_mae_vals,
@@ -350,12 +346,12 @@ it was applied to unseen cities at three difficulty levels:<br>
             st.plotly_chart(fig_mae, use_container_width=True)
 
         # ── Results cards ─────────────────────────────────────────────────────
-        sec("Generalization Results by City")
+        sec(_t("spatial_results_by_city"))
         for entry in SPATIAL_GEN:
             lvl = entry["level"].split("—")[0].strip()
             col = level_colors.get(lvl, AMBER)
             r2_str = f"{entry['r2']:.3f}" if entry["r2"] else "—"
-            quality = "Good" if entry["mae"]<7 else ("Fair" if entry["mae"]<12 else "Poor")
+            quality = _t("quality_good") if entry["mae"]<7 else (_t("quality_fair") if entry["mae"]<12 else _t("quality_poor"))
             q_color = GREEN if quality=="Good" else (AMBER if quality=="Fair" else RED)
             st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
   border-left:3px solid {col};border-radius:8px;padding:.65rem .9rem;
@@ -390,7 +386,7 @@ it was applied to unseen cities at three difficulty levels:<br>
     # TAB 4 — MODEL COMPARISON
     # ══════════════════════════════════════════════════════════════════════════
     with tab_mc:
-        sec("Master Model Comparison — IndabaX 2026")
+        sec(_t("model_comparison_hdr"))
         st.markdown(f"<div style='font-size:.76rem;color:{_ctxt2()};margin-bottom:.9rem;'>"
                     "All models evaluated on the same held-out test set "
                     "(17,840 rows · 2024-10-01 → 2025-12-20 · 100% CAMS real data).</div>",
@@ -439,7 +435,7 @@ it was applied to unseen cities at three difficulty levels:<br>
 
         # MAE bar chart
         st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-        sec("MAE Comparison")
+        sec(_t("mae_comparison"))
         valid = [r for r in MODEL_COMPARISON if r["mae"]]
         fig_mc = go.Figure(go.Bar(
             x=[r["model"][:30] for r in valid],
