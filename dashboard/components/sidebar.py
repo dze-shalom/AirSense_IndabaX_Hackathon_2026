@@ -14,6 +14,55 @@ def _get_live_stats():
     return get_live_stats, compute_live_shap, fetch_forecast
 
 
+def _svg_data_uri(svg_str: str, color: str) -> str:
+    """Return a CSS url() value with the SVG encoded as a data URI.
+
+    Replaces stroke="currentColor" with the actual hex color so the icon
+    is visible when rendered via background-image (currentColor doesn't
+    resolve in that context).
+    """
+    svg = svg_str.replace("currentColor", color)
+    svg = svg.replace("#", "%23").replace("<", "%3C").replace(">", "%3E").replace('"', "'")
+    return f"url(\"data:image/svg+xml,{svg}\")"
+
+
+def _nav_icon_css(collapsed: bool, is_dark: bool) -> str:
+    """Return a <style> block that places SVG icons on nav buttons via ::before."""
+    inactive = TEXT2                         # "#8892b0" dark / light equivalent
+    active   = TEAL                          # "#64ffda" dark / light equivalent
+    if not is_dark:
+        inactive = "#7a5c40"
+        active   = "#b5613f"
+
+    parts: list[str] = []
+    # Base ::before setup shared by all nav buttons
+    base = (
+        "content:''!important;"
+        "display:inline-block!important;"
+        "background-size:contain!important;"
+        "background-repeat:no-repeat!important;"
+        "background-position:center!important;"
+        "flex-shrink:0!important;"
+        "vertical-align:middle!important;"
+    )
+    expanded_extra = "width:15px!important;height:15px!important;margin-right:7px!important;"
+    collapsed_extra = "width:18px!important;height:18px!important;display:block!important;margin:0 auto!important;"
+
+    for page, svg in NAV_ICONS.items():
+        for kind, col in [("secondary", inactive), ("primary", active)]:
+            uri = _svg_data_uri(svg, col)
+            size_css = collapsed_extra if collapsed else expanded_extra
+            # :has() selector: the element-container wrapping the marker div
+            # is immediately followed by the element-container wrapping the button
+            sel = (
+                f"[data-testid='stSidebar'] div:has(>.as-nav-mark[data-page='{page}'])"
+                f"+div button[data-testid='baseButton-{kind}'] p::before"
+            )
+            parts.append(f"{sel}{{{base}{size_css}background-image:{uri};}}")
+
+    return "<style>" + "".join(parts) + "</style>"
+
+
 # ── SVG icons used in nav bar ─────────────────────────────────────────────────
 SUN_ICON  = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
 MOON_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
@@ -327,28 +376,35 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
 
     # ── Sidebar width + transition (always inject, value depends on state) ──────
     _collapsed = st.session_state.get("sidebar_collapsed", False)
+    _is_dark   = st.session_state.get("theme", "light") == "dark"
     _sb_w      = "64px"  if _collapsed else "220px"
     _nav_pl    = "76px"  if _collapsed else "232px"
     st.markdown(f"""<style>
-/* Sidebar expand/collapse animation */
 [data-testid="stSidebar"]{{
     width:{_sb_w}!important;min-width:{_sb_w}!important;max-width:{_sb_w}!important;
     transition:width .22s cubic-bezier(.4,0,.2,1)!important;overflow:hidden!important;
 }}
 [data-testid="stSidebar"]>div:first-child{{
-    padding:{'0.4rem 0.18rem' if _collapsed else '.95rem .6rem'}!important;
+    padding:{'0.4rem 0.14rem' if _collapsed else '.95rem .6rem'}!important;
     overflow:hidden!important;
 }}
 .as-fixed-nav{{padding-left:{_nav_pl}!important;}}
-{'/* ── COLLAPSED: icon-rail mode ── */' if _collapsed else ''}
-{'[data-testid="stSidebar"] button{text-align:center!important;justify-content:center!important;padding:.45rem .18rem!important;margin:0 auto .1rem!important;}' if _collapsed else ''}
-{'[data-testid="stSidebar"] button p{font-size:0!important;line-height:0!important;}' if _collapsed else ''}
-{'[data-testid="stSidebar"] button p::first-letter{font-size:1.25rem!important;line-height:1!important;}' if _collapsed else ''}
-{'[data-testid="stSidebar"] button:before{display:none!important;}' if _collapsed else ''}
-{'.as-sb-section-lbl,.as-sb-footer,.as-sb-brand-text,.as-sb-settings-panel{display:none!important;}' if _collapsed else ''}
-{'.as-sb-brand{justify-content:center!important;}' if _collapsed else ''}
-{'[data-testid="stSidebar"] .stSelectbox,[data-testid="stSidebar"] .stNumberInput{display:none!important;}' if _collapsed else ''}
+/* Hide zero-height marker divs */
+.as-nav-mark{{display:none!important;height:0!important;margin:0!important;padding:0!important;}}
+/* Base ::before layout so flex doesn't break icon alignment */
+[data-testid="stSidebar"] button p{{
+    display:flex!important;align-items:center!important;
+    {'font-size:0!important;line-height:0!important;justify-content:center!important;' if _collapsed else ''}
+}}
+{('[data-testid="stSidebar"] button{text-align:center!important;justify-content:center!important;padding:.45rem .14rem!important;margin:0 auto .1rem!important;}'
+  '.as-sb-section-lbl,.as-sb-footer,.as-sb-brand-text,.as-sb-settings-panel{display:none!important;}'
+  '.as-sb-brand{justify-content:center!important;}'
+  '[data-testid="stSidebar"] .stSelectbox,[data-testid="stSidebar"] .stNumberInput{display:none!important;}'
+  '[data-testid="stSidebar"] button:before{display:none!important;}') if _collapsed else ''}
 </style>""", unsafe_allow_html=True)
+
+    # SVG icon ::before rules (theme + collapsed-aware)
+    st.markdown(_nav_icon_css(_collapsed, _is_dark), unsafe_allow_html=True)
 
 
 def render_nav():
@@ -391,16 +447,6 @@ def render_nav():
 [data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"]{display:none!important;}
 </style>""", unsafe_allow_html=True)
 
-
-
-PAGE_EMOJI = {
-    "overview": "🗺",
-    "explorer": "📊",
-    "alerts":   "🔔",
-    "science":  "🔬",
-    "ai":       "💬",
-    "about":    "ℹ️",
-}
 
 
 def render_sidebar():
@@ -508,15 +554,16 @@ def render_sidebar():
                     unsafe_allow_html=True)
             for key in keys:
                 active = st.session_state.page == key
-                emoji  = PAGE_EMOJI.get(key, "•")
-                label  = f"{emoji} {labels[key]}" if not collapsed else emoji
-                sub    = subs[key]
+                # Marker div lets CSS :has() selector attach the SVG icon
+                st.markdown(
+                    f'<div class="as-nav-mark" data-page="{key}"></div>',
+                    unsafe_allow_html=True)
                 if st.button(
-                    label,
+                    labels[key],
                     key=f"sb_{key}",
                     use_container_width=True,
                     type="primary" if active else "secondary",
-                    help=sub,
+                    help=subs[key],
                 ):
                     st.session_state.page = key
                     st.rerun()
