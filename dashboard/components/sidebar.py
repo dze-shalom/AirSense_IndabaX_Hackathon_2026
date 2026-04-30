@@ -430,10 +430,25 @@ def render_nav():
         n_alerts = sum(1 for s in CITY_STATS.values() if s["mean_pm25"] > get_threshold())
 
     # ── Fixed decorative top bar ──────────────────────────────────────────────
+    _collapsed = st.session_state.get("sidebar_collapsed", False)
+    _expand_btn = ""
+    if _collapsed:
+        _expand_btn = (
+            '<button onclick="(function(){'
+            'var btns=window.parent.document.querySelectorAll(\'[data-testid=stSidebar] button\');'
+            'for(var i=0;i<btns.length;i++){if(btns[i].innerText.trim()===\'›\'){btns[i].click();return;}}'
+            '})()" '
+            'title="Expand sidebar" '
+            'style="width:30px;height:30px;border-radius:7px;border:1px solid rgba(100,255,218,0.3);'
+            'background:rgba(100,255,218,0.08);color:#64ffda;font-size:1rem;cursor:pointer;'
+            'display:flex;align-items:center;justify-content:center;flex-shrink:0;'
+            'transition:background .15s;padding:0;line-height:1;">'
+            '&#8250;</button>'
+        )
     st.markdown(f"""
 <div class="as-fixed-nav">
   <div style="display:flex;align-items:center;gap:.5rem;">
-    <span class="as-hamburger-slot"></span>
+    {_expand_btn}
     <div class="as-logo">
       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -469,12 +484,19 @@ def render_sidebar():
         # ── Collapse / expand toggle ──────────────────────────────────────────
         tog_icon = "›" if collapsed else "‹"
         tog_help = ("Expand sidebar" if collapsed else "Collapse sidebar") if lang == "en" else ("Développer" if collapsed else "Réduire")
-        tc1, tc2 = st.columns([1, 1]) if collapsed else st.columns([5, 1])
-        with (tc1 if collapsed else tc2):
-            if st.button(tog_icon, key="sb_collapse", help=tog_help,
-                         use_container_width=True):
-                st.session_state.sidebar_collapsed = not collapsed
+
+        if collapsed:
+            # Full-width prominent button — the only interactive element visible
+            if st.button(tog_icon, key="sb_collapse", help=tog_help, use_container_width=True):
+                st.session_state.sidebar_collapsed = False
                 st.rerun()
+        else:
+            # Small chevron in the top-right corner next to the brand
+            _, tc2 = st.columns([5, 1])
+            with tc2:
+                if st.button(tog_icon, key="sb_collapse", help=tog_help, use_container_width=True):
+                    st.session_state.sidebar_collapsed = True
+                    st.rerun()
 
         if not collapsed:
             # ── Brand header with settings gear ──────────────────────────────
