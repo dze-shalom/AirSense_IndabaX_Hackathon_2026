@@ -408,7 +408,11 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
   '.as-sb-section-lbl,.as-sb-footer,.as-sb-brand-text,.as-sb-settings-panel{display:none!important;}'
   '.as-sb-brand{justify-content:center!important;}'
   '[data-testid="stSidebar"] .stSelectbox,[data-testid="stSidebar"] .stNumberInput{display:none!important;}'
-  '[data-testid="stSidebar"] button:before{display:none!important;}') if _collapsed else ''}
+  '[data-testid="stSidebar"] button:before{display:none!important;}'
+  '[data-testid="stSidebar"] [data-testid="element-container"]:first-child button{'
+  'background:rgba(100,255,218,0.12)!important;border:1px solid rgba(100,255,218,0.5)!important;'
+  'color:#64ffda!important;font-size:1.1rem!important;font-weight:700!important;'
+  'box-shadow:0 0 10px rgba(100,255,218,0.25)!important;}') if _collapsed else ''}
 </style>""", unsafe_allow_html=True)
 
     # SVG icon ::before rules (theme + collapsed-aware)
@@ -430,25 +434,9 @@ def render_nav():
         n_alerts = sum(1 for s in CITY_STATS.values() if s["mean_pm25"] > get_threshold())
 
     # ── Fixed decorative top bar ──────────────────────────────────────────────
-    _collapsed = st.session_state.get("sidebar_collapsed", False)
-    _expand_btn = ""
-    if _collapsed:
-        _expand_btn = (
-            '<button onclick="(function(){'
-            'var btns=window.parent.document.querySelectorAll(\'[data-testid=stSidebar] button\');'
-            'for(var i=0;i<btns.length;i++){if(btns[i].innerText.trim()===\'›\'){btns[i].click();return;}}'
-            '})()" '
-            'title="Expand sidebar" '
-            'style="width:30px;height:30px;border-radius:7px;border:1px solid rgba(100,255,218,0.3);'
-            'background:rgba(100,255,218,0.08);color:#64ffda;font-size:1rem;cursor:pointer;'
-            'display:flex;align-items:center;justify-content:center;flex-shrink:0;'
-            'transition:background .15s;padding:0;line-height:1;">'
-            '&#8250;</button>'
-        )
     st.markdown(f"""
 <div class="as-fixed-nav">
   <div style="display:flex;align-items:center;gap:.5rem;">
-    {_expand_btn}
     <div class="as-logo">
       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
