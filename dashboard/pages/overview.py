@@ -286,7 +286,9 @@ def page_overview():
                     showlegend=False, name=r["city"]))
 
         fig.update_layout(
-            mapbox=dict(style="carto-darkmatter", center=dict(lat=5.5, lon=12.3), zoom=4.8),
+            mapbox=dict(
+                style="carto-positron" if st.session_state.get("theme","light")=="light" else "carto-darkmatter",
+                center=dict(lat=5.5, lon=12.3), zoom=4.8),
             **PLO(height=430, margin=dict(l=0,r=0,t=0,b=0), showlegend=False))
         sec(_t("national_map"))
         st.plotly_chart(fig, use_container_width=True)

@@ -82,17 +82,21 @@ div[data-testid="metric-container"]{{background:rgba(255,255,255,.04)!important;
 </style>"""
 
 # ── Particle background ───────────────────────────────────────────────────────
-PARTICLES = """<div id="asp"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
-<script>(function t(){if(typeof particlesJS==='undefined'){setTimeout(t,400);return;}
-var e=document.getElementById('asp');if(!e)return;
-e.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none;';
-particlesJS('asp',{particles:{number:{value:50,density:{enable:true,value_area:900}},
-color:{value:'#64ffda'},shape:{type:'circle'},opacity:{value:.06,random:true},size:{value:2,random:true},
-line_linked:{enable:true,distance:145,color:'#64ffda',opacity:.04,width:1},
-move:{enable:true,speed:.5,random:true,out_mode:'out'}},
-interactivity:{detect_on:'canvas',events:{onhover:{enable:true,mode:'grab'},onclick:{enable:false},resize:true},
-modes:{grab:{distance:90,line_linked:{opacity:.18}}}},retina_detect:true});})();</script>"""
+def _particles_html(is_light: bool) -> str:
+    col  = "#b5613f" if is_light else "#64ffda"
+    op   = 0.07     if is_light else 0.06
+    lop  = 0.05     if is_light else 0.04
+    return (f"""<div id="asp"></div>"""
+            f"""<script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>"""
+            f"""<script>(function t(){{if(typeof particlesJS==='undefined'){{setTimeout(t,400);return;}}"""
+            f"""var e=document.getElementById('asp');if(!e)return;"""
+            f"""e.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none;';"""
+            f"""particlesJS('asp',{{particles:{{number:{{value:50,density:{{enable:true,value_area:900}}}},"""
+            f"""color:{{value:'{col}'}},shape:{{type:'circle'}},opacity:{{value:{op},random:true}},size:{{value:2,random:true}},"""
+            f"""line_linked:{{enable:true,distance:145,color:'{col}',opacity:{lop},width:1}},"""
+            f"""move:{{enable:true,speed:.5,random:true,out_mode:'out'}}}},"""
+            f"""interactivity:{{detect_on:'canvas',events:{{onhover:{{enable:true,mode:'grab'}},onclick:{{enable:false}},resize:true}},"""
+            f"""modes:{{grab:{{distance:90,line_linked:{{opacity:.18}}}}}}}},retina_detect:true}});}})()</script>""")
 
 def inject_css():
     """Inject global CSS and particle background."""
@@ -101,6 +105,8 @@ def inject_css():
         '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">',
         unsafe_allow_html=True)
     st.markdown(CSS, unsafe_allow_html=True)
+    is_light = st.session_state.get("theme", "light") == "light"
+    st.markdown(_particles_html(is_light), unsafe_allow_html=True)
     # ── Global button base styles — theme-neutral structure only ────────────
     st.markdown(f"""<style>
 button[kind="secondary"], .stButton>button {{
