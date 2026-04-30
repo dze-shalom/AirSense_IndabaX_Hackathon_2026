@@ -77,7 +77,43 @@ h1,h2,h3,h4,h5,h6{{font-family:'Montserrat',sans-serif!important;font-weight:700
 div[data-testid="metric-container"]{{background:rgba(255,255,255,.04)!important;border:1px solid {BORDER}!important;border-radius:9px!important;padding:9px!important;}}
 ::-webkit-scrollbar{{width:5px;}}::-webkit-scrollbar-track{{background:{NAVY};}}::-webkit-scrollbar-thumb{{background:{BORDER};border-radius:3px;}}
 
-@media(max-width:768px){{.as-content{{margin-top:48px;padding:.5rem .6rem!important;}}.as-stat-strip{{grid-template-columns:repeat(3,1fr);}}.as-fc-grid{{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));}}}}
+@media(max-width:768px){{
+  .as-content{{margin-top:48px;padding:.5rem .6rem!important;}}
+  .as-stat-strip{{grid-template-columns:repeat(3,1fr);gap:.45rem;}}
+  .as-fc-grid{{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:.35rem;}}
+  .as-fc-card{{padding:.5rem .4rem;}}
+  .as-fc-val{{font-size:1.05rem;}}
+  .as-alert-item{{padding:.38rem .45rem;gap:.38rem;}}
+  div[data-testid="metric-container"]{{padding:7px!important;}}
+  [data-testid="stMetricValue"]{{font-size:1.1rem!important;}}
+  .stTabs [data-baseweb="tab"]{{padding:.35rem .55rem!important;font-size:.65rem!important;}}
+}}
+@media(max-width:480px){{
+  .as-stat-strip{{grid-template-columns:repeat(2,1fr);}}
+  .as-fc-grid{{grid-template-columns:repeat(auto-fill,minmax(76px,1fr));}}
+  .as-stat-val{{font-size:1.1rem;}}
+  .as-content{{padding:.4rem .4rem!important;}}
+  h1{{font-size:1.1rem!important;}}
+  h2{{font-size:1rem!important;}}
+  h3{{font-size:.92rem!important;}}
+  .stMarkdown,.stMarkdown p{{font-size:13px!important;}}
+  [data-testid="stMetricValue"]{{font-size:.95rem!important;}}
+  .as-school-card{{padding:10px 12px;}}
+  .as-chat-user,.as-chat-ai{{margin-left:.5rem;margin-right:.5rem;}}
+  .stButton>button{{font-size:.72rem!important;padding:.3rem .5rem!important;}}
+  .as-alert-badge{{font-size:.55rem;padding:.08rem .28rem;}}
+}}
+@media(max-width:360px){{
+  .as-fixed-nav .as-logo span:not(:first-child){{display:none;}}
+  .as-fc-grid{{grid-template-columns:repeat(3,1fr);}}
+  .as-stat-strip{{grid-template-columns:repeat(2,1fr);}}
+}}
+@media(display-mode:standalone){{
+  .as-fixed-nav{{padding-top:env(safe-area-inset-top,0px);}}
+  .as-content{{padding-bottom:env(safe-area-inset-bottom,0px);}}
+}}
+.stTabs [data-baseweb="tab-list"]{{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;flex-wrap:nowrap!important;}}
+.stTabs [data-baseweb="tab-list"]::-webkit-scrollbar{{height:2px;}}
 
 </style>"""
 
@@ -100,9 +136,15 @@ def _particles_html(is_light: bool) -> str:
 
 def inject_css():
     """Inject global CSS and particle background."""
-    # Viewport meta — critical for mobile rendering
+    # Viewport + PWA meta — critical for mobile/installable app
     st.markdown(
-        '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">'
+        '<meta name="mobile-web-app-capable" content="yes">'
+        '<meta name="apple-mobile-web-app-capable" content="yes">'
+        '<meta name="apple-mobile-web-app-status-bar-style" content="default">'
+        '<meta name="apple-mobile-web-app-title" content="AirSense CM">'
+        '<link rel="manifest" href="manifest.json">'
+        '<meta name="theme-color" content="#1a3c5e">',
         unsafe_allow_html=True)
     st.markdown(CSS, unsafe_allow_html=True)
     is_light = st.session_state.get("theme", "light") == "light"
