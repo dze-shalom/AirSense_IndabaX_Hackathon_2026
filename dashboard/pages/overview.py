@@ -452,6 +452,43 @@ def page_overview():
   <span style="font-size:.66rem;font-family:'JetBrains Mono',monospace;color:{col};">{s['mean_pm25']:.1f}</span>
 </div>""", unsafe_allow_html=True)
 
+        # ── Snapshot CSV export ───────────────────────────────────────────────
+        st.markdown("<div style='margin-top:.8rem;'></div>", unsafe_allow_html=True)
+        sec("Export" if lang == "en" else "Exporter")
+
+        city_lookup = {c: (lat, lon) for cities in CITIES.values() for c, lat, lon in cities}
+        region_lookup = {c: r for r, cities in CITIES.items() for c, *_ in cities}
+        thr = get_threshold()
+        rows_export = []
+        for city_name, s in _fstats.items():
+            pm = s.get("mean_pm25", 0.0)
+            aqi_label, _, _, _ = aqi(pm, "en")
+            lat, lon = city_lookup.get(city_name, (None, None))
+            rows_export.append({
+                "city":              city_name,
+                "region":            region_lookup.get(city_name, s.get("region", "")),
+                "latitude":          lat,
+                "longitude":         lon,
+                "mean_pm25_ugm3":    round(pm, 2),
+                "aqi_tier":          aqi_label,
+                "alert_probability": round(s.get("alert_prob", 0.0), 3),
+                "above_threshold":   pm > thr,
+                "threshold_ugm3":    thr,
+                "live":              bool(s.get("live", False)),
+            })
+        rows_export.sort(key=lambda x: x["mean_pm25_ugm3"], reverse=True)
+
+        from datetime import date
+        csv_bytes = pd.DataFrame(rows_export).to_csv(index=False).encode("utf-8")
+        fname = f"airsense_snapshot_{date.today().isoformat()}.csv"
+        st.download_button(
+            label="⬇ Download city snapshot (.csv)" if lang == "en" else "⬇ Télécharger l'instantané (.csv)",
+            data=csv_bytes,
+            file_name=fname,
+            mime="text/csv",
+            use_container_width=True,
+        )
+
     # ── Regional bar charts ────────────────────────────────────────────────────
     st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
     sec(_t("per_region_analysis"))
