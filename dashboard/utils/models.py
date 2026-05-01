@@ -26,7 +26,7 @@ def load_models():
     try:
         import xgboost as xgb
         base  = Path(__file__).parent.parent.parent / "models"
-        model = xgb.XGBRegressor()
+        model = xgb.XGBRegressor(random_state=42, seed=42)
         model.load_model(str(base / "xgb_pm25.json"))
         with open(base / "label_encoders.pkl", "rb") as f: enc = pickle.load(f)
         with open(base / "features.json")            as f: fi  = json.load(f)

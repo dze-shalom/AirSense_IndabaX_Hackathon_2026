@@ -39,6 +39,12 @@ from pathlib import Path
 
 import numpy as np
 
+# ── Global reproducibility seed ───────────────────────────────────────────────
+# All models and random operations use this seed so results are fully
+# reproducible across runs and machines.
+RANDOM_SEED = 42
+np.random.seed(RANDOM_SEED)
+
 ROOT   = Path(__file__).parent.parent
 MODELS = ROOT / "models"
 
@@ -117,7 +123,7 @@ def dummy_regressor(constant: float):
 def dummy_classifier():
     """DummyClassifier pre-fitted to always predict class 0."""
     from sklearn.dummy import DummyClassifier
-    m = DummyClassifier(strategy="constant", constant=0)
+    m = DummyClassifier(strategy="constant", constant=0, random_state=RANDOM_SEED)
     m.fit([[0], [0]], [0, 1])
     return m
 
@@ -153,7 +159,7 @@ def main():
     print("Building platt_calibrator.pkl …")
     from sklearn.linear_model import LogisticRegression
     platt_json = json.loads((MODELS / "platt_alert_calibration.json").read_text())
-    lr = LogisticRegression()
+    lr = LogisticRegression(random_state=RANDOM_SEED)
     lr.fit([[0], [100]], [0, 1])            # minimal fit to initialise internals
     lr.coef_      = np.array([[platt_json["coef"]]])
     lr.intercept_ = np.array([platt_json["intercept"]])
