@@ -72,12 +72,12 @@ WIND_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" view
 CSS = f"""<style>
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Open+Sans:wght@300;400;500;600&family=Roboto+Mono:wght@400;500;600&display=swap');
 #MainMenu,footer,header{{visibility:hidden;}}
-.stDeployButton,[data-testid="stToolbar"],[data-testid="stDecoration"]{{display:none;}}
+.stDeployButton,[data-testid="stToolbar"],[data-testid="stDecoration"],[data-testid="stSidebarHeader"]{{display:none!important;height:0!important;}}
 .stApp>header{{display:none;}}
-.block-container{{padding-top:0!important;padding-bottom:1rem!important;max-width:100%!important;}}.stApp>header{{display:none!important;height:0!important;}}.main .block-container{{padding-top:0!important;margin-top:0!important;}}section.main>div.block-container{{padding-top:0!important;}}
+.block-container,[data-testid="stMainBlockContainer"],[data-testid="stAppViewBlockContainer"]{{padding-top:0!important;padding-bottom:1rem!important;max-width:100%!important;}}.stApp>header{{display:none!important;height:0!important;}}.main .block-container{{padding-top:0!important;margin-top:0!important;}}section.main>div.block-container{{padding-top:0!important;}}
 body,.stApp{{background:{NAVY}!important;font-family:'Open Sans',sans-serif!important;color:{TEXT1}!important;font-size:16px!important;}}
 [data-testid="stSidebar"]{{background:linear-gradient(180deg,rgba(17,34,64,0.98),rgba(10,25,47,0.99))!important;border-right:1px solid {BORDER}!important;}}
-[data-testid="stSidebar"]>div:first-child{{padding:.95rem .6rem!important;}}
+[data-testid="stSidebar"]>div:first-child{{padding:.3rem .6rem .6rem!important;}}
 [data-testid="stSidebar"] button[kind="secondary"]{{width:100%!important;border-radius:6px!important;border:1px solid transparent!important;background:transparent!important;color:{TEXT2}!important;font-size:.75rem!important;padding:.32rem .45rem!important;margin-bottom:.08rem!important;transition:all .15s!important;font-weight:500!important;font-family:'Open Sans',sans-serif!important;}}
 [data-testid="stSidebar"] button[kind="secondary"]:hover{{background:rgba(100,255,218,0.07)!important;border-color:rgba(100,255,218,0.22)!important;color:{TEXT1}!important;}}
 [data-testid="stSidebar"] button[kind="primary"]{{width:100%!important;border-radius:6px!important;background:rgba(100,255,218,0.10)!important;border:1px solid {TEAL}!important;color:{TEAL}!important;font-size:.75rem!important;padding:.32rem .45rem!important;margin-bottom:.08rem!important;font-weight:600!important;box-shadow:0 0 10px rgba(100,255,218,0.14)!important;font-family:'Open Sans',sans-serif!important;}}
