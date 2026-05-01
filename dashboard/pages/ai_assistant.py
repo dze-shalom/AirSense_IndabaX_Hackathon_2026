@@ -1,60 +1,128 @@
 """pages/ai_assistant.py — AirSense conversational AI (Groq streaming)."""
+import math
 import streamlit as st
 from datetime import datetime
 
 from config import CITY_STATS, WHO_24H, T
-from utils.helpers import LNG
+from utils.helpers import LNG, live_source_attribution
 from utils.api import stream_groq, _groq_key
 from components.ui import sec, _cbg, _cborder, _ctxt, _ctxt2
 
+NORTHERN = {"Far North", "North", "Adamawa"}
+
 
 def _aqi_label(pm25: float, lang: str) -> str:
-    if pm25 < 5:   return "Good" if lang == "en" else "Bon"
-    if pm25 < 15:  return "Moderate" if lang == "en" else "Modéré"
-    if pm25 < 30:  return "Poor" if lang == "en" else "Mauvais"
+    if pm25 < 5:   return "Good"      if lang == "en" else "Bon"
+    if pm25 < 15:  return "Moderate"  if lang == "en" else "Modéré"
+    if pm25 < 30:  return "Poor"      if lang == "en" else "Mauvais"
     if pm25 < 60:  return "Very Poor" if lang == "en" else "Très Mauvais"
-    return "Hazardous" if lang == "en" else "Dangereux"
+    return         "Hazardous"        if lang == "en" else "Dangereux"
+
+
+_CHART_GUIDE = """
+DASHBOARD PAGES & CHARTS (so you can explain any of them):
+• Overview: National map with city PM2.5 bubbles, AQI distribution donut (5 categories), regional mean PM2.5 bar chart, WHO exceedance bar chart (% days above 15 µg/m³), monthly PM2.5 heatmap (regions × 12 months), Harmattan animation (Nov–Feb NE→SW dust transport arrows).
+• Explorer › Forecast: 7-day forecast cards per city, PM2.5 trend line with 90% confidence band, BFAI pollution gauge, source attribution donut (Dust / Biomass / Traffic / Industry / Secondary).
+• Explorer › Analytics: Monthly seasonal profile, climate vs AQ subplots (PM2.5 / temperature / precipitation / humidity), source attribution polar radar, health impact cards (excess respiratory cases per 10k/yr, hospital admission risk %, lost workdays), Africa PM2.5 benchmark bar, city A vs B seasonal comparison.
+• Science: SHAP feature importance grids per region (which weather/climate variables drive PM2.5), climate 2050 projections under SSP scenarios, XGBoost model performance vs baselines, policy simulator (how much would PM2.5 drop if a source is cut by X%).
+• Alerts: Active alert cards ranked by PM2.5, calibrated risk ranking (alert probability %), seasonal risk calendar heatmap, school advisory (4-level action system), agricultural advisory, personal exposure accumulator.
+""".strip()
 
 
 def _build_system(lang: str) -> str:
-    """Build a rich system prompt with live multi-city data."""
-    from utils.live_data import get_live_stats
+    from utils.live_data import get_live_stats, compute_live_shap
+
     try:
         live = get_live_stats()
     except Exception:
         live = {}
+    try:
+        shap_data = compute_live_shap() or {}
+    except Exception:
+        shap_data = {}
 
     month = datetime.now().month
-    harm = month in [11, 12, 1, 2]
+    harm  = month in [11, 12, 1, 2]
     season = (
-        "Harmattan (dry NE winds carrying Saharan dust — main pollution driver in northern Cameroon)"
+        "Harmattan (dry NE winds carrying Saharan dust — main PM2.5 driver in northern Cameroon, Nov–Feb)"
         if harm else
-        "Wet/transition season (reduced dust, higher humidity)"
+        "Wet/transition season (lower dust, higher humidity)"
     )
 
+    # ── Per-city data table ───────────────────────────────────────────────────
     city_lines = []
-    for city, stats in sorted(live.items(), key=lambda x: -x[1].get("mean_pm25", 0))[:12]:
-        pm25   = stats.get("mean_pm25", 0)
-        region = stats.get("region", "")
-        lbl    = _aqi_label(pm25, "en")
-        city_lines.append(f"  {city} ({region}): {pm25:.1f} µg/m³ — {lbl}")
+    for city, stats in sorted(live.items(), key=lambda x: -x[1].get("mean_pm25", 0)):
+        pm25    = stats.get("mean_pm25", 0)
+        who_exc = stats.get("who_exc", 0)
+        region  = stats.get("region", "")
+        prob    = 1 / (1 + math.exp(-(0.2221 * pm25 - 3.0372)))
+        lbl     = _aqi_label(pm25, "en")
+        north   = region in NORTHERN
+        ws      = 10.0 if (harm and north) else 4.0
+        wd      = 35.0 if (harm and north) else 180.0
+        prc     = 0.0  if month in [11, 12, 1, 2] else 5.0
+        hum     = 30.0 if (harm and north) else 65.0
+        try:
+            src = live_source_attribution(ws, wd, month, region, prc, hum, pm25)
+            dom = max(src, key=src.get)
+        except Exception:
+            dom = "—"
+        city_lines.append(
+            f"  {city} ({region}): {pm25:.1f} µg/m³ | {lbl} | "
+            f"Alert prob {prob*100:.0f}% | WHO exc {who_exc:.0f}% | Main source: {dom}"
+        )
 
-    city_block = "\n".join(city_lines) if city_lines else "  (live data unavailable)"
-    lang_name  = "French" if lang == "fr" else "English"
+    # ── 7-day forecasts for top 6 most polluted cities ────────────────────────
+    forecast_lines = []
+    for city, stats in sorted(live.items(), key=lambda x: -x[1].get("mean_pm25", 0))[:6]:
+        fc = stats.get("forecasts", [])[:7]
+        if fc:
+            fc_str = "  →  ".join(f"{p['date'][-5:]}: {p['pm25']:.0f}" for p in fc)
+            forecast_lines.append(f"  {city}: {fc_str}")
 
-    return (
+    # ── SHAP top-3 predictors per region ──────────────────────────────────────
+    shap_lines = []
+    for region, feats in shap_data.items():
+        top3 = ", ".join(f[0] for f in feats[:3])
+        shap_lines.append(f"  {region}: {top3}")
+
+    lang_name = "French" if lang == "fr" else "English"
+
+    parts = [
         f"You are AirSense, an AI air quality assistant for Cameroon. "
-        f"Today is {datetime.now().strftime('%B %d, %Y')}.\n\n"
-        f"LIVE PM2.5 DATA:\n{city_block}\n\n"
-        f"WHO 24h PM2.5 guideline: {WHO_24H} µg/m³\n"
-        f"Current season: {season}\n\n"
-        f"Personality: warm, conversational, and concise — like a knowledgeable friend, "
-        f"not a government report. Avoid heavy bullet lists; write in flowing sentences. "
-        f"Give practical, actionable advice tailored to daily life in Cameroon. "
-        f"When the user asks about a city, reference its live PM2.5 from the data above. "
-        f"Keep responses under 150 words unless the question genuinely needs more detail. "
-        f"Respond in {lang_name} only."
-    )
+        f"Today is {datetime.now().strftime('%B %d, %Y')}.\n",
+
+        f"LIVE CITY DATA (PM2.5 | AQI level | Alert probability | WHO exceedance | Dominant source):\n"
+        + "\n".join(city_lines),
+
+        f"Current season: {season}",
+        f"WHO 24h PM2.5 guideline: {WHO_24H} µg/m³",
+    ]
+
+    if forecast_lines:
+        parts.append(
+            "7-DAY FORECASTS for most polluted cities (MM-DD: µg/m³):\n"
+            + "\n".join(forecast_lines)
+        )
+    if shap_lines:
+        parts.append(
+            "TOP PM2.5 PREDICTORS BY REGION (XGBoost SHAP analysis):\n"
+            + "\n".join(shap_lines)
+        )
+
+    parts += [
+        _CHART_GUIDE,
+        (
+            f"Your personality: warm, conversational, and concise — like a knowledgeable friend, "
+            f"not a government report. Write in flowing sentences. Avoid heavy bullet lists. "
+            f"Give practical, actionable advice for daily life in Cameroon. "
+            f"When explaining a chart, say what it shows AND what the current data means. "
+            f"Keep responses under 180 words unless the question genuinely needs more. "
+            f"Respond in {lang_name} only."
+        ),
+    ]
+
+    return "\n\n".join(parts)
 
 
 _SUGGESTIONS_EN = [
