@@ -1,10 +1,11 @@
-"""pages/ai_assistant.py — Rule-based bilingual air quality chatbot (no API key needed)."""
+"""pages/ai_assistant.py — Conversational air quality chatbot (Groq LLM + rule-based fallback)."""
 import math
 import streamlit as st
 from datetime import datetime
 
 from config import CITIES, CITY_STATS, WHO_24H, T
 from utils.helpers import LNG, aqi, health_impact, live_source_attribution
+from utils.api import call_groq
 from components.ui import sec, info_box, _cbg, _cborder, _ctxt, _ctxt2, _accent
 from components.charts import PLO
 
@@ -399,6 +400,45 @@ def _respond(intent: str, ctx: dict, lang: str) -> str:
             f"or type **help** to see all options.")
 
 
+def _groq_system(ctx: dict, lang: str) -> str:
+    """Build a rich system prompt from live city context for the Groq LLM."""
+    fc_lines = "\n".join(
+        f"  {p['date']}: {p['pm25']:.1f} µg/m³"
+        for p in ctx["forecasts"][:7]
+    ) or "  (no forecast data)"
+    src_lines = "\n".join(
+        f"  {k}: {v*100:.0f}%"
+        for k, v in sorted(ctx["src"].items(), key=lambda x: -x[1])
+    )
+    lang_name = "French" if lang == "fr" else "English"
+    harm_note = (
+        "Harmattan (NE Saharan dust winds) is ACTIVE — primary pollution driver."
+        if ctx["harm_active"] else
+        "No Harmattan currently active."
+    )
+    return (
+        f"You are AirSense, an AI air quality health assistant for Cameroon.\n\n"
+        f"LIVE DATA — {ctx['city']} ({ctx['region']}):\n"
+        f"• PM2.5: {ctx['pm25']:.1f} µg/m³ "
+        f"({'ABOVE' if ctx['exceeded'] else 'below'} WHO 24h limit of 15 µg/m³)\n"
+        f"• AQI level: {ctx['lbl_en']}\n"
+        f"• Alert probability: {ctx['prob']*100:.0f}%\n"
+        f"• 3-day trend: {ctx['trend']}\n"
+        f"• Dominant source: {ctx['dom_src']}\n"
+        f"• {harm_note}\n\n"
+        f"Pollution sources:\n{src_lines}\n\n"
+        f"7-day forecast:\n{fc_lines}\n\n"
+        f"Health metrics:\n"
+        f"  Excess respiratory cases: {ctx['er']:.1f} / 10,000 / year\n"
+        f"  Hospital admission risk: {ctx['hr']:.1f}%\n"
+        f"  School action level: {ctx['school_lv']}/4\n\n"
+        f"Instructions: Be concise, practical, and health-focused. "
+        f"Give actionable advice tailored to Cameroon. "
+        f"Always ground answers in the live data above. "
+        f"Respond in {lang_name} only."
+    )
+
+
 # ── Suggested prompts ─────────────────────────────────────────────────────────
 _SUGGESTIONS_EN = [
     "Is the air safe today?",
@@ -416,6 +456,20 @@ _SUGGESTIONS_FR = [
     "Les enfants peuvent-ils aller à l'école ?",
     "L'Harmattan est-il actif ?",
 ]
+
+
+def _handle_user_msg(user_input: str, ctx: dict, lang: str):
+    """Append user message, get reply (Groq if key set, else rule-based), append reply."""
+    st.session_state.ai_history.append({"role": "user", "content": user_input})
+    # Build conversation list (exclude welcome assistant message from Groq context
+    # but include it so the LLM knows what it already said)
+    history = [m for m in st.session_state.ai_history]
+    system  = _groq_system(ctx, lang)
+    reply   = call_groq(history, system)
+    if reply is None:
+        intent = _detect_intent(user_input)
+        reply  = _respond(intent, ctx, lang)
+    st.session_state.ai_history.append({"role": "assistant", "content": reply})
 
 
 def page_ai():
@@ -497,10 +551,7 @@ def page_ai():
         for i, s in enumerate(sugg):
             with cols[i % 3]:
                 if st.button(s, key=f"sugg_{i}", use_container_width=True):
-                    st.session_state.ai_history.append({"role":"user","content":s})
-                    intent   = _detect_intent(s)
-                    response = _respond(intent, ctx, lang)
-                    st.session_state.ai_history.append({"role":"assistant","content":response})
+                    _handle_user_msg(s, ctx, lang)
                     st.rerun()
 
     # ── Chat input ────────────────────────────────────────────────────────────
@@ -509,10 +560,7 @@ def page_ai():
                    else "Posez une question sur la qualité de l'air, la santé, les prévisions…")
     user_input = st.chat_input(placeholder)
     if user_input:
-        st.session_state.ai_history.append({"role": "user", "content": user_input})
-        intent   = _detect_intent(user_input)
-        response = _respond(intent, ctx, lang)
-        st.session_state.ai_history.append({"role": "assistant", "content": response})
+        _handle_user_msg(user_input, ctx, lang)
         st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)

@@ -177,6 +177,32 @@ def wmo_icon(code):
     return "—"
 
 
+def call_groq(messages: list, system: str) -> str | None:
+    """Send a conversation to Groq and return the assistant reply, or None on failure/no key."""
+    try:
+        api_key = st.secrets.get("GROQ_API_KEY", "") or ""
+    except Exception:
+        api_key = ""
+    api_key = api_key or os.environ.get("GROQ_API_KEY", "")
+    if not api_key:
+        return None
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant",
+                  "messages": [{"role": "system", "content": system}] + messages,
+                  "max_tokens": 500, "temperature": 0.7},
+            timeout=30,
+        )
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        logger.error("Groq: %s", e)
+        return None
+
+
 def call_claude(msg, city, region, pm25, lang):
     try:
         api_key = st.secrets.get("ANTHROPIC_API_KEY", "") or ""
