@@ -1,5 +1,5 @@
 """utils/api.py — External API calls (Open-Meteo, Anthropic, AirSense FastAPI)."""
-import os, logging, requests, streamlit as st
+import json, os, logging, requests, streamlit as st
 from config import NORTHERN
 
 logger = logging.getLogger("airsense")
@@ -175,6 +175,48 @@ def wmo_icon(code):
     if code in (80,81,82):   return "Showers"
     if code in (95,96,99):   return "Thunder"
     return "—"
+
+
+def _groq_key() -> str:
+    try:
+        k = st.secrets.get("GROQ_API_KEY", "") or ""
+    except Exception:
+        k = ""
+    return k or os.environ.get("GROQ_API_KEY", "")
+
+
+def stream_groq(messages: list, system: str):
+    """Generator that yields text chunks from Groq (SSE). Use with st.write_stream()."""
+    key = _groq_key()
+    if not key:
+        yield "GROQ_API_KEY not configured."
+        return
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {key}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant",
+                  "messages": [{"role": "system", "content": system}] + messages,
+                  "max_tokens": 600, "temperature": 0.7, "stream": True},
+            stream=True, timeout=30,
+        )
+        r.raise_for_status()
+        for line in r.iter_lines():
+            if not line or not line.startswith(b"data: "):
+                continue
+            data = line[6:]
+            if data == b"[DONE]":
+                break
+            try:
+                delta = json.loads(data)["choices"][0]["delta"].get("content", "")
+                if delta:
+                    yield delta
+            except Exception:
+                continue
+    except Exception as e:
+        logger.error("Groq stream: %s", e)
+        yield f"\n\n_(Connection error: {e})_"
 
 
 def call_groq(messages: list, system: str) -> str | None:
