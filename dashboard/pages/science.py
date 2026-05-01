@@ -30,7 +30,7 @@ from utils.models import load_artefacts
 from utils.live_data import compute_live_shap, live_all
 from components.ui import sec, card, info_box, _cbg, _cborder, _ctxt, _ctxt2, _accent
 from utils.helpers import city_profile, health_impact
-from utils.api import call_claude
+from utils.api import call_groq, _groq_key
 from utils.models import get_alert_prob
 from components.charts import PLO
 
@@ -656,7 +656,31 @@ it was applied to unseen cities at three difficulty levels:<br>
                     f"Be specific to Cameroon context. Keep it under 200 words."
                 )
 
-                brief_text = call_claude(prompt, brief_city, brief_region, pm25_brief, lang)
+                system = (
+                    "You are a public health policy advisor for Cameroon. "
+                    "Write concise, evidence-based policy briefs for government officials."
+                )
+                brief_text = call_groq(
+                    [{"role": "user", "content": prompt}], system
+                )
+                if brief_text is None:
+                    # No API key — generate a data-driven template brief
+                    who_note = "exceeds" if pm25_brief > 15 else "is within"
+                    rec1 = "Restrict open biomass burning during the dry season" if "Biomass" in top_sources else "Enforce vehicle emission standards in urban areas"
+                    brief_text = (
+                        f"Air quality in {brief_city} ({brief_region} Region) is currently at "
+                        f"PM2.5 = {pm25_brief:.1f} µg/m³, which {who_note} the WHO 24-hour "
+                        f"guideline of 15 µg/m³. The alert exceedance probability stands at "
+                        f"{prob_brief*100:.0f}%, driven primarily by {top_sources}. "
+                        f"Vulnerable groups — children under 12, the elderly, pregnant women, "
+                        f"and people with respiratory conditions — face heightened health risk "
+                        f"including increased hospital admissions and respiratory complications.\n\n"
+                        f"Recommended policy actions: (1) {rec1} and issue public health advisories "
+                        f"when PM2.5 exceeds 35 µg/m³. (2) Establish mandatory air quality "
+                        f"reporting for industrial facilities in the {brief_region} region. "
+                        f"(3) Expand the AirSense monitoring network to underserved communities "
+                        f"and integrate PM2.5 thresholds into school and hospital emergency protocols."
+                    )
 
             # Display brief in styled card
             if brief_text:
