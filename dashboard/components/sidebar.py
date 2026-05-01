@@ -335,24 +335,34 @@ button[kind="primary"]{{
 /* Scrollbar */
 ::-webkit-scrollbar-track{{ background:#fdf5ee!important; }}
 ::-webkit-scrollbar-thumb{{ background:rgba(181,97,63,0.3)!important; }}
-/* Chat input */
-[data-testid="stChatInputContainer"]{{
+/* Chat input — cover all Streamlit versions */
+[data-testid="stBottom"],
+[data-testid="stBottom"] > div,
+.stChatFloatingInputContainer,
+.stChatInputContainer{{
+    background:rgba(253,248,242,0.97)!important;
+    border-top:1px solid rgba(160,100,60,0.15)!important;
+}}
+[data-testid="stChatInputContainer"],
+[data-testid="stChatInput"],
+.stChatInput{{
     background:#fff8f2!important;
     border:1px solid rgba(160,100,60,0.3)!important;
     border-radius:10px!important;
 }}
-[data-testid="stChatInputContainer"] textarea{{
+[data-testid="stChatInputContainer"] textarea,
+[data-testid="stChatInput"] textarea,
+.stChatInput textarea,
+[data-testid="stBottom"] textarea{{
     background:#fff8f2!important;
     color:#1a0e04!important;
     font-family:'Open Sans',sans-serif!important;
+    border:none!important;
+    box-shadow:none!important;
 }}
-[data-testid="stChatInputContainer"] textarea::placeholder{{
-    color:rgba(92,58,30,0.5)!important;
-}}
-.stChatFloatingInputContainer{{
-    background:rgba(253,248,242,0.97)!important;
-    border-top:1px solid rgba(160,100,60,0.15)!important;
-    padding-bottom:.5rem!important;
+[data-testid="stBottom"] textarea::placeholder,
+[data-testid="stChatInput"] textarea::placeholder{{
+    color:rgba(92,58,30,0.45)!important;
 }}
 </style>""", unsafe_allow_html=True)
 
@@ -399,25 +409,35 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
 /* Scrollbar */
 ::-webkit-scrollbar-track{{ background:{NAVY}; }}
 ::-webkit-scrollbar-thumb{{ background:{BORDER};border-radius:3px; }}
-/* Chat input */
-[data-testid="stChatInputContainer"]{{
+/* Chat input — cover all Streamlit versions */
+[data-testid="stBottom"],
+[data-testid="stBottom"] > div,
+.stChatFloatingInputContainer,
+.stChatInputContainer{{
+    background:{NAVY}!important;
+    border-top:1px solid {BORDER}!important;
+}}
+[data-testid="stChatInputContainer"],
+[data-testid="stChatInput"],
+.stChatInput{{
     background:{NAVY2}!important;
     border:1px solid {BORDER}!important;
     border-radius:10px!important;
 }}
-[data-testid="stChatInputContainer"] textarea{{
+[data-testid="stChatInputContainer"] textarea,
+[data-testid="stChatInput"] textarea,
+.stChatInput textarea,
+[data-testid="stBottom"] textarea{{
     background:{NAVY2}!important;
     color:{TEXT1}!important;
     font-family:'Open Sans',sans-serif!important;
+    border:none!important;
+    box-shadow:none!important;
 }}
-[data-testid="stChatInputContainer"] textarea::placeholder{{
+[data-testid="stBottom"] textarea::placeholder,
+[data-testid="stChatInput"] textarea::placeholder{{
     color:{TEXT2}!important;
     opacity:0.6!important;
-}}
-.stChatFloatingInputContainer{{
-    background:{NAVY}!important;
-    border-top:1px solid {BORDER}!important;
-    padding-bottom:.5rem!important;
 }}
 </style>""", unsafe_allow_html=True)
 
