@@ -645,42 +645,76 @@ it was applied to unseen cities at three difficulty levels:<br>
                     if v > 0.05
                 )
 
-                prompt = (
-                    f"Write a 2-paragraph policy brief for Cameroon health officials about air quality "
-                    f"in {brief_city} ({brief_region} region). "
-                    f"Current PM2.5: {pm25_brief:.1f} µg/m³ (WHO 24h limit: 15 µg/m³). "
-                    f"Exceedance probability: {prob_brief*100:.0f}%. "
-                    f"Main pollution sources: {top_sources}. "
-                    f"Paragraph 1: current situation and health risk. "
-                    f"Paragraph 2: 3 concrete policy recommendations. "
-                    f"Be specific to Cameroon context. Keep it under 200 words."
-                )
+                lang_name = "French" if lang == "fr" else "English"
+
+                if lang == "fr":
+                    prompt = (
+                        f"Rédigez une note de politique en 2 paragraphes pour les responsables de santé "
+                        f"du Cameroun concernant la qualité de l'air à {brief_city} (région {brief_region}). "
+                        f"PM2.5 actuel : {pm25_brief:.1f} µg/m³ (limite OMS 24h : 15 µg/m³). "
+                        f"Probabilité de dépassement : {prob_brief*100:.0f}%. "
+                        f"Principales sources de pollution : {top_sources}. "
+                        f"Paragraphe 1 : situation actuelle et risque sanitaire. "
+                        f"Paragraphe 2 : 3 recommandations politiques concrètes. "
+                        f"Soyez spécifique au contexte camerounais. Maximum 200 mots."
+                    )
+                else:
+                    prompt = (
+                        f"Write a 2-paragraph policy brief for Cameroon health officials about air quality "
+                        f"in {brief_city} ({brief_region} region). "
+                        f"Current PM2.5: {pm25_brief:.1f} µg/m³ (WHO 24h limit: 15 µg/m³). "
+                        f"Exceedance probability: {prob_brief*100:.0f}%. "
+                        f"Main pollution sources: {top_sources}. "
+                        f"Paragraph 1: current situation and health risk. "
+                        f"Paragraph 2: 3 concrete policy recommendations. "
+                        f"Be specific to Cameroon context. Keep it under 200 words."
+                    )
 
                 system = (
-                    "You are a public health policy advisor for Cameroon. "
-                    "Write concise, evidence-based policy briefs for government officials."
+                    f"You are a public health policy advisor for Cameroon. "
+                    f"Write concise, evidence-based policy briefs for government officials. "
+                    f"Respond in {lang_name} only."
                 )
                 brief_text = call_groq(
                     [{"role": "user", "content": prompt}], system
                 )
                 if brief_text is None:
                     # No API key — generate a data-driven template brief
-                    who_note = "exceeds" if pm25_brief > 15 else "is within"
-                    rec1 = "Restrict open biomass burning during the dry season" if "Biomass" in top_sources else "Enforce vehicle emission standards in urban areas"
-                    brief_text = (
-                        f"Air quality in {brief_city} ({brief_region} Region) is currently at "
-                        f"PM2.5 = {pm25_brief:.1f} µg/m³, which {who_note} the WHO 24-hour "
-                        f"guideline of 15 µg/m³. The alert exceedance probability stands at "
-                        f"{prob_brief*100:.0f}%, driven primarily by {top_sources}. "
-                        f"Vulnerable groups — children under 12, the elderly, pregnant women, "
-                        f"and people with respiratory conditions — face heightened health risk "
-                        f"including increased hospital admissions and respiratory complications.\n\n"
-                        f"Recommended policy actions: (1) {rec1} and issue public health advisories "
-                        f"when PM2.5 exceeds 35 µg/m³. (2) Establish mandatory air quality "
-                        f"reporting for industrial facilities in the {brief_region} region. "
-                        f"(3) Expand the AirSense monitoring network to underserved communities "
-                        f"and integrate PM2.5 thresholds into school and hospital emergency protocols."
-                    )
+                    who_note = ("dépasse" if lang == "fr" else "exceeds") if pm25_brief > 15 else ("respecte" if lang == "fr" else "is within")
+                    rec1_en = "Restrict open biomass burning during the dry season" if "Biomass" in top_sources else "Enforce vehicle emission standards in urban areas"
+                    rec1_fr = "Restreindre les feux de biomasse à ciel ouvert en saison sèche" if "Biomass" in top_sources else "Renforcer les normes d'émission des véhicules en zone urbaine"
+                    if lang == "fr":
+                        brief_text = (
+                            f"La qualité de l'air à {brief_city} (Région {brief_region}) est actuellement "
+                            f"à PM2.5 = {pm25_brief:.1f} µg/m³, ce qui {who_note} la directive OMS de "
+                            f"24 heures de 15 µg/m³. La probabilité de dépassement d'alerte est de "
+                            f"{prob_brief*100:.0f}%, principalement due à {top_sources}. "
+                            f"Les groupes vulnérables — enfants de moins de 12 ans, personnes âgées, "
+                            f"femmes enceintes et personnes souffrant de maladies respiratoires — "
+                            f"sont exposés à des risques accrus d'hospitalisations et de complications.\n\n"
+                            f"Actions politiques recommandées : (1) {rec1_fr} et émettre des alertes "
+                            f"sanitaires publiques lorsque le PM2.5 dépasse 35 µg/m³. "
+                            f"(2) Instaurer un rapport obligatoire sur la qualité de l'air pour les "
+                            f"installations industrielles de la région {brief_region}. "
+                            f"(3) Étendre le réseau de surveillance AirSense aux communautés mal "
+                            f"desservies et intégrer les seuils PM2.5 dans les protocoles d'urgence "
+                            f"des écoles et des hôpitaux."
+                        )
+                    else:
+                        brief_text = (
+                            f"Air quality in {brief_city} ({brief_region} Region) is currently at "
+                            f"PM2.5 = {pm25_brief:.1f} µg/m³, which {who_note} the WHO 24-hour "
+                            f"guideline of 15 µg/m³. The alert exceedance probability stands at "
+                            f"{prob_brief*100:.0f}%, driven primarily by {top_sources}. "
+                            f"Vulnerable groups — children under 12, the elderly, pregnant women, "
+                            f"and people with respiratory conditions — face heightened health risk "
+                            f"including increased hospital admissions and respiratory complications.\n\n"
+                            f"Recommended policy actions: (1) {rec1_en} and issue public health advisories "
+                            f"when PM2.5 exceeds 35 µg/m³. (2) Establish mandatory air quality "
+                            f"reporting for industrial facilities in the {brief_region} region. "
+                            f"(3) Expand the AirSense monitoring network to underserved communities "
+                            f"and integrate PM2.5 thresholds into school and hospital emergency protocols."
+                        )
 
             # Display brief in styled card
             if brief_text:
