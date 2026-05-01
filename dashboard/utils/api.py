@@ -178,8 +178,11 @@ def wmo_icon(code):
 
 
 def call_claude(msg, city, region, pm25, lang):
-    api_key = (st.secrets.get("ANTHROPIC_API_KEY", "") or
-               os.environ.get("ANTHROPIC_API_KEY", ""))
+    try:
+        api_key = st.secrets.get("ANTHROPIC_API_KEY", "") or ""
+    except Exception:
+        api_key = ""
+    api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
         return "API key not configured." if lang == "en" else "Clé API non configurée."
     try:

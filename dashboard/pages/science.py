@@ -487,8 +487,32 @@ it was applied to unseen cities at three difficulty levels:<br>
         # Always show results (recalculate on every render)
         _live_pol = live_all()
         base_pm = _live_pol.get(pol_city, CITY_STATS.get(pol_city, {})).get("mean_pm25", 25.0)
-        profile  = city_profile(pol_city, pol_region, base_pm)
-        src      = profile["src"]
+
+        # Dynamic source attribution using current-month meteorology
+        from datetime import datetime as _pol_dt
+        from utils.helpers import live_source_attribution as _lsa
+        _pol_month = _pol_dt.now().month
+        _pol_north = pol_region in {"Far North", "North", "Adamawa"}
+        _pol_harm  = _pol_month in [11, 12, 1, 2] and _pol_north
+        _pol_wind_spd  = 10.0 if _pol_harm else (4.0 if _pol_north else 3.5)
+        _pol_wind_dir  = 35.0 if _pol_harm else 180.0
+        _pol_precip    = 0.0  if _pol_month in [11,12,1,2] else 5.0
+        _pol_hum       = 30.0 if _pol_harm else 65.0
+        src = _lsa(
+            wind_speed=_pol_wind_spd, wind_dir=_pol_wind_dir,
+            month=_pol_month, region=pol_region,
+            precipitation=_pol_precip, humidity=_pol_hum,
+            pm25=base_pm,
+        )
+        # Rename keys to match bar chart labels
+        src = {
+            "Dust":            src.get("Dust", 0.12),
+            "Biomass Burning": src.get("Biomass Burning", src.get("Biomass", 0.20)),
+            "Traffic":         src.get("Traffic", 0.18),
+            "Industry":        src.get("Industry", 0.08),
+            "Secondary":       src.get("Secondary Aerosol", src.get("Secondary", 0.15)),
+            "Other":           src.get("Other", 0.05),
+        }
 
         traffic_red  = base_pm * src.get("Traffic", 0.2)  * (traffic_pct / 100)
         industry_red = base_pm * src.get("Industry", 0.1) * (industry_pct / 100)
