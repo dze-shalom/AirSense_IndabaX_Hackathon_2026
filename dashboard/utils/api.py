@@ -92,6 +92,46 @@ def _map_api_forecast_to_preds(api_data: dict) -> list:
 
 
 @st.cache_data(ttl=3600)
+def fetch_cams_forecast(lat, lon):
+    """Fetch 7-day hourly PM2.5 from Open-Meteo Air Quality API (CAMS-based).
+    Returns a list of 7 daily dicts with pm25 key, or None on failure.
+    """
+    try:
+        r = requests.get(
+            "https://air-quality-api.open-meteo.com/v1/air-quality",
+            params={
+                "latitude":  lat,
+                "longitude": lon,
+                "hourly":    "pm2_5",
+                "timezone":  "Africa/Douala",
+                "forecast_days": 7,
+            },
+            timeout=15,
+        )
+        r.raise_for_status()
+        data = r.json()
+        times = data.get("hourly", {}).get("time", [])
+        pm25s = data.get("hourly", {}).get("pm2_5", [])
+        if not times or not pm25s:
+            return None
+        # Aggregate hourly → daily mean (skip None values)
+        from collections import defaultdict
+        daily_vals = defaultdict(list)
+        for t, v in zip(times, pm25s):
+            if v is not None:
+                daily_vals[t[:10]].append(v)
+        if not daily_vals:
+            return None
+        return [
+            {"date": d, "pm25": round(sum(vs) / len(vs), 2)}
+            for d, vs in sorted(daily_vals.items())
+        ]
+    except Exception as e:
+        logger.warning("fetch_cams_forecast failed: %s", e)
+        return None
+
+
+@st.cache_data(ttl=3600)
 def fetch_forecast(lat, lon):
     try:
         r = requests.get(

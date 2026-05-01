@@ -197,7 +197,19 @@ def page_explorer():
         # ── Forecast cards + trend ─────────────────────────────────────────────
         if forecasts:
             st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-            sec(f"{date_label} — {city}")
+            _src = forecasts[0].get("source", "local") if forecasts else "local"
+            _src_badge = ("<span style='font-size:.6rem;background:#0F7B8A22;color:#0F7B8A;"
+                          "padding:1px 6px;border-radius:4px;margin-left:.4rem;'>CAMS</span>"
+                          if _src == "cams" else
+                          "<span style='font-size:.6rem;background:#F59E0B22;color:#F59E0B;"
+                          "padding:1px 6px;border-radius:4px;margin-left:.4rem;'>XGBoost</span>")
+            st.markdown(
+                f'<div style="display:flex;align-items:center;gap:.3rem;margin:.9rem 0 .6rem;">'
+                f'<div style="width:5px;height:5px;border-radius:50%;background:{_ctxt2()};flex-shrink:0;"></div>'
+                f'<span style="font-size:.72rem;font-weight:600;color:{_ctxt2()};text-transform:uppercase;'
+                f'letter-spacing:.07em;">{date_label} — {city}</span>{_src_badge}</div>',
+                unsafe_allow_html=True,
+            )
             cards_html = '<div class="as-fc-grid">'
             for i, fc in enumerate(forecasts):
                 _, cfc, ifc, rk = aqi(fc["pm25"], LNG())

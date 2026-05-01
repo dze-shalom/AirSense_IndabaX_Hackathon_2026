@@ -227,7 +227,33 @@ def build_features(row, ce, re, lat, lon, reg_classes):
 
 
 def predict_7day(fd, city, region, lat, lon, model, enc, fi):
-    # ── API-first path ────────────────────────────────────────────────────────
+    # ── 1. CAMS / Open-Meteo Air Quality API (most accurate) ─────────────────
+    try:
+        from utils.api import fetch_cams_forecast, fetch_forecast as _fetch_wx
+        cams = fetch_cams_forecast(lat, lon)
+        if cams and len(cams) >= 3:
+            # Enrich CAMS PM2.5 with weather data for the dashboard cards
+            wx = fd or _fetch_wx(lat, lon) or {}
+            daily = wx.get("daily", {})
+            preds = []
+            for i, day in enumerate(cams[:7]):
+                preds.append({
+                    "date":     day["date"],
+                    "pm25":     max(0.5, day["pm25"]),
+                    "wmo_code": daily.get("weather_code",  [3]*7)[i] if i < len(daily.get("weather_code", [])) else 3,
+                    "temp_max": daily.get("temperature_2m_max", [28]*7)[i] if i < len(daily.get("temperature_2m_max", [])) else 28,
+                    "temp_min": daily.get("temperature_2m_min", [18]*7)[i] if i < len(daily.get("temperature_2m_min", [])) else 18,
+                    "precip":   daily.get("precipitation_sum",  [0]*7)[i]  if i < len(daily.get("precipitation_sum", [])) else 0,
+                    "humidity": daily.get("relative_humidity_2m_mean", [60]*7)[i] if i < len(daily.get("relative_humidity_2m_mean", [])) else 60,
+                    "wind":     daily.get("wind_speed_10m_max", [10]*7)[i] if i < len(daily.get("wind_speed_10m_max", [])) else 10,
+                    "source":   "cams",
+                })
+            logger.debug("predict_7day(%s): using CAMS", city)
+            return preds
+    except Exception as e:
+        logger.warning("predict_7day CAMS path failed for %s: %s", city, e)
+
+    # ── 2. AirSense FastAPI backend ───────────────────────────────────────────
     try:
         from utils.api import api_health_check, fetch_airsense_forecast, _map_api_forecast_to_preds
         if api_health_check():
@@ -235,12 +261,12 @@ def predict_7day(fd, city, region, lat, lon, model, enc, fi):
             if data and data.get("forecast"):
                 preds = _map_api_forecast_to_preds(data)
                 if preds:
-                    logger.debug("predict_7day(%s): using API", city)
+                    logger.debug("predict_7day(%s): using AirSense API", city)
                     return preds
     except Exception as e:
         logger.warning("predict_7day API path failed for %s: %s", city, e)
 
-    # ── Local model fallback ──────────────────────────────────────────────────
+    # ── 3. Local XGBoost model fallback ───────────────────────────────────────
     if model is None or fd is None:
         return None
     try:
@@ -252,12 +278,16 @@ def predict_7day(fd, city, region, lat, lon, model, enc, fi):
         if not fl:
             logger.error("predict_7day: features.json has empty features list")
             return None
+        # Clip year to training range to avoid extrapolation drift
+        import datetime as _dt
+        _train_year_max = 2024
         preds = []
         for i, date in enumerate(dates):
             row   = {k: (v[i] if isinstance(v, list) and i < len(v) else 0)
                      for k, v in daily.items() if k != "time"}
             row["date"] = date
             feats = build_features(row, ce, re, lat, lon, list(le_r.classes_))
+            feats["year"] = min(feats.get("year", _train_year_max), _train_year_max)
             fa    = np.array([[feats.get(f, 0) for f in fl]])
             try:
                 pred = float(np.expm1(model.predict(fa)[0]))
@@ -273,6 +303,7 @@ def predict_7day(fd, city, region, lat, lon, model, enc, fi):
                 "precip":   daily.get("precipitation_sum",  [0]*7)[i]  if i < 7 else 0,
                 "humidity": daily.get("relative_humidity_2m_mean", [60]*7)[i] if i < 7 else 60,
                 "wind":     daily.get("wind_speed_10m_max", [10]*7)[i] if i < 7 else 10,
+                "source":   "local",
             })
         return preds
     except Exception as e:
