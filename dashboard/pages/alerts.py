@@ -93,9 +93,10 @@ def page_alerts_health():
   <div class="as-alert-dot" style="background:{col};"></div>
   <div style="flex:1;"><div style="font-size:.76rem;font-weight:600;">{city}</div>
   <div style="font-size:.62rem;color:{_ctxt2()};">{s.get("region","—")} · {s["mean_pm25"]:.1f} μg/m³</div></div>
-  <div style="text-align:right;">
-    <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:700;color:{tc};">{prob*100:.0f}%</div>
-    <div style="font-size:.55rem;color:{tc};font-weight:600;">{tl}</div>
+  <div style="display:flex;align-items:center;gap:.5rem;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:{_ctxt()};">{prob*100:.0f}%</div>
+    <div title="{tl}" style="width:13px;height:13px;border-radius:50%;background:{tc};
+      box-shadow:0 0 6px {tc}99;flex-shrink:0;"></div>
   </div>
 </div>""", unsafe_allow_html=True)
             info_box(f"P(PM2.5 > 15 μg/m³) = sigmoid(0.222 × PM2.5 − 3.037). "
