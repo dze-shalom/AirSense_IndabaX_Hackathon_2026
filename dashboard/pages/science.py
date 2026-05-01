@@ -48,6 +48,7 @@ def page_science():
     art = load_artefacts()
     st.markdown('<div class="as-content">', unsafe_allow_html=True)
 
+    lang = LNG()
     tab_sh, tab_cl, tab_sp, tab_mc, tab_pol, tab_brief, tab_pdf = st.tabs([
         _t("shap_tab"), _t("climate_tab_sci"), _t("spatial_tab"), _t("model_tab"),
         _t("policy_sim_tab"), _t("policy_brief_tab"),
