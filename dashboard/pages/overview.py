@@ -388,14 +388,21 @@ def page_overview():
     # ── Right panel ───────────────────────────────────────────────────────────
     with right_col:
 
+        # Build filtered stats from whatever cities survived the map filters
+        _fstats = (
+            {r["city"]: _stats.get(r["city"], CITY_STATS.get(r["city"], {}))
+             for _, r in df_map.iterrows()}
+            if not df_map.empty else _stats
+        )
+
         # ── Circular AQI distribution ─────────────────────────────────────────
         sec("AQI Distribution" if lang=="en" else "Distribution IQA")
-        st.plotly_chart(_circular_stats(_stats), use_container_width=True)
+        st.plotly_chart(_circular_stats(_fstats), use_container_width=True)
 
         # ── Mini KPI cards ────────────────────────────────────────────────────
-        live_count = sum(1 for s in _stats.values() if s.get("live"))
-        above_who  = sum(1 for s in _stats.values() if s["mean_pm25"] > get_threshold())
-        mean_pm    = np.mean([s["mean_pm25"] for s in _stats.values()])
+        live_count = sum(1 for s in _fstats.values() if s.get("live"))
+        above_who  = sum(1 for s in _fstats.values() if s.get("mean_pm25", 0) > get_threshold())
+        mean_pm    = np.mean([s["mean_pm25"] for s in _fstats.values()]) if _fstats else 0
         kc1, kc2 = st.columns(2)
         with kc1:
             st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
@@ -416,7 +423,7 @@ def page_overview():
 
         # ── Rankings ──────────────────────────────────────────────────────────
         sec(_t("most_polluted"))
-        top8 = sorted(_stats.items(), key=lambda x: x[1]["mean_pm25"], reverse=True)[:8]
+        top8 = sorted(_fstats.items(), key=lambda x: x[1].get("mean_pm25", 0), reverse=True)[:8]
         mx   = top8[0][1]["mean_pm25"] if top8 else 1
         for i, (city, s) in enumerate(top8):
             _, col, _, _ = aqi(s["mean_pm25"])
@@ -432,7 +439,7 @@ def page_overview():
 
         st.markdown("<div style='margin-top:.6rem;'></div>", unsafe_allow_html=True)
         sec(_t("cleanest"))
-        for i, (city, s) in enumerate(sorted(_stats.items(), key=lambda x: x[1]["mean_pm25"])[:5]):
+        for i, (city, s) in enumerate(sorted(_fstats.items(), key=lambda x: x[1].get("mean_pm25", 0))[:5]):
             _, col, _, _ = aqi(s["mean_pm25"])
             pct = s["mean_pm25"] / 20 * 100
             st.markdown(f"""<div class="as-city-row">
