@@ -650,12 +650,28 @@ it was applied to unseen cities at three difficulty levels:<br>
 
                 lang_name = "French" if lang == "fr" else "English"
 
+                thr_brief   = get_threshold()
+                thr_lbl     = threshold_label()
+                status_en   = "ABOVE" if pm25_brief > thr_brief else "BELOW"
+                status_fr   = "AU-DESSUS" if pm25_brief > thr_brief else "EN-DESSOUS"
+                exc_note_en = (
+                    f"The mean PM2.5 is {status_en} the limit. "
+                    f"The {prob_brief*100:.0f}% exceedance probability reflects daily peak spikes above the threshold, "
+                    f"not the mean — use this to describe health risk from high-pollution days, NOT to say the mean exceeds the limit."
+                )
+                exc_note_fr = (
+                    f"La PM2.5 moyenne est {status_fr} la limite. "
+                    f"La probabilité de dépassement de {prob_brief*100:.0f}% reflète les pics journaliers au-dessus du seuil, "
+                    f"pas la moyenne — utilisez cela pour décrire le risque sanitaire lors des jours de forte pollution, "
+                    f"PAS pour dire que la moyenne dépasse la limite."
+                )
+
                 if lang == "fr":
                     prompt = (
                         f"Rédigez une note de politique en 2 paragraphes pour les responsables de santé "
                         f"du Cameroun concernant la qualité de l'air à {brief_city} (région {brief_region}). "
-                        f"PM2.5 actuel : {pm25_brief:.1f} µg/m³ (limite OMS 24h : 15 µg/m³). "
-                        f"Probabilité de dépassement : {prob_brief*100:.0f}%. "
+                        f"PM2.5 moyen actuel : {pm25_brief:.1f} µg/m³ | Seuil de référence ({thr_lbl}). "
+                        f"{exc_note_fr} "
                         f"Principales sources de pollution : {top_sources}. "
                         f"Paragraphe 1 : situation actuelle et risque sanitaire. "
                         f"Paragraphe 2 : 3 recommandations politiques concrètes. "
@@ -665,8 +681,8 @@ it was applied to unseen cities at three difficulty levels:<br>
                     prompt = (
                         f"Write a 2-paragraph policy brief for Cameroon health officials about air quality "
                         f"in {brief_city} ({brief_region} region). "
-                        f"Current PM2.5: {pm25_brief:.1f} µg/m³ (WHO 24h limit: 15 µg/m³). "
-                        f"Exceedance probability: {prob_brief*100:.0f}%. "
+                        f"Mean PM2.5: {pm25_brief:.1f} µg/m³ | Reference threshold: {thr_lbl}. "
+                        f"{exc_note_en} "
                         f"Main pollution sources: {top_sources}. "
                         f"Paragraph 1: current situation and health risk. "
                         f"Paragraph 2: 3 concrete policy recommendations. "
@@ -683,7 +699,7 @@ it was applied to unseen cities at three difficulty levels:<br>
                 )
                 if brief_text is None:
                     # No API key — generate a data-driven template brief
-                    who_note = ("dépasse" if lang == "fr" else "exceeds") if pm25_brief > 15 else ("respecte" if lang == "fr" else "is within")
+                    who_note = ("dépasse" if lang == "fr" else "exceeds") if pm25_brief > thr_brief else ("respecte" if lang == "fr" else "is within")
                     rec1_en = "Restrict open biomass burning during the dry season" if "Biomass" in top_sources else "Enforce vehicle emission standards in urban areas"
                     rec1_fr = "Restreindre les feux de biomasse à ciel ouvert en saison sèche" if "Biomass" in top_sources else "Renforcer les normes d'émission des véhicules en zone urbaine"
                     if lang == "fr":
