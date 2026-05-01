@@ -125,8 +125,8 @@ was tried, what won, and why.
 | 4 | Baseline: starter formula | 9.047 | 0.208 | Benchmark |
 | 4 | Baseline: city-month mean | 7.521 | 0.454 | Benchmark |
 | 3b | Proxy data audit | — | — | CAMS-only = PRIMARY |
-| 5 | XGBoost CAMS-only | 6.274 | 0.609 | No circularity |
-| 5b | Regularised + Optuna (FINAL) | **5.936** | **0.660** | ★ Deployment model |
+| 5 | XGBoost CAMS-only | 6.345 | 0.596 | No circularity |
+| 5 | XGBoost mixed (FINAL) | 6.268 | 0.603 | ★ Deployment model |
 | 5c | Conformal prediction intervals | ±17.34 μg/m³ | 97.7% coverage | Uncertainty for health tool |
 | 6 | Multi-output: all 8 compounds | 5.93–39.1 | −0.17–0.70 | 8 compound models |
 | 6b | Two-stage Harmattan model | 6.118 | 0.646 | ✗ Single XGB wins |

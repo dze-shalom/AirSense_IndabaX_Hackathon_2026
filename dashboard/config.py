@@ -36,8 +36,8 @@ URBAN    = {"Littoral","Centre"}
 # ── Model / WHO thresholds ────────────────────────────────────────────────────
 WHO_24H     = 15.0
 WHO_ANN     = 5.0
-MODEL_MAE   = 6.04
-MODEL_R2    = 0.9987
+MODEL_MAE   = 6.27
+MODEL_R2    = 0.603
 MODEL_RL_F1 = 0.847
 
 
