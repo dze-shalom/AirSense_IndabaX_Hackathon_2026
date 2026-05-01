@@ -8,3 +8,4 @@ outputs/
 __pycache__/
 .env
 notebooks/*.ipynb
+.streamlit/secrets.toml
