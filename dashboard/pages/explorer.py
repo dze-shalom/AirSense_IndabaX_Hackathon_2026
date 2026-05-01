@@ -143,13 +143,31 @@ def page_explorer():
 
         _, fc_col, fc_ico, fc_raw = aqi(fc_pm25, LNG())
         bfai_sc = compute_bfai(fc_pm25, wind, hum, region)
-        src_type, src_pct = classify_source(wind, wdir, region, month_now)
-        src_lbl, src_sub  = {"local":("Local Sources","Traffic, burning, industry"),
-                              "transported":("Transported Dust","Harmattan long-range"),
-                              "stagnation":("Stagnation","Low wind, trapped pollution"),
-                              "mixed":("Mixed Sources","Combination of factors")}[src_type]
-        src_col = {"local":"#f97316","transported":"#c084fc",
-                   "stagnation":"#f87171","mixed":"#fbbf24"}[src_type]
+
+        # ── Data-driven source attribution ────────────────────────────────────
+        _shap_region = None
+        if art.get("region_shap"):
+            rs = art["region_shap"]
+            _shap_region = rs.get(region) if isinstance(rs, dict) else None
+        src_fracs = live_source_attribution(
+            wind_speed=wind, wind_dir=wdir, month=month_now, region=region,
+            precipitation=forecasts[0].get("precip", 0) if forecasts else 0,
+            humidity=hum, pm25=fc_pm25, shap_data=_shap_region,
+        )
+        # Dominant source → drives the KPI card label/colour
+        dom_src_name = max(src_fracs, key=src_fracs.get)
+        dom_src_pct  = round(src_fracs[dom_src_name] * 100)
+        _src_type_map = {
+            "Dust": "transported", "Biomass Burning": "local",
+            "Traffic": "local", "Industry": "local", "Secondary": "mixed",
+        }
+        src_type = _src_type_map.get(dom_src_name, "mixed")
+        src_col  = {"local":"#f97316","transported":"#c084fc",
+                    "stagnation":"#f87171","mixed":"#fbbf24"}.get(src_type, AMBER)
+        src_lbl  = dom_src_name
+        src_sub  = {"Dust":"Saharan / Harmattan transport","Biomass Burning":"Savanna & crop fires",
+                    "Traffic":"Urban vehicle emissions","Industry":"Industrial & refinery",
+                    "Secondary":"Photochemical aerosols"}.get(dom_src_name, "Mixed sources")
 
         k1,k2,k3,k4,k5 = st.columns(5)
         with k1: card("PM2.5 Today",f"{fc_pm25:.1f}","μg/m³",
@@ -162,7 +180,7 @@ def page_explorer():
         with k4: card("Conf. Interval",f"±{q_hat:.0f}","μg/m³ (90%)",
                       badge=region,badge_col=TEAL2,accent=TEAL2)
         with k5: card("Source",src_lbl[:18],src_sub[:30],
-                      badge=f"{src_pct}% attributed",badge_col=src_col,accent=src_col)
+                      badge=f"{dom_src_pct}% dominant",badge_col=src_col,accent=src_col)
 
         # ── BFAI gauge ────────────────────────────────────────────────────────
         st.markdown("<div style='margin-top:.9rem;'></div>", unsafe_allow_html=True)
@@ -178,21 +196,28 @@ def page_explorer():
                         unsafe_allow_html=True)
         with gb:
             sec("Pollution Source Attribution")
-            rgb = {"local":"249,115,22","transported":"192,132,252",
-                   "stagnation":"248,113,113","mixed":"251,191,36"}[src_type]
-            st.markdown(f"""<div style="background:rgba({rgb},0.07);border:1px solid rgba({rgb},0.22);
-  border-radius:12px;padding:16px 20px;min-height:140px;display:flex;
-  align-items:center;justify-content:space-between;">
-  <div>
-    <div style="font-size:.9rem;font-weight:700;color:{src_col};">{src_lbl}</div>
-    <div style="font-size:.72rem;color:{_ctxt2()};margin-top:5px;">{src_sub}</div>
-    <div style="font-size:.65rem;color:{_ctxt2()};margin-top:8px;">Wind: {wind:.1f} km/h · Month {month_now}</div>
-  </div>
-  <div style="text-align:right;">
-    <div style="font-size:2.4rem;font-weight:900;color:{src_col};">{src_pct}%</div>
-    <div style="font-size:.65rem;color:{_ctxt2()};">attributed</div>
-  </div>
-</div>""", unsafe_allow_html=True)
+            _src_colors = {
+                "Dust": "#c084fc", "Biomass Burning": "#f97316",
+                "Traffic": "#f59e0b", "Industry": "#ef4444", "Secondary": "#0f7b8a",
+            }
+            bars_html = ""
+            for _sname, _sfrac in sorted(src_fracs.items(), key=lambda x: -x[1]):
+                _spct  = round(_sfrac * 100)
+                _scol  = _src_colors.get(_sname, TEAL)
+                _bold  = "font-weight:700;" if _sname == dom_src_name else ""
+                bars_html += f"""<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;">
+  <div style="font-size:.65rem;{_bold}color:{_ctxt()};width:108px;flex-shrink:0;">{_sname}</div>
+  <div style="flex:1;height:6px;background:{_cborder()};border-radius:3px;overflow:hidden;">
+    <div style="width:{_spct}%;height:100%;background:{_scol};border-radius:3px;"></div></div>
+  <div style="font-size:.65rem;font-family:'JetBrains Mono',monospace;color:{_scol};width:28px;text-align:right;">{_spct}%</div>
+</div>"""
+            st.markdown(
+                f'<div style="padding:.5rem 0 .2rem;">{bars_html}'
+                f'<div style="font-size:.58rem;color:{_ctxt2()};margin-top:.4rem;">'
+                f'Wind {wind:.1f} km/h · {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month_now-1]} · {region}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
         # ── Forecast cards + trend ─────────────────────────────────────────────
         if forecasts:
