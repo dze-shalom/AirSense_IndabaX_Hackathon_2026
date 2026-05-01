@@ -27,10 +27,12 @@ AirSense Cameroon predicts PM2.5 air quality across Cameroon using 6 years of sa
 
 - **Predicts** daily PM2.5 concentrations for 85+ cities across all 10 regions
 - **Forecasts** 7 days ahead using XGBoost + live Open-Meteo weather data
-- **Alerts** with Platt-calibrated exceedance probability (F1 = 0.82 at P=0.50)
+- **Alerts** with Platt-calibrated exceedance probability (F1 = 0.847 at P=0.50)
 - **Explains** predictions via region-specific SHAP feature attributions
 - **Projects** future air quality under CMIP6 SSP2-4.5 and SSP5-8.5 climate scenarios
 - **Advises** schools, farms, and vulnerable groups in English and French
+- **Reports** downloadable PDF air quality reports per city
+- **Chats** via a conversational AI assistant powered by Groq (Llama 3.1, free tier)
 
 ---
 
@@ -40,7 +42,7 @@ AirSense Cameroon predicts PM2.5 air quality across Cameroon using 6 years of sa
 AirSense_IndabaX_Hackathon_2026/
 │
 ├── dashboard/                      # Streamlit web application
-│   ├── app.py                      # Entry point — routing only (56 lines)
+│   ├── app.py                      # Entry point — routing only
 │   ├── config.py                   # Constants: colours, cities, translations, nav
 │   ├── manifest.json               # PWA manifest for mobile install
 │   ├── components/
@@ -51,14 +53,15 @@ AirSense_IndabaX_Hackathon_2026/
 │   │   ├── overview.py             # National choropleth map + city rankings
 │   │   ├── explorer.py             # Forecast + Analytics + Compare (tabbed)
 │   │   ├── alerts.py               # Alert centre + Health calculator (tabbed)
-│   │   ├── science.py              # SHAP analysis + Climate 2050 projections
-│   │   ├── ai_assistant.py         # Claude-powered bilingual health Q&A
+│   │   ├── science.py              # SHAP + Climate 2050 + Policy brief + PDF report
+│   │   ├── ai_assistant.py         # Groq-powered conversational health assistant
 │   │   └── about.py                # Model card, innovations, team
 │   └── utils/
-│       ├── helpers.py              # aqi(), bfai(), classify_source(), city_profile()
+│       ├── helpers.py              # aqi(), bfai(), live_source_attribution()
 │       ├── live_data.py            # get_live_stats(), compute_live_shap()
 │       ├── models.py               # load_models(), predict_7day(), get_alert_prob()
-│       └── api.py                  # fetch_forecast(), geocode_city(), call_claude()
+│       ├── api.py                  # fetch_forecast(), stream_groq(), call_groq()
+│       └── pdf_report.py           # generate_pdf_report() — ReportLab PDF export
 │
 ├── api/
 │   └── main.py                     # FastAPI backend — 20+ REST endpoints
@@ -70,15 +73,14 @@ AirSense_IndabaX_Hackathon_2026/
 │   ├── features.json               # Ordered feature list for inference
 │   ├── conformal_intervals.json    # Per-city 90% conformal prediction intervals
 │   ├── platt_alert_calibration.json# Platt scaling: sigmoid(0.222·PM − 3.037)
-│   ├── region_shap.pkl             # Per-region top-7 SHAP feature weights
-│   └── ...                         # Additional pkl stubs (see setup_models.py)
+│   └── region_shap.pkl             # Per-region top-7 SHAP feature weights
 │
 ├── scripts/
-│   └── setup_models.py             # Rebuild all artefacts from scratch (run after clone)
+│   └── setup_models.py             # Rebuild all artefacts from scratch
 │
 ├── notebooks/                      # Training & analysis notebooks
 ├── deployment/
-│   └── render.yaml                 # Render.com deployment config (API + dashboard)
+│   └── render.yaml                 # Render.com deployment config
 └── requirements.txt
 ```
 
@@ -91,6 +93,8 @@ City/Region enc ──┘          │                     │
                         SHAP Explainer        Conformal CI
                              │                     │
                         Alert Probability ◄── Platt Calibration
+                             │
+                      Groq LLM (free) ──► Conversational AI + Policy Brief
 ```
 
 ---
@@ -100,7 +104,8 @@ City/Region enc ──┘          │                     │
 ### Prerequisites
 
 - Python 3.10+
-- (Optional) Anthropic API key for the AI Assistant page
+- Git
+- (Optional) Free [Groq API key](https://console.groq.com) for the AI Assistant and policy briefs
 
 ### 1. Clone and install
 
@@ -118,31 +123,43 @@ If the `.pkl` files are not present (Git LFS unavailable), generate stubs:
 python scripts/setup_models.py
 ```
 
-This takes ~5 seconds and produces functional fallback models for all artefacts. The main prediction model (`xgb_pm25.json`) is tracked in Git directly and does not require LFS.
+This takes ~5 seconds and produces functional fallback models. The main prediction model (`xgb_pm25.json`) is tracked in Git directly and does not require LFS.
 
-### 3. Configure secrets (optional)
+### 3. Configure secrets (optional but recommended)
 
-Create `.streamlit/secrets.toml` for the AI Assistant:
+Create `.streamlit/secrets.toml` (this file is gitignored — never commit it):
 
 ```toml
-ANTHROPIC_API_KEY = "sk-ant-..."
+GROQ_API_KEY = "gsk_..."         # Free at console.groq.com — enables AI assistant + policy briefs
+AIRSENSE_API_URL = "http://localhost:8000"  # Optional: point to your running API backend
 ```
+
+**Getting a free Groq key:**
+1. Go to [console.groq.com](https://console.groq.com)
+2. Sign up (Google or GitHub)
+3. Click **API Keys → Create API Key**
+4. Copy the key (starts with `gsk_...`)
+
+Without the key, the dashboard still works fully — the AI assistant falls back to rule-based responses and policy briefs use data-driven templates.
 
 ### 4. Run the dashboard
 
 ```bash
-streamlit run dashboard/app.py
+cd dashboard
+streamlit run app.py
 ```
 
-Open http://localhost:8501 in your browser.
+Open [http://localhost:8501](http://localhost:8501) in your browser.
 
 ### 5. Run the API (optional)
+
+The dashboard works without the API (uses local models as fallback). To enable API-first mode:
 
 ```bash
 uvicorn api.main:app --reload --port 8000
 ```
 
-Swagger UI: http://localhost:8000/docs
+Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
@@ -155,11 +172,9 @@ Swagger UI: http://localhost:8000/docs
 | CAMS Reanalysis | 2018–2024 | Daily, city-level | PM2.5, PM10, dust, CO, NO₂, O₃, AOD |
 | Open-Meteo ERA5 | 2018–2024 | Daily, city-level | Temp, humidity, wind, precipitation, solar |
 
-City coordinates for 85+ cities across all 10 regions are embedded in `config.py` and `scripts/setup_models.py`.
+City coordinates for 85+ cities across all 10 regions are embedded in `config.py`.
 
 ### Feature engineering
-
-Key engineered features:
 
 | Feature | Description |
 |---------|-------------|
@@ -173,13 +188,13 @@ Key engineered features:
 
 ### Live inference
 
-At runtime the dashboard fetches 7-day weather forecasts from Open-Meteo for any selected city, applies the same feature transformations, and runs them through `xgb_pm25.json`.
-
 ```python
-# utils/models.py
+# utils/models.py — API-first with local fallback
 def predict_7day(city, lat, lon):
-    fd = fetch_forecast(lat, lon)          # Open-Meteo 7-day
-    rows = build_feature_rows(fd, city)    # same pipeline as training
+    if api_health_check():
+        return fetch_airsense_forecast(city)   # FastAPI backend
+    fd = fetch_forecast(lat, lon)              # Open-Meteo direct
+    rows = build_feature_rows(fd, city)
     model = xgb.XGBRegressor()
     model.load_model("models/xgb_pm25.json")
     return model.predict(rows)
@@ -192,23 +207,12 @@ def predict_7day(city, lat, lon):
 ### Retrain from scratch
 
 ```bash
-# 1. Collect CAMS + Open-Meteo data for all cities
-python notebooks/01_data_collection.ipynb  # or equivalent script
-
-# 2. Feature engineering
+python notebooks/01_data_collection.ipynb
 python notebooks/02_feature_engineering.ipynb
-
-# 3. Train XGBoost
 python notebooks/03_train_xgb.ipynb
-
-# 4. Calibrate alerts (Platt scaling)
 python notebooks/04_calibration.ipynb
-
-# 5. Compute SHAP per region
 python notebooks/05_shap_analysis.ipynb
-
-# 6. Package artefacts
-python scripts/setup_models.py   # adds any stubs not produced above
+python scripts/setup_models.py
 ```
 
 ### Model performance
@@ -219,17 +223,13 @@ python scripts/setup_models.py   # adds any stubs not produced above
 | XGBoost (mixed) | 3.4 | 0.89 | Open-Meteo features only |
 | Ridge (baseline) | 6.2 | 0.72 | Fallback stub |
 
-Alert threshold classifier (Platt-calibrated logistic):
-- **F1 = 0.82** at P(exceed) = 0.50
-- Formula: `P = sigmoid(0.222 × PM2.5 − 3.037)`
-
-Conformal prediction intervals provide city-specific 90% coverage bounds without distributional assumptions.
+Alert classifier (Platt-calibrated logistic):
+- **F1 = 0.847** at P(exceed) = 0.50
+- Formula: `P = sigmoid(0.2221 × PM2.5 − 3.0372)`
 
 ---
 
 ## Public API
-
-The FastAPI backend at `api/main.py` exposes 20+ endpoints.
 
 ### Base URL
 
@@ -242,51 +242,27 @@ https://airsense-cm.onrender.com  (deployed)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/` | Health check + artefact status |
+| `GET` | `/health` | Service health check |
 | `GET` | `/regions` | All regions, cities, coordinates |
-| `GET` | `/predict` | Predict PM2.5 for a city on a date |
 | `GET` | `/forecast/{city}` | 7-day XGBoost + Open-Meteo forecast |
-| `GET` | `/alert-status/{city}` | Current AQI level + threshold alert |
+| `GET` | `/alert-status/{city}` | Current AQI level + alert |
 | `GET` | `/alert-prob/{city}` | Platt-scaled P(exceed WHO 24h) |
-| `GET` | `/leaderboard` | Top-N most polluted cities |
-| `GET` | `/bfai/{city}` | Breath of Fresh Air Index (0–100) |
-| `GET` | `/source/{city}` | Pollution source attribution (5 sources) |
-| `GET` | `/conformal/{city}` | 90% prediction interval (calibrated) |
-| `GET` | `/harmattan/{city}` | Harmattan early-warning risk score |
-| `GET` | `/school-advisory/{city}` | School outdoor action level (1–4) |
-| `GET` | `/agri-advisory/{city}` | Agricultural dust/drought alert |
-| `GET` | `/sms-preview/{city}` | Bilingual SMS alert text (EN/FR) |
-| `GET` | `/explain/{city}` | Region-specific SHAP fingerprint |
-| `GET` | `/climate/{city}` | CMIP6 2050 projections (SSP2/SSP5) |
+| `GET` | `/explain/{city}` | Region SHAP fingerprint |
+| `GET` | `/source/{city}` | 5-source pollution attribution |
 | `GET` | `/health-impact/{city}` | WHO concentration-response estimates |
+| `GET` | `/school-advisory/{city}` | School outdoor action level (1–4) |
+| `GET` | `/bfai/{city}` | Breath of Fresh Air Index (0–100) |
+| `GET` | `/climate/{city}` | CMIP6 2050 projections |
+| `GET` | `/leaderboard` | Top-N most polluted cities |
 | `GET` | `/africa-benchmark` | Cameroon vs 12 African cities |
-| `GET` | `/compare` | Side-by-side seasonal profiles of 2 cities |
 | `POST` | `/ingest` | ESP32 IoT sensor data ingestion |
-| `GET` | `/sensor-feed` | Recent sensor readings buffer |
-
-### Example request
 
 ```bash
+# Example
 curl "http://localhost:8000/forecast/Douala"
 ```
 
-```json
-{
-  "city": "Douala",
-  "region": "Littoral",
-  "forecast": [
-    {"date": "2026-05-01", "pm25": 18.4, "aqi": "moderate", "ci_low": 14.1, "ci_high": 22.7},
-    {"date": "2026-05-02", "pm25": 16.9, "aqi": "moderate", "ci_low": 12.8, "ci_high": 21.0},
-    ...
-  ],
-  "alert_prob": 0.43,
-  "source_attribution": {"Dust": 0.08, "Traffic": 0.50, "Biomass": 0.12, "Industry": 0.15, "Secondary": 0.10, "Other": 0.05}
-}
-```
-
-### Interactive docs
-
-Navigate to `http://localhost:8000/docs` for the full Swagger UI with request schemas, response models, and a Try It Out interface.
+Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
@@ -294,16 +270,14 @@ Navigate to `http://localhost:8000/docs` for the full Swagger UI with request sc
 
 | Page | Key features |
 |------|-------------|
-| **Overview** | National choropleth map (Plotly Mapbox), city rankings, seasonal heatmap, WHO exceedance stats |
-| **Explorer** | 7-day PM2.5 forecast with confidence intervals, source attribution donut, BFAI gauge, multi-city compare |
-| **Alerts & Health** | Alert centre with calibrated exceedance probabilities, school/agricultural advisories, health impact calculator, seasonal advisory calendar |
-| **Science** | SHAP feature importance per region, climate 2050 projections (CMIP6 SSP2/SSP5), model comparison table, Africa benchmark |
-| **AI Assistant** | Claude-powered bilingual (EN/FR) health Q&A with city-specific context |
+| **Overview** | National map (city PM2.5 bubbles, filter by region/AQI), AQI distribution donut, city rankings, seasonal heatmap, Harmattan animation |
+| **Explorer** | 7-day PM2.5 forecast with confidence intervals, source attribution donut, BFAI gauge, multi-city seasonal compare |
+| **Alerts & Health** | Alert centre (calibrated probabilities), school/agricultural advisories, health impact calculator, seasonal calendar |
+| **Science** | SHAP feature importance per region, climate 2050 projections (SSP2/SSP5), model comparison, policy simulator, AI policy brief, **PDF report download** |
+| **AI Assistant** | Conversational health assistant (Groq Llama 3.1, streaming) with live PM2.5 context for all cities; rule-based fallback when no key |
 | **About** | Model card, technical innovations, team |
 
 ### PM2.5 threshold standards
-
-The dashboard supports configurable reference standards selectable from the sidebar:
 
 | Standard | 24h limit |
 |----------|-----------|
@@ -313,29 +287,25 @@ The dashboard supports configurable reference standards selectable from the side
 | ECOWAS | 50 µg/m³ |
 | Custom | User-defined |
 
-All AQI colour bands, alert counts, and charts update dynamically when the standard is changed.
-
 ---
 
 ## Configuration
 
-### Threshold standard
-
-Change in the sidebar under "PM2.5 Standard". Persists in Streamlit session state.
-
-### Language
-
-Toggle EN ↔ FR in the sidebar. All UI strings, advisories, form labels, and chart annotations update immediately.
-
-### Theme
-
-Switch Light ↔ Dark in the sidebar top bar. Particle background, chart palettes, map tiles, and all surfaces update.
-
-### Secrets (`/.streamlit/secrets.toml`)
+### Secrets (`.streamlit/secrets.toml`)
 
 ```toml
-ANTHROPIC_API_KEY = "sk-ant-..."   # Required for AI Assistant page
+GROQ_API_KEY    = "gsk_..."                    # Free — AI assistant + policy briefs
+AIRSENSE_API_URL = "https://your-api.onrender.com"  # Optional FastAPI backend
 ```
+
+### Language
+Toggle **EN ↔ FR** in the sidebar. All UI text, advisories, charts, policy briefs, and PDF reports switch language immediately.
+
+### Theme
+Switch **Light ↔ Dark** in the top bar. Chart palettes, map tiles, and all surfaces update.
+
+### PM2.5 Standard
+Select in the sidebar (**WHO / EU / EPA / ECOWAS / Custom**). All alert counts, AQI bands, and charts update dynamically.
 
 ---
 
@@ -343,33 +313,30 @@ ANTHROPIC_API_KEY = "sk-ant-..."   # Required for AI Assistant page
 
 ### Render.com (recommended)
 
-`deployment/render.yaml` defines two services — dashboard and API:
+`deployment/render.yaml` defines two services:
 
 ```bash
-# Deploy both services with one push
-git push origin main
+git push origin main   # Render auto-deploys both dashboard + API
 ```
 
-Render auto-detects `render.yaml` and deploys both services. Environment variable `ANTHROPIC_API_KEY` must be set in the Render dashboard.
+Set these environment variables in the Render dashboard:
 
-### Docker (manual)
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GROQ_API_KEY` | Optional | Enables AI assistant and policy brief generation |
+| `AIRSENSE_API_URL` | Optional | URL of the deployed API service |
+
+### Local with Docker
 
 ```bash
 # Dashboard
 docker build -t airsense-dashboard -f docker/Dockerfile.dashboard .
-docker run -p 8501:8501 airsense-dashboard
+docker run -p 8501:8501 -e GROQ_API_KEY=gsk_... airsense-dashboard
 
 # API
 docker build -t airsense-api -f docker/Dockerfile.api .
 docker run -p 8000:8000 airsense-api
 ```
-
-### Environment variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Optional | Powers the AI Assistant page |
-| `PORT` | Auto (Render) | Port for the web service |
 
 ---
 
@@ -377,19 +344,23 @@ docker run -p 8000:8000 airsense-api
 
 1. **Breath of Fresh Air Index (BFAI)** — Composite 0–100 score combining PM2.5 (50%), wind speed (25%), and humidity (25%) for intuitive air quality communication beyond raw µg/m³.
 
-2. **Harmattan Early-Warning System** — Detects Saharan dust intrusions from NE wind bearing + dry-season indicator + PM2.5 spike. Triggers 48h advance advisories in northern regions.
+2. **Harmattan Early-Warning System** — Detects Saharan dust intrusions from NE wind bearing + dry-season indicator + PM2.5 spike. Triggers advance advisories in northern regions with animated dust-transport map.
 
-3. **Conformal Prediction Intervals** — Distribution-free 90% confidence bounds per city, enabling honest uncertainty quantification without Gaussian assumptions.
+3. **Conformal Prediction Intervals** — Distribution-free 90% confidence bounds per city without Gaussian assumptions.
 
-4. **Platt-Calibrated Alert Classifier** — Logistic regression maps XGBoost PM2.5 output to exceedance probability (F1 = 0.82). Per-city recalibration corrects regional distribution shift.
+4. **Platt-Calibrated Alert Classifier** — Logistic regression maps XGBoost PM2.5 output to exceedance probability (F1 = 0.847). Per-city recalibration corrects regional distribution shift.
 
-5. **Dynamic Source Attribution** — Five-source decomposition (Dust, Biomass Burning, Traffic, Industry, Secondary Aerosol) computed from live meteorological conditions + SHAP weights.
+5. **Dynamic Source Attribution** — Five-source decomposition (Dust, Biomass Burning, Traffic, Industry, Secondary Aerosol) computed from live meteorological conditions + SHAP weights. Updates per month and city.
 
 6. **CMIP6 Climate Projections** — SSP2-4.5 and SSP5-8.5 scenarios projected to 2050 with bias correction from historical CAMS baseline.
 
-7. **Bilingual Advisory System** — All alerts, advisories, and health guidance in English and French. School outdoor action levels and agricultural dust/drought alerts tailored per region.
+7. **Conversational AI Assistant** — Groq Llama 3.1 8B (free tier, 14k req/day) with live PM2.5 context, 7-day forecasts, SHAP data, and full chart guide injected into the system prompt. Streaming responses. Bilingual EN/FR. Rule-based fallback requires no API key.
 
-8. **Configurable Reference Standards** — WHO 2021, EU 2024, US EPA, ECOWAS, or custom threshold. All visualisations and alert counts update dynamically.
+8. **PDF Report Export** — One-click downloadable PDF per city: current status, 7-day forecast table, source attribution, health impact, and recommendations. Fully bilingual.
+
+9. **API-First Architecture** — Dashboard routes all predictions through the FastAPI backend when available, with silent fallback to local XGBoost models. No user-visible difference.
+
+10. **Configurable Reference Standards** — WHO 2021, EU 2024, US EPA, ECOWAS, or custom threshold. All visualisations and alert counts update dynamically.
 
 ---
 

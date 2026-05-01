@@ -21,6 +21,7 @@ def _norm_shap(data):
 """pages/science.py — SHAP, Climate 2050, Spatial Generalization, Model Comparison."""
 import streamlit as st
 import numpy as np
+from datetime import datetime
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -47,9 +48,10 @@ def page_science():
     art = load_artefacts()
     st.markdown('<div class="as-content">', unsafe_allow_html=True)
 
-    tab_sh, tab_cl, tab_sp, tab_mc, tab_pol, tab_brief = st.tabs([
+    tab_sh, tab_cl, tab_sp, tab_mc, tab_pol, tab_brief, tab_pdf = st.tabs([
         _t("shap_tab"), _t("climate_tab_sci"), _t("spatial_tab"), _t("model_tab"),
         _t("policy_sim_tab"), _t("policy_brief_tab"),
+        "PDF Report" if lang == "en" else "Rapport PDF",
     ])
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -765,6 +767,70 @@ it was applied to unseen cities at three difficulty levels:<br>
                 f'Press <strong>{_t("generate_brief_btn")}</strong> to generate an AI-powered policy brief.'
                 f'</div>',
                 unsafe_allow_html=True,
+            )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # TAB 7 — PDF REPORT
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_pdf:
+        from utils.pdf_report import generate_pdf_report
+        sec("Rapport PDF" if lang == "fr" else "PDF Report")
+
+        st.markdown(
+            f'<div style="font-size:.78rem;color:{_ctxt2()};margin-bottom:.8rem;">'
+            + ("Generez un rapport PDF complet pour une ville : qualite de l'air actuelle, "
+               "previsions 7 jours, sources de pollution, impact sanitaire et recommandations."
+               if lang == "fr" else
+               "Generate a complete PDF report for any city: current air quality, "
+               "7-day forecast, pollution sources, health impact, and recommendations.")
+            + '</div>',
+            unsafe_allow_html=True,
+        )
+
+        pr1, pr2 = st.columns(2)
+        with pr1:
+            pdf_region = st.selectbox(
+                "Region" if lang == "en" else "Region",
+                list(CITIES.keys()), key="pdf_reg"
+            )
+        with pr2:
+            pdf_city = st.selectbox(
+                "City" if lang == "en" else "Ville",
+                [c[0] for c in CITIES[pdf_region]], key="pdf_city"
+            )
+
+        if st.button(
+            "Generate & Download PDF" if lang == "en" else "Generer et Telecharger le PDF",
+            use_container_width=True, key="gen_pdf_btn"
+        ):
+            with st.spinner("Generating report…" if lang == "en" else "Generation du rapport…"):
+                _live_pdf  = live_all()
+                _stats_pdf = _live_pdf.get(pdf_city, CITY_STATS.get(pdf_city, {}))
+                pm25_pdf   = _stats_pdf.get("mean_pm25", 20.0)
+                fc_pdf     = _stats_pdf.get("forecasts", [])
+                prof_pdf   = city_profile(pdf_city, pdf_region, pm25_pdf)
+                src_pdf    = prof_pdf.get("src", {})
+
+                pdf_bytes = generate_pdf_report(
+                    city=pdf_city,
+                    region=pdf_region,
+                    pm25=pm25_pdf,
+                    forecasts=fc_pdf,
+                    sources=src_pdf,
+                    lang=lang,
+                )
+
+            fname = f"AirSense_{pdf_city.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+            st.download_button(
+                label="Download PDF" if lang == "en" else "Telecharger le PDF",
+                data=pdf_bytes,
+                file_name=fname,
+                mime="application/pdf",
+                use_container_width=True,
+            )
+            st.success(
+                f"Report ready for {pdf_city}." if lang == "en"
+                else f"Rapport pret pour {pdf_city}."
             )
 
     st.markdown('</div>', unsafe_allow_html=True)
