@@ -226,14 +226,56 @@ def build_features(row, ce, re, lat, lon, reg_classes):
     }
 
 
+def _local_7day(fd, city, region, lat, lon, model, enc, fi):
+    """Run local XGBoost model for all 7 days. Returns list of dicts or None."""
+    if model is None or fd is None or enc is None or fi is None:
+        return None
+    try:
+        le_c = enc["city"]; le_r = enc["region"]
+        try:    ce = list(le_c.classes_).index(city);  re = list(le_r.classes_).index(region)
+        except: ce, re, region = nearest_known_city_enc(lat, lon, enc) if enc else (0, 0, region)
+        daily = fd.get("daily", {}); dates = daily.get("time", [])
+        fl    = fi.get("features", [])
+        if not fl or not dates:
+            return None
+        _train_year_max = 2024
+        preds = []
+        for i, date in enumerate(dates):
+            row   = {k: (v[i] if isinstance(v, list) and i < len(v) else 0)
+                     for k, v in daily.items() if k != "time"}
+            row["date"] = date
+            feats = build_features(row, ce, re, lat, lon, list(le_r.classes_))
+            feats["year"] = min(feats.get("year", _train_year_max), _train_year_max)
+            fa    = np.array([[feats.get(f, 0) for f in fl]])
+            try:
+                pred = float(np.expm1(model.predict(fa)[0]))
+            except Exception as e:
+                logger.error("_local_7day inference error: %s", e)
+                return None
+            preds.append({
+                "date":     date,
+                "pm25":     max(0.5, pred),
+                "wmo_code": daily.get("weather_code",  [3]*7)[i] if i < 7 else 3,
+                "temp_max": daily.get("temperature_2m_max", [28]*7)[i] if i < 7 else 28,
+                "temp_min": daily.get("temperature_2m_min", [18]*7)[i] if i < 7 else 18,
+                "precip":   daily.get("precipitation_sum",  [0]*7)[i]  if i < 7 else 0,
+                "humidity": daily.get("relative_humidity_2m_mean", [60]*7)[i] if i < 7 else 60,
+                "wind":     daily.get("wind_speed_10m_max", [10]*7)[i] if i < 7 else 10,
+                "source":   "local",
+            })
+        return preds
+    except Exception as e:
+        logger.error("_local_7day: %s", e, exc_info=True)
+        return None
+
+
 def predict_7day(fd, city, region, lat, lon, model, enc, fi):
     # ── 1. CAMS / Open-Meteo Air Quality API (most accurate) ─────────────────
     try:
         from utils.api import fetch_cams_forecast, fetch_forecast as _fetch_wx
         cams = fetch_cams_forecast(lat, lon)
         if cams and len(cams) >= 3:
-            # Enrich CAMS PM2.5 with weather data for the dashboard cards
-            wx = fd or _fetch_wx(lat, lon) or {}
+            wx    = fd or _fetch_wx(lat, lon) or {}
             daily = wx.get("daily", {})
             preds = []
             for i, day in enumerate(cams[:7]):
@@ -248,7 +290,16 @@ def predict_7day(fd, city, region, lat, lon, model, enc, fi):
                     "wind":     daily.get("wind_speed_10m_max", [10]*7)[i] if i < len(daily.get("wind_speed_10m_max", [])) else 10,
                     "source":   "cams",
                 })
-            logger.debug("predict_7day(%s): using CAMS", city)
+            # If CAMS returned fewer than 7 days, pad with local model
+            if len(preds) < 7 and model is not None and fd is not None:
+                local = _local_7day(fd, city, region, lat, lon, model, enc, fi) or []
+                cams_dates = {p["date"] for p in preds}
+                for lp in local:
+                    if lp["date"] not in cams_dates and len(preds) < 7:
+                        lp["source"] = "local"
+                        preds.append(lp)
+                preds.sort(key=lambda x: x["date"])
+            logger.debug("predict_7day(%s): CAMS %d days", city, len(preds))
             return preds
     except Exception as e:
         logger.warning("predict_7day CAMS path failed for %s: %s", city, e)
@@ -267,48 +318,7 @@ def predict_7day(fd, city, region, lat, lon, model, enc, fi):
         logger.warning("predict_7day API path failed for %s: %s", city, e)
 
     # ── 3. Local XGBoost model fallback ───────────────────────────────────────
-    if model is None or fd is None:
-        return None
-    try:
-        le_c = enc["city"]; le_r = enc["region"]
-        try:    ce = list(le_c.classes_).index(city);  re = list(le_r.classes_).index(region)
-        except: ce, re, region = nearest_known_city_enc(lat, lon, enc) if enc else (0, 0, region)
-        daily = fd.get("daily", {}); dates = daily.get("time", [])
-        fl    = fi.get("features", [])
-        if not fl:
-            logger.error("predict_7day: features.json has empty features list")
-            return None
-        # Clip year to training range to avoid extrapolation drift
-        import datetime as _dt
-        _train_year_max = 2024
-        preds = []
-        for i, date in enumerate(dates):
-            row   = {k: (v[i] if isinstance(v, list) and i < len(v) else 0)
-                     for k, v in daily.items() if k != "time"}
-            row["date"] = date
-            feats = build_features(row, ce, re, lat, lon, list(le_r.classes_))
-            feats["year"] = min(feats.get("year", _train_year_max), _train_year_max)
-            fa    = np.array([[feats.get(f, 0) for f in fl]])
-            try:
-                pred = float(np.expm1(model.predict(fa)[0]))
-            except Exception as e:
-                logger.error("predict_7day inference error: %s", e)
-                return None
-            preds.append({
-                "date":     date,
-                "pm25":     max(0.5, pred),
-                "wmo_code": daily.get("weather_code",  [3]*7)[i] if i < 7 else 3,
-                "temp_max": daily.get("temperature_2m_max", [28]*7)[i] if i < 7 else 28,
-                "temp_min": daily.get("temperature_2m_min", [18]*7)[i] if i < 7 else 18,
-                "precip":   daily.get("precipitation_sum",  [0]*7)[i]  if i < 7 else 0,
-                "humidity": daily.get("relative_humidity_2m_mean", [60]*7)[i] if i < 7 else 60,
-                "wind":     daily.get("wind_speed_10m_max", [10]*7)[i] if i < 7 else 10,
-                "source":   "local",
-            })
-        return preds
-    except Exception as e:
-        logger.error("predict_7day: %s", e, exc_info=True)
-        return None
+    return _local_7day(fd, city, region, lat, lon, model, enc, fi)
 
 
 # ── Multi-compound models ─────────────────────────────────────────────────────
