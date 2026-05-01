@@ -1,14 +1,12 @@
 """utils/live_data.py — Live model predictions for all cities.
 
-Replaces static CITY_STATS with real-time XGBoost predictions driven by
-Open-Meteo weather forecasts.  Results are cached for 1 hour so the ~40
-API calls only happen once per session refresh.
+Primary path: calls the AirSense FastAPI backend (GET /forecast/{city}).
+Fallback path: loads models locally and runs XGBoost inference directly.
 
-Usage in any page:
+Usage:
     from utils.live_data import get_live_stats, live_pm25
-
-    stats = get_live_stats()          # dict matching CITY_STATS schema
-    pm25  = live_pm25(city, region)   # float — live or static fallback
+    stats = get_live_stats()      # dict matching CITY_STATS schema
+    pm25  = live_pm25(city)       # float — live or static fallback
 """
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -16,15 +14,41 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import streamlit as st
 
 from config import CITIES, CITY_STATS, WHO_24H
-from utils.api import fetch_forecast
-from utils.models import load_models, predict_7day
 
 logger = logging.getLogger("airsense")
 
-# ── helpers ───────────────────────────────────────────────────────────────────
 
-def _predict_city(city_name, region, lat, lon, model, enc, fi):
-    """Fetch forecast + run model for one city.  Returns (city_name, result_dict) or None."""
+# ── API-first path ────────────────────────────────────────────────────────────
+
+def _fetch_city_via_api(city_name, region, lat, lon):
+    """Fetch one city forecast from the FastAPI backend."""
+    from utils.api import fetch_airsense_forecast, _map_api_forecast_to_preds
+    data = fetch_airsense_forecast(city_name)
+    if not data or not data.get("forecast"):
+        return None
+    preds = _map_api_forecast_to_preds(data)
+    if not preds:
+        return None
+    today_pm25 = preds[0]["pm25"]
+    who_exc = sum(1 for p in preds if p["pm25"] > WHO_24H) / len(preds) * 100
+    tier = CITY_STATS.get(city_name, {}).get("tier", "Medium")
+    return city_name, {
+        "mean_pm25": round(today_pm25, 2),
+        "who_exc":   round(who_exc, 1),
+        "region":    region,
+        "tier":      tier,
+        "forecasts": preds,
+        "live":      True,
+        "source":    "api",
+    }
+
+
+# ── Local-model fallback path ─────────────────────────────────────────────────
+
+def _fetch_city_local(city_name, region, lat, lon, model, enc, fi):
+    """Fetch forecast + run local XGBoost for one city."""
+    from utils.api import fetch_forecast
+    from utils.models import predict_7day
     try:
         fd = fetch_forecast(lat, lon)
         if fd is None:
@@ -32,24 +56,20 @@ def _predict_city(city_name, region, lat, lon, model, enc, fi):
         preds = predict_7day(fd, city_name, region, lat, lon, model, enc, fi)
         if not preds:
             return None
-
         today_pm25 = preds[0]["pm25"]
-        # % of the 7-day window above WHO 24h guideline
         who_exc = sum(1 for p in preds if p["pm25"] > WHO_24H) / len(preds) * 100
-
-        # Carry over tier from static config (model confidence label)
         tier = CITY_STATS.get(city_name, {}).get("tier", "Medium")
-
         return city_name, {
             "mean_pm25": round(today_pm25, 2),
             "who_exc":   round(who_exc, 1),
             "region":    region,
             "tier":      tier,
-            "forecasts": preds,          # full 7-day list — extra vs CITY_STATS
-            "live":      True,           # flag so pages can show "live" badge
+            "forecasts": preds,
+            "live":      True,
+            "source":    "local",
         }
     except Exception as e:
-        logger.warning("live_data._predict_city %s: %s", city_name, e)
+        logger.warning("live_data._fetch_city_local %s: %s", city_name, e)
         return None
 
 
@@ -57,34 +77,51 @@ def _predict_city(city_name, region, lat, lon, model, enc, fi):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_live_stats():
-    """Return a dict of {city_name: stats} with live PM2.5 predictions.
+    """Return {city_name: stats} with live PM2.5 predictions.
 
-    On first call this fetches ~40 forecasts and runs XGBoost inference —
-    expect 15–30 s depending on network.  Subsequent calls within the hour
-    return instantly from Streamlit's cache.
-
-    Falls back to an empty dict (so callers can fall through to CITY_STATS)
-    if the model artefacts are not found.
+    Tries FastAPI backend first; falls back to local XGBoost if unreachable.
+    Subsequent calls within the hour return instantly from Streamlit cache.
     """
-    model, enc, fi = load_models()
-    if model is None:
-        logger.warning("get_live_stats: model not loaded — returning empty dict")
-        return {}
+    from utils.api import api_health_check
 
-    results = {}
-
-    # Build flat task list: (city_name, region, lat, lon)
     tasks = [
         (city_name, region, lat, lon)
         for region, city_list in CITIES.items()
         for city_name, lat, lon in city_list
     ]
 
-    # Parallel fetch — I/O bound, safe to thread
+    use_api = api_health_check()
+    results = {}
+
+    if use_api:
+        logger.info("get_live_stats: using FastAPI backend")
+        with ThreadPoolExecutor(max_workers=10) as pool:
+            futures = {
+                pool.submit(_fetch_city_via_api, *task): task[0]
+                for task in tasks
+            }
+            for future in as_completed(futures):
+                out = future.result()
+                if out:
+                    city_name, data = out
+                    results[city_name] = data
+
+        if results:
+            logger.info("get_live_stats (api): %d/%d cities", len(results), len(tasks))
+            return results
+        logger.warning("get_live_stats: API returned no results — falling back to local")
+
+    # Fallback: local model
+    from utils.models import load_models
+    model, enc, fi = load_models()
+    if model is None:
+        logger.warning("get_live_stats: local model not loaded — returning empty dict")
+        return {}
+
     with ThreadPoolExecutor(max_workers=10) as pool:
         futures = {
-            pool.submit(_predict_city, name, reg, lat, lon, model, enc, fi): name
-            for name, reg, lat, lon in tasks
+            pool.submit(_fetch_city_local, *task, model, enc, fi): task[0]
+            for task in tasks
         }
         for future in as_completed(futures):
             out = future.result()
@@ -92,7 +129,7 @@ def get_live_stats():
                 city_name, data = out
                 results[city_name] = data
 
-    logger.info("get_live_stats: %d/%d cities predicted", len(results), len(tasks))
+    logger.info("get_live_stats (local): %d/%d cities", len(results), len(tasks))
     return results
 
 
@@ -121,21 +158,40 @@ def live_city(city: str, region: str = None) -> dict:
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def compute_live_shap():
-    """Compute per-region SHAP feature importance from live Open-Meteo data.
+    """Per-region SHAP feature importance.
 
-    For each region, fetches today's weather for the first city, builds the
-    feature vector, and runs SHAP TreeExplainer.  Returns
-    {region: [(feature, mean_abs_shap), ...]} or None if model not available.
-    Falls back to REGION_SHAP_FALLBACK when called from pages.
+    Tries GET /explain/{city} on the FastAPI backend first.
+    Falls back to running SHAP TreeExplainer locally if the API is unreachable
+    or the shap package is not installed.
+    Returns {region: [(feature, mean_abs_shap), ...]} or None.
     """
+    from utils.api import api_health_check, fetch_airsense_explain
+
+    if api_health_check():
+        results = {}
+        for region, city_list in CITIES.items():
+            city_name = city_list[0][0]
+            data = fetch_airsense_explain(city_name)
+            if data and data.get("top_drivers"):
+                results[region] = [
+                    (d["feature"], d["mean_abs_shap"])
+                    for d in data["top_drivers"]
+                ]
+        if results:
+            logger.info("compute_live_shap (api): %d regions", len(results))
+            return results
+        logger.warning("compute_live_shap: API returned no SHAP data — falling back to local")
+
+    # Local SHAP fallback
     try:
         import shap as _shap
         import numpy as np
     except ImportError:
-        logger.warning("compute_live_shap: shap not installed")
+        logger.warning("compute_live_shap: shap not installed and API unavailable")
         return None
 
-    from utils.models import build_features, nearest_known_city_enc
+    from utils.api import fetch_forecast
+    from utils.models import load_models, build_features, nearest_known_city_enc
 
     model, enc, fi = load_models()
     if model is None:
@@ -146,26 +202,21 @@ def compute_live_shap():
         return None
 
     results = {}
-
     for region, city_list in CITIES.items():
-        city_name, lat, lon = city_list[0]          # representative city per region
+        city_name, lat, lon = city_list[0]
         fd = fetch_forecast(lat, lon)
         if fd is None:
             continue
-
         daily = fd.get("daily", {})
         dates = daily.get("time", [])
         if not dates:
             continue
-
-        le_c = enc["city"]
-        le_r = enc["region"]
+        le_c = enc["city"]; le_r = enc["region"]
         try:
             ce = list(le_c.classes_).index(city_name)
             re = list(le_r.classes_).index(region)
         except Exception:
             ce, re, region = nearest_known_city_enc(lat, lon, enc)
-
         X_rows = []
         for i, date in enumerate(dates):
             row = {k: (v[i] if isinstance(v, list) and i < len(v) else 0)
@@ -173,19 +224,17 @@ def compute_live_shap():
             row["date"] = date
             feats = build_features(row, ce, re, lat, lon, list(le_r.classes_))
             X_rows.append([feats.get(f, 0) for f in feature_list])
-
         X = np.array(X_rows)
-
         try:
             explainer = _shap.TreeExplainer(model)
-            shap_vals = explainer.shap_values(X)          # (n_days, n_features)
+            shap_vals = explainer.shap_values(X)
             mean_abs  = np.abs(shap_vals).mean(axis=0)
             top_idx   = mean_abs.argsort()[::-1][:7]
             results[region] = [(feature_list[i], float(mean_abs[i])) for i in top_idx]
         except Exception as e:
-            logger.warning("compute_live_shap %s: %s", region, e)
+            logger.warning("compute_live_shap local %s: %s", region, e)
 
-    logger.info("compute_live_shap: %d regions computed", len(results))
+    logger.info("compute_live_shap (local): %d regions computed", len(results))
     return results if results else None
 
 

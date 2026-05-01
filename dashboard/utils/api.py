@@ -1,8 +1,94 @@
-"""utils/api.py — External API calls."""
+"""utils/api.py — External API calls (Open-Meteo, Anthropic, AirSense FastAPI)."""
 import os, logging, requests, streamlit as st
 from config import NORTHERN
 
 logger = logging.getLogger("airsense")
+
+# ── AirSense FastAPI backend URL ──────────────────────────────────────────────
+def _api_base() -> str:
+    try:
+        url = st.secrets.get("AIRSENSE_API_URL", "")
+    except Exception:
+        url = ""
+    return url or os.environ.get("AIRSENSE_API_URL", "http://localhost:8000").rstrip("/")
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def api_health_check() -> bool:
+    """Returns True if the FastAPI backend is reachable."""
+    try:
+        r = requests.get(f"{_api_base()}/health", timeout=3)
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_airsense_forecast(city: str, lang: str = "en"):
+    """GET /forecast/{city} — 7-day XGBoost forecast from the API backend.
+    Returns the full response dict or None on failure.
+    """
+    try:
+        r = requests.get(
+            f"{_api_base()}/forecast/{city}",
+            params={"lang": lang},
+            timeout=20,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        logger.warning("fetch_airsense_forecast %s: %s", city, e)
+        return None
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_airsense_explain(city: str, lang: str = "en"):
+    """GET /explain/{city} — region SHAP fingerprint from the API backend."""
+    try:
+        r = requests.get(
+            f"{_api_base()}/explain/{city}",
+            params={"lang": lang},
+            timeout=10,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        logger.warning("fetch_airsense_explain %s: %s", city, e)
+        return None
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_airsense_alert_status(city: str, lang: str = "en"):
+    """GET /alert-status/{city} from the API backend."""
+    try:
+        r = requests.get(
+            f"{_api_base()}/alert-status/{city}",
+            params={"lang": lang},
+            timeout=10,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        logger.warning("fetch_airsense_alert_status %s: %s", city, e)
+        return None
+
+
+def _map_api_forecast_to_preds(api_data: dict) -> list:
+    """Convert /forecast/{city} response to the list format used by predict_7day()."""
+    out = []
+    for p in api_data.get("forecast", []):
+        w = p.get("weather") or {}
+        out.append({
+            "date":     p["date"],
+            "pm25":     p["pm25"],
+            "wmo_code": w.get("wmo_code", 3),
+            "temp_max": w.get("temp_max", 28),
+            "temp_min": w.get("temp_min", 18),
+            "precip":   w.get("precip_mm", 0),
+            "humidity": w.get("humidity", 60),
+            "wind":     w.get("wind_kmh", 10),
+        })
+    return out or None
 
 
 @st.cache_data(ttl=3600)

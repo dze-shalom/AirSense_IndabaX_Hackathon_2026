@@ -18,50 +18,6 @@ except ImportError:
 
 logger = logging.getLogger("airsense")
 
-# ── Optional: use remote API instead of local models ─────────────────────────
-# Set AIRSENSE_API_URL in Streamlit secrets or environment to enable
-import os as _os
-_API_URL = _os.environ.get("AIRSENSE_API_URL", "")
-
-
-def _api_predict(city, region, lat, lon, date_str, weather_row):
-    """Call the FastAPI endpoint. Returns pm25 float or None on failure."""
-    if not _API_URL:
-        return None
-    try:
-        import requests as _req
-        payload = {
-            "city": city, "region": region, "lat": lat, "lon": lon,
-            "date": date_str,
-            "temp_max":   weather_row.get("temperature_2m_max", 30),
-            "temp_min":   weather_row.get("temperature_2m_min", 18),
-            "temp_mean":  weather_row.get("temperature_2m_mean", 24),
-            "dew_point":  weather_row.get("dew_point_2m_mean", 15),
-            "precip":     weather_row.get("precipitation_sum", 0),
-            "precip_hrs": weather_row.get("precipitation_hours", 0),
-            "wind_speed": weather_row.get("wind_speed_10m_max", 8),
-            "wind_dir":   weather_row.get("wind_direction_10m_dominant", 180),
-            "wind_gust":  weather_row.get("wind_gusts_10m_max", 12),
-            "wind_100m":  weather_row.get("wind_speed_100m_max", 15),
-            "humidity":   weather_row.get("relative_humidity_2m_mean", 60),
-            "pressure":   weather_row.get("surface_pressure_mean", 950),
-            "cloud":      weather_row.get("cloud_cover_mean", 40),
-            "solar":      weather_row.get("shortwave_radiation_sum", 18),
-            "et0":        weather_row.get("et0_fao_evapotranspiration", 5),
-            "daylight":   weather_row.get("daylight_duration", 43200),
-            "sunshine":   weather_row.get("sunshine_duration", 36000),
-            "soil_moist": weather_row.get("soil_moisture_0_to_7cm_mean", 0.2),
-            "soil_temp":  weather_row.get("soil_temperature_0_to_7cm_mean", 25),
-            "wet_bulb":   weather_row.get("wet_bulb_temperature_2m_mean", 20),
-            "vpd_max":    weather_row.get("vapour_pressure_deficit_max", 2.0),
-            "weather_code": int(weather_row.get("weather_code", 3)),
-        }
-        r = _req.post(f"{_API_URL}/predict", json=payload, timeout=10)
-        r.raise_for_status()
-        return r.json()
-    except Exception as e:
-        logger.warning("API call failed: %s", e)
-        return None
 
 
 
@@ -271,6 +227,20 @@ def build_features(row, ce, re, lat, lon, reg_classes):
 
 
 def predict_7day(fd, city, region, lat, lon, model, enc, fi):
+    # ── API-first path ────────────────────────────────────────────────────────
+    try:
+        from utils.api import api_health_check, fetch_airsense_forecast, _map_api_forecast_to_preds
+        if api_health_check():
+            data = fetch_airsense_forecast(city)
+            if data and data.get("forecast"):
+                preds = _map_api_forecast_to_preds(data)
+                if preds:
+                    logger.debug("predict_7day(%s): using API", city)
+                    return preds
+    except Exception as e:
+        logger.warning("predict_7day API path failed for %s: %s", city, e)
+
+    # ── Local model fallback ──────────────────────────────────────────────────
     if model is None or fd is None:
         return None
     try:
@@ -287,19 +257,13 @@ def predict_7day(fd, city, region, lat, lon, model, enc, fi):
             row   = {k: (v[i] if isinstance(v, list) and i < len(v) else 0)
                      for k, v in daily.items() if k != "time"}
             row["date"] = date
-
-            # Try remote API first if configured
-            api_result = _api_predict(city, region, lat, lon, date, row)
-            if api_result:
-                pred = api_result["pm25"]
-            else:
-                feats = build_features(row, ce, re, lat, lon, list(le_r.classes_))
-                fa    = np.array([[feats.get(f, 0) for f in fl]])
-                try:
-                    pred = float(np.expm1(model.predict(fa)[0]))
-                except Exception as e:
-                    logger.error("predict_7day inference error: %s", e)
-                    return None
+            feats = build_features(row, ce, re, lat, lon, list(le_r.classes_))
+            fa    = np.array([[feats.get(f, 0) for f in fl]])
+            try:
+                pred = float(np.expm1(model.predict(fa)[0]))
+            except Exception as e:
+                logger.error("predict_7day inference error: %s", e)
+                return None
             preds.append({
                 "date":     date,
                 "pm25":     max(0.5, pred),
