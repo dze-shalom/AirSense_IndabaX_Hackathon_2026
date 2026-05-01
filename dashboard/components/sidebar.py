@@ -390,33 +390,26 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
     st.markdown(f"""<style>
 [data-testid="stSidebar"]{{
     width:{_sb_w}!important;min-width:{_sb_w}!important;max-width:{_sb_w}!important;
-    transition:width .22s cubic-bezier(.4,0,.2,1)!important;overflow:hidden!important;
+    transition:width .22s cubic-bezier(.4,0,.2,1)!important;
+    overflow-x:hidden!important;overflow-y:auto!important;
 }}
 [data-testid="stSidebar"]>div:first-child{{
     padding:{'0.4rem 0.14rem' if _collapsed else '.95rem .6rem'}!important;
-    overflow:hidden!important;
+    overflow-x:hidden!important;overflow-y:visible!important;
 }}
 .as-fixed-nav{{padding-left:{_nav_pl}!important;}}
-/* Hide zero-height marker divs */
 .as-nav-mark{{display:none!important;height:0!important;margin:0!important;padding:0!important;}}
-/* Base ::before layout so flex doesn't break icon alignment */
-[data-testid="stSidebar"] button p{{
-    display:flex!important;align-items:center!important;
-    {'font-size:0!important;line-height:0!important;justify-content:center!important;' if _collapsed else ''}
-}}
-{('[data-testid="stSidebar"] button{text-align:center!important;justify-content:center!important;padding:.45rem .14rem!important;margin:0 auto .1rem!important;}'
-  '.as-sb-section-lbl,.as-sb-footer,.as-sb-brand-text,.as-sb-settings-panel{display:none!important;}'
-  '.as-sb-brand{justify-content:center!important;}'
-  '[data-testid="stSidebar"] .stSelectbox,[data-testid="stSidebar"] .stNumberInput{display:none!important;}'
-  '[data-testid="stSidebar"] button:before{display:none!important;}'
-  '[data-testid="stSidebar"] [data-testid="element-container"]:first-child button{'
-  'background:rgba(100,255,218,0.12)!important;border:1px solid rgba(100,255,218,0.5)!important;'
-  'color:#64ffda!important;font-size:1.1rem!important;font-weight:700!important;'
-  'box-shadow:0 0 10px rgba(100,255,218,0.25)!important;}') if _collapsed else ''}
+{('''[data-testid="stSidebar"] button{
+    text-align:center!important;justify-content:center!important;
+    padding:.45rem .14rem!important;margin:0 auto .1rem!important;}
+.as-sb-section-lbl,.as-sb-footer,.as-sb-brand-text,.as-sb-settings-panel{display:none!important;}
+.as-sb-brand{justify-content:center!important;}
+[data-testid="stSidebar"] .stSelectbox,[data-testid="stSidebar"] .stNumberInput{display:none!important;}
+[data-testid="stSidebar"] [data-testid="element-container"]:first-child button{
+    background:rgba(100,255,218,0.12)!important;border:1px solid rgba(100,255,218,0.5)!important;
+    color:#64ffda!important;font-size:1.1rem!important;font-weight:700!important;
+    box-shadow:0 0 10px rgba(100,255,218,0.25)!important;}''') if _collapsed else ''}
 </style>""", unsafe_allow_html=True)
-
-    # SVG icon ::before rules (theme + collapsed-aware)
-    st.markdown(_nav_icon_css(_collapsed, _is_dark), unsafe_allow_html=True)
 
 
 def render_nav():
@@ -575,6 +568,16 @@ def render_sidebar():
             ("TOOLS",    ["alerts", "ai"]),
             ("RESEARCH", ["science", "about"]),
         ]
+        # Icon labels — embedded directly so they always render
+        NAV_ICON_LABELS = {
+            "overview": "⊕",
+            "explorer": "≋",
+            "alerts":   "⚡",
+            "science":  "◆",
+            "ai":       "◈",
+            "about":    "○",
+        }
+
         for section_label, keys in sections:
             if not collapsed:
                 st.markdown(
@@ -584,12 +587,11 @@ def render_sidebar():
                     unsafe_allow_html=True)
             for key in keys:
                 active = st.session_state.page == key
-                # Marker div lets CSS :has() selector attach the SVG icon
-                st.markdown(
-                    f'<div class="as-nav-mark" data-page="{key}"></div>',
-                    unsafe_allow_html=True)
+                icon   = NAV_ICON_LABELS.get(key, "·")
+                # Collapsed: show icon only. Expanded: icon + label
+                btn_label = icon if collapsed else f"{icon}  {labels[key]}"
                 if st.button(
-                    labels[key],
+                    btn_label,
                     key=f"sb_{key}",
                     use_container_width=True,
                     type="primary" if active else "secondary",
