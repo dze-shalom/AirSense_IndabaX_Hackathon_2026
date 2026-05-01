@@ -98,7 +98,7 @@ def _circular_stats(stats):
         rotation=90,
         pull=[0.05 if k in ("poor","very_poor","hazardous") else 0 for k in keys],
     ))
-    std_name  = threshold_label()
+    std_name  = st.session_state.get("threshold_std", "WHO 2021")
     above_lbl = (f"above {std_name}" if lang == "en" else f"dépassent {std_name}")
     fig.add_annotation(
         text=(f"<b>{above}</b><br>"
