@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, date
 
 from config import *
 from utils.helpers import (aqi, compute_bfai, bfai_label, bfai_col,
-                           classify_source, health_impact, live_source_attribution, LNG,
+                           classify_source, health_impact, live_source_attribution,
+                           city_source_attribution, LNG,
                            get_threshold, threshold_label)
 from utils.models import (load_models, load_artefacts, get_conf_interval, get_alert_prob,
                            predict_7day, predict_7day_smart, predict_compounds_today,
@@ -149,8 +150,8 @@ def page_explorer():
         if art.get("region_shap"):
             rs = art["region_shap"]
             _shap_region = rs.get(region) if isinstance(rs, dict) else None
-        src_fracs = live_source_attribution(
-            wind_speed=wind, wind_dir=wdir, month=month_now, region=region,
+        src_fracs = city_source_attribution(
+            city=city, region=region, wind_speed=wind, wind_dir=wdir, month=month_now,
             precipitation=forecasts[0].get("precip", 0) if forecasts else 0,
             humidity=hum, pm25=fc_pm25, shap_data=_shap_region,
         )

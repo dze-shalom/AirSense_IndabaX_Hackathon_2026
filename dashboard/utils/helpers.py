@@ -206,7 +206,68 @@ def live_source_attribution(wind_speed, wind_dir, month, region, precipitation,
     return norm
 
 
-def city_profile(city, region, base):
+# ── City-specific source adjustments ─────────────────────────────────────────
+# Deltas applied on top of the region-level meteorological base.
+# Values are relative boosts (+) or suppression (-); re-normalised after blending.
+# Sources: known industrial sites, urban density, proximity to refinery/port/savanna.
+_CITY_SOURCE_DELTA = {
+    # Far North — dust-dominated but Kousseri is busiest border crossing
+    "Kousseri":    {"Dust": +0.10, "Traffic": +0.08},
+    "Maroua":      {"Dust": +0.05, "Traffic": +0.05},
+    "Yagoua":      {"Biomass Burning": +0.08, "Dust": -0.05},
+    "Mokolo":      {"Biomass Burning": +0.06},
+    # North
+    "Garoua":      {"Traffic": +0.08, "Industry": +0.04},
+    "Guider":      {"Biomass Burning": +0.06},
+    "Touboro":     {"Biomass Burning": +0.10, "Dust": -0.05},
+    # Adamawa
+    "Ngaoundere":  {"Traffic": +0.06, "Biomass Burning": +0.05},
+    "Meiganga":    {"Biomass Burning": +0.10},
+    "Tibati":      {"Biomass Burning": +0.08},
+    # Littoral — port + industry
+    "Douala":      {"Traffic": +0.12, "Industry": +0.10, "Dust": -0.05},
+    "Edea":        {"Industry": +0.18, "Traffic": -0.05},   # aluminium smelter
+    "Nkongsamba":  {"Biomass Burning": +0.08, "Traffic": -0.05},
+    # Centre
+    "Yaounde":     {"Traffic": +0.10, "Industry": +0.04},
+    "Mbalmayo":    {"Biomass Burning": +0.06},
+    # South West — oil & gas
+    "Limbe":       {"Industry": +0.20, "Traffic": +0.04},   # Sonara refinery
+    "Buea":        {"Industry": +0.08, "Biomass Burning": +0.05},
+    "Kumba":       {"Biomass Burning": +0.08},
+    "Mamfe":       {"Biomass Burning": +0.10},
+    # West / North West — highland biomass burning
+    "Bafoussam":   {"Traffic": +0.08, "Biomass Burning": +0.06},
+    "Bamenda":     {"Biomass Burning": +0.10, "Traffic": +0.04},
+    "Dschang":     {"Biomass Burning": +0.10},
+    "Kumbo":       {"Biomass Burning": +0.12},
+    "Wum":         {"Biomass Burning": +0.08},
+    # South
+    "Kribi":       {"Industry": +0.06, "Secondary": +0.06},  # deepwater port
+    "Ebolowa":     {"Biomass Burning": +0.06},
+}
+
+
+def city_source_attribution(city, region, wind_speed, wind_dir, month,
+                             precipitation, humidity, pm25, shap_data=None):
+    """Per-city source attribution: meteorological base + city-specific adjustments."""
+    base = live_source_attribution(
+        wind_speed=wind_speed, wind_dir=wind_dir, month=month, region=region,
+        precipitation=precipitation, humidity=humidity, pm25=pm25, shap_data=shap_data,
+    )
+    deltas = _CITY_SOURCE_DELTA.get(city, {})
+    if not deltas:
+        return base
+    adjusted = {}
+    for src, frac in base.items():
+        adjusted[src] = max(0.0, frac + deltas.get(src, 0.0))
+    total = sum(adjusted.values())
+    if total == 0:
+        return base
+    return {k: round(v / total, 3) for k, v in adjusted.items()}
+
+
+
     north = region in NORTHERN
     high  = region in HIGHLAND
     m = ([1.8,2.1,1.4,1.0,0.8,0.65,0.55,0.55,0.50,0.65,1.2,1.6] if north else
