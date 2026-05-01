@@ -98,7 +98,7 @@ def _circular_stats(stats):
         rotation=90,
         pull=[0.05 if k in ("poor","very_poor","hazardous") else 0 for k in keys],
     ))
-    std_name = st.session_state.get("threshold_std", "WHO 2021")
+    std_name  = threshold_label()
     above_lbl = (f"above {std_name}" if lang == "en" else f"dépassent {std_name}")
     fig.add_annotation(
         text=(f"<b>{above}</b><br>"
@@ -150,11 +150,11 @@ def page_overview():
   <div style="text-align:center;"><div class="as-stat-val">10</div>
     <div class="as-stat-lbl">{"Regions" if lang=="en" else "Régions"}</div></div>
   <div style="text-align:center;"><div class="as-stat-val">51.9%</div>
-    <div class="as-stat-lbl">{f'{st.session_state.get("threshold_std","WHO 2021")} Exceedance' if lang=="en" else f'Dépassement {st.session_state.get("threshold_std","WHO 2021")}'}</div></div>
+    <div class="as-stat-lbl">{"Exceedance" if lang=="en" else "Dépassement"} · {threshold_label()}</div></div>
   <div style="text-align:center;"><div class="as-stat-val">18.9</div>
     <div class="as-stat-lbl">{"Mean PM2.5" if lang=="en" else "PM2.5 Moyen"}</div></div>
   <div style="text-align:center;"><div class="as-stat-val">51.9%</div>
-    <div class="as-stat-lbl">{f'Above {st.session_state.get("threshold_std","WHO 2021")} 24h' if lang=="en" else f'Au-dessus {st.session_state.get("threshold_std","WHO 2021")} 24h'}</div></div>
+    <div class="as-stat-lbl">{"Above" if lang=="en" else "Au-dessus"} {threshold_label()}</div></div>
   <div style="text-align:center;"><div class="as-stat-val">0.847</div>
     <div class="as-stat-lbl">{"Alert F1" if lang=="en" else "F1 Alerte"}</div></div>
 </div>""", unsafe_allow_html=True)
@@ -412,7 +412,7 @@ def page_overview():
   <div style="font-size:1.2rem;font-weight:700;font-family:'JetBrains Mono',monospace;
     color:{RED};">{above_who}</div>
   <div style="font-size:.52rem;color:{_ctxt2()};text-transform:uppercase;letter-spacing:.07em;">
-    {f'Above {st.session_state.get("threshold_std","WHO 2021")}' if lang=="en" else f'Dépasse {st.session_state.get("threshold_std","WHO 2021")}'}</div>
+    {"Above" if lang=="en" else "Dépasse"} {threshold_label()}</div>
 </div>""", unsafe_allow_html=True)
         with kc2:
             st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
@@ -474,8 +474,7 @@ def page_overview():
     with b2:
         re = {"Far North":73,"North":66,"West":60,"North West":55,"East":49,"Adamawa":49,
               "Littoral":47,"South West":44,"Centre":42,"South":32}
-        _std = st.session_state.get("threshold_std", "WHO 2021")
-        exc_lbl = f"% Jours Dépassant {_std} 24h" if lang=="fr" else f"% Days Exceeding {_std} 24h"
+        exc_lbl = f"% Jours Dépassant {threshold_label()} 24h" if lang=="fr" else f"% Days Exceeding {threshold_label()} 24h"
         fig_exc = go.Figure(go.Bar(
             y=list(re.keys()), x=list(re.values()), orientation="h",
             marker=dict(color=[REGION_COLORS.get(r, TEAL) for r in re], opacity=0.70),
