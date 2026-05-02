@@ -104,7 +104,6 @@ h1,h2,h3,h4,h5,h6{{font-family:'Montserrat',sans-serif!important;font-weight:700
 /* Extra bottom padding on mobile so content isn't covered by the nav bar */
 @media(max-width:768px){{
   .as-content{{padding-bottom:68px!important;}}
-  [data-testid="stSidebar"]{{display:none!important;}}
 }}
 /* Ensure nav strip buttons wrap on very small screens */
 #as-topnav-row{{flex-wrap:wrap!important;}}
@@ -537,9 +536,36 @@ def render_nav():
     )
     st.markdown(nav_html, unsafe_allow_html=True)
 
-    # ── Hide Streamlit's own collapse controls — we use our own toggle ─────────
-    st.markdown("""<style>
-[data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"]{display:none!important;}
+    # On desktop we use our own ‹/› toggle so Streamlit's hamburger is hidden.
+    # On mobile the bottom tab bar handles page nav but we keep Streamlit's
+    # hamburger visible so users can still reach sidebar settings.
+    st.markdown(f"""<style>
+@media(min-width:769px){{
+  [data-testid="stSidebarCollapsedControl"],
+  [data-testid="collapsedControl"]{{display:none!important;}}
+}}
+@media(max-width:768px){{
+  /* Float Streamlit's hamburger into the right end of our fixed top bar */
+  [data-testid="stSidebarCollapsedControl"],
+  [data-testid="collapsedControl"]{{
+    position:fixed!important;
+    top:0!important;right:0!important;
+    height:42px!important;width:42px!important;
+    z-index:999!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;
+    background:transparent!important;
+  }}
+  [data-testid="stSidebarCollapsedControl"] button,
+  [data-testid="collapsedControl"] button{{
+    color:{TEAL}!important;background:transparent!important;
+    border:none!important;font-size:1.1rem!important;
+    width:38px!important;height:38px!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;
+  }}
+  [data-testid="stSidebar"]{{
+    width:85vw!important;min-width:260px!important;max-width:320px!important;
+  }}
+}}
 </style>""", unsafe_allow_html=True)
 
 
