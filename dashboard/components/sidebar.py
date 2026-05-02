@@ -82,29 +82,10 @@ body,.stApp{{background:{NAVY}!important;font-family:'Open Sans',sans-serif!impo
 [data-testid="stSidebar"] button[kind="secondary"]:hover{{background:rgba(100,255,218,0.07)!important;border-color:rgba(100,255,218,0.22)!important;color:{TEXT1}!important;}}
 [data-testid="stSidebar"] button[kind="primary"]{{width:100%!important;border-radius:6px!important;background:rgba(100,255,218,0.10)!important;border:1px solid {TEAL}!important;color:{TEAL}!important;font-size:.75rem!important;padding:.32rem .45rem!important;margin-bottom:.08rem!important;font-weight:600!important;box-shadow:0 0 10px rgba(100,255,218,0.14)!important;font-family:'Open Sans',sans-serif!important;}}
 h1,h2,h3,h4,h5,h6{{font-family:'Montserrat',sans-serif!important;font-weight:700!important;}}.stMarkdown,.stMarkdown p,.stText{{font-family:'Open Sans',sans-serif!important;font-size:15px!important;line-height:1.6!important;}}.as-stat-val,.as-fc-val,[data-testid='metric-container'] [data-testid='stMetricValue']{{font-family:'Roboto Mono',monospace!important;}}[data-testid='metric-container'] [data-testid='stMetricLabel']{{font-family:'Open Sans',sans-serif!important;}}.as-fixed-nav{{position:fixed;top:0;left:0;right:0;height:42px;z-index:997;background:rgba(10,25,47,0.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid {BORDER};display:flex;align-items:center;padding:0 1.4rem 0 22rem;justify-content:space-between;}}
-/* On mobile the sidebar is hidden so no 22rem offset needed */
-@media(max-width:768px){{.as-fixed-nav{{padding:0 .6rem!important;}}}}
+/* Mobile: no sidebar offset, keep content below the fixed top bar */
+@media(max-width:768px){{.as-fixed-nav{{padding:0 3rem 0 .6rem!important;}}}}
 .as-logo{{font-family:'Montserrat',sans-serif;font-size:.9rem;font-weight:700;color:{TEAL};display:flex;align-items:center;gap:.4rem;white-space:nowrap;}}
 .as-content{{margin-top:48px;padding:.75rem 1.5rem;}}
-/* ── Mobile bottom nav bar ─────────────────────────────────────────────────── */
-.as-mnav{{display:none;position:fixed;bottom:0;left:0;right:0;
-  height:56px;z-index:999;
-  background:rgba(10,25,47,0.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  border-top:1px solid {BORDER};flex-direction:row;align-items:stretch;
-  padding-bottom:env(safe-area-inset-bottom,0px);}}
-@media(max-width:768px){{.as-mnav{{display:flex!important;}}}}
-.as-mnav-item{{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:2px;cursor:pointer;padding:4px 2px;color:{TEXT2};font-size:1.15rem;
-  border:none;background:transparent;transition:color .15s,-webkit-tap-highlight-color .0s;
-  -webkit-tap-highlight-color:transparent;}}
-.as-mnav-item span{{font-size:.37rem;text-transform:uppercase;letter-spacing:.06em;
-  white-space:nowrap;font-family:'Open Sans',sans-serif;line-height:1;}}
-.as-mnav-item.active{{color:{TEAL};}}
-.as-mnav-item:active{{background:rgba(100,255,218,.07);}}
-/* Extra bottom padding on mobile so content isn't covered by the nav bar */
-@media(max-width:768px){{
-  .as-content{{padding-bottom:68px!important;}}
-}}
 /* Ensure nav strip buttons wrap on very small screens */
 #as-topnav-row{{flex-wrap:wrap!important;}}
 .as-alert-badge{{background:rgba(239,68,68,0.13);border:1px solid rgba(239,68,68,0.36);color:{RED};border-radius:4px;padding:.11rem .38rem;font-size:.6rem;font-family:'Roboto Mono',monospace;font-weight:600;}}
@@ -460,33 +441,43 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
 }}
 </style>""", unsafe_allow_html=True)
 
-    # ── Sidebar width + transition (always inject, value depends on state) ──────
+    # ── Sidebar width + transition (desktop only — let Streamlit handle mobile) ──
     _collapsed = st.session_state.get("sidebar_collapsed", False)
-    _is_dark   = st.session_state.get("theme", "light") == "dark"
     _sb_w      = "64px"  if _collapsed else "220px"
     _nav_pl    = "76px"  if _collapsed else "232px"
     st.markdown(f"""<style>
-[data-testid="stSidebar"]{{
-    width:{_sb_w}!important;min-width:{_sb_w}!important;max-width:{_sb_w}!important;
-    transition:width .22s cubic-bezier(.4,0,.2,1)!important;
-    overflow-x:hidden!important;overflow-y:auto!important;
+/* Desktop: our custom fixed-width sidebar */
+@media(min-width:769px){{
+  [data-testid="stSidebar"]{{
+      width:{_sb_w}!important;min-width:{_sb_w}!important;max-width:{_sb_w}!important;
+      transition:width .22s cubic-bezier(.4,0,.2,1)!important;
+      overflow-x:hidden!important;overflow-y:auto!important;
+  }}
+  [data-testid="stSidebar"]>div:first-child{{
+      padding:{'0.4rem 0.14rem' if _collapsed else '.95rem .6rem'}!important;
+      overflow-x:hidden!important;overflow-y:visible!important;
+  }}
+  .as-fixed-nav{{padding-left:{_nav_pl}!important;}}
 }}
-[data-testid="stSidebar"]>div:first-child{{
-    padding:{'0.4rem 0.14rem' if _collapsed else '.95rem .6rem'}!important;
-    overflow-x:hidden!important;overflow-y:visible!important;
+/* Mobile: Streamlit renders sidebar as a slide-over — no fixed width override */
+@media(max-width:768px){{
+  .as-fixed-nav{{padding-left:.6rem!important;padding-right:3rem!important;}}
+  [data-testid="stSidebar"]{{
+      overflow-y:auto!important;
+  }}
 }}
-.as-fixed-nav{{padding-left:{_nav_pl}!important;}}
 .as-nav-mark{{display:none!important;height:0!important;margin:0!important;padding:0!important;}}
-{('''[data-testid="stSidebar"] button{
+{('''@media(min-width:769px){
+  [data-testid="stSidebar"] button{
     text-align:center!important;justify-content:center!important;
     padding:.45rem .14rem!important;margin:0 auto .1rem!important;}
-.as-sb-section-lbl,.as-sb-footer,.as-sb-brand-text,.as-sb-settings-panel{display:none!important;}
-.as-sb-brand{justify-content:center!important;}
-[data-testid="stSidebar"] .stSelectbox,[data-testid="stSidebar"] .stNumberInput{display:none!important;}
-[data-testid="stSidebar"] [data-testid="element-container"]:first-child button{
+  .as-sb-section-lbl,.as-sb-footer,.as-sb-brand-text,.as-sb-settings-panel{display:none!important;}
+  .as-sb-brand{justify-content:center!important;}
+  [data-testid="stSidebar"] .stSelectbox,[data-testid="stSidebar"] .stNumberInput{display:none!important;}
+  [data-testid="stSidebar"] [data-testid="element-container"]:first-child button{
     background:rgba(100,255,218,0.12)!important;border:1px solid rgba(100,255,218,0.5)!important;
     color:#64ffda!important;font-size:1.1rem!important;font-weight:700!important;
-    box-shadow:0 0 10px rgba(100,255,218,0.25)!important;}''') if _collapsed else ''}
+    box-shadow:0 0 10px rgba(100,255,218,0.25)!important;}}''') if _collapsed else ''}
 </style>""", unsafe_allow_html=True)
 
 
@@ -536,34 +527,32 @@ def render_nav():
     )
     st.markdown(nav_html, unsafe_allow_html=True)
 
-    # On desktop we use our own ‹/› toggle so Streamlit's hamburger is hidden.
-    # On mobile the bottom tab bar handles page nav but we keep Streamlit's
-    # hamburger visible so users can still reach sidebar settings.
+    # Desktop: hide Streamlit's hamburger — we use our own ‹/› toggle.
+    # Mobile: keep it, float it into the top-right of our fixed nav bar.
     st.markdown(f"""<style>
 @media(min-width:769px){{
   [data-testid="stSidebarCollapsedControl"],
   [data-testid="collapsedControl"]{{display:none!important;}}
 }}
 @media(max-width:768px){{
-  /* Float Streamlit's hamburger into the right end of our fixed top bar */
   [data-testid="stSidebarCollapsedControl"],
   [data-testid="collapsedControl"]{{
-    position:fixed!important;
-    top:0!important;right:0!important;
-    height:42px!important;width:42px!important;
-    z-index:999!important;
+    position:fixed!important;top:0!important;right:0!important;
+    height:42px!important;width:44px!important;z-index:1000!important;
     display:flex!important;align-items:center!important;justify-content:center!important;
-    background:transparent!important;
+    background:transparent!important;border:none!important;
   }}
   [data-testid="stSidebarCollapsedControl"] button,
   [data-testid="collapsedControl"] button{{
-    color:{TEAL}!important;background:transparent!important;
-    border:none!important;font-size:1.1rem!important;
-    width:38px!important;height:38px!important;
+    color:{TEAL}!important;background:transparent!important;border:none!important;
+    width:36px!important;height:36px!important;padding:0!important;
     display:flex!important;align-items:center!important;justify-content:center!important;
+    font-size:1.3rem!important;
   }}
+  /* Sidebar slide-over: nice width, scrollable */
   [data-testid="stSidebar"]{{
-    width:85vw!important;min-width:260px!important;max-width:320px!important;
+    width:82vw!important;min-width:260px!important;max-width:300px!important;
+    overflow-y:auto!important;
   }}
 }}
 </style>""", unsafe_allow_html=True)
