@@ -267,7 +267,7 @@ def city_source_attribution(city, region, wind_speed, wind_dir, month,
     return {k: round(v / total, 3) for k, v in adjusted.items()}
 
 
-
+def city_profile(city, region, base):
     north = region in NORTHERN
     high  = region in HIGHLAND
     m = ([1.8,2.1,1.4,1.0,0.8,0.65,0.55,0.55,0.50,0.65,1.2,1.6] if north else

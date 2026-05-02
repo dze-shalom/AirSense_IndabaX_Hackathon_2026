@@ -264,7 +264,7 @@ def _load_artefacts() -> None:
     # XGBoost model
     try:
         mp = MODELS / "xgb_pm25.json"
-        STATE["model"] = xgb.XGBRegressor(random_state=42, seed=42)
+        STATE["model"] = xgb.XGBRegressor()
         STATE["model"].load_model(str(mp))
         logger.info("✓ XGBoost model loaded from %s", mp)
     except Exception as e:
