@@ -219,9 +219,9 @@ python scripts/setup_models.py
 
 | Model | MAE (µg/m³) | R² | Notes |
 |-------|-------------|-----|-------|
-| XGBoost (CAMS) | 3.1 | 0.91 | Primary — used for forecast |
-| XGBoost (mixed) | 3.4 | 0.89 | Open-Meteo features only |
-| Ridge (baseline) | 6.2 | 0.72 | Fallback stub |
+| XGBoost (CAMS-only) | 6.35 | 0.60 | Primary — real measurements only |
+| XGBoost (mixed) | 6.27 | 0.60 | Includes proxy data |
+| Ridge (baseline) | 7.52 | 0.45 | City-month average fallback |
 
 Alert classifier (Platt-calibrated logistic):
 - **F1 = 0.847** at P(exceed) = 0.50
@@ -366,6 +366,9 @@ docker run -p 8000:8000 airsense-api
 
 ## Team
 
+**Dze-Kum Shalom Chow** — Lead developer, ML modelling, dashboard design
+**Dze-Kum Shalom Chow** — Lead developer, ML modelling, dashboard design
+**Dze-Kum Shalom Chow** — Lead developer, ML modelling, dashboard design
 **Dze-Kum Shalom Chow** — Lead developer, ML modelling, dashboard design
 IndabaX Cameroon 2026
 
