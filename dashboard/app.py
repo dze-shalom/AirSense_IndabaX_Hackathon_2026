@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 from config import PAGE_KEYS
-from components.sidebar import inject_css, render_nav, render_sidebar
+from components.sidebar import inject_css, render_nav, render_sidebar, render_mobile_nav
 from pages.overview      import page_overview
 from pages.explorer      import page_explorer
 from pages.alerts        import page_alerts_health
@@ -41,7 +41,13 @@ for k, v in _DEFAULTS.items():
 
 # ── Render shell ──────────────────────────────────────────────────────────────
 def main():
-    
+    # Handle mobile nav query param (_mn=pagename set by the bottom tab bar JS)
+    _mn = st.query_params.get("_mn", "")
+    if _mn and _mn in PAGE_KEYS:
+        st.session_state.page = _mn
+        st.query_params.clear()
+        st.rerun()
+
     inject_css()
     render_nav()
     render_sidebar()
@@ -54,6 +60,8 @@ def main():
     elif page == "ai":        page_ai()
     elif page == "about":     page_about()
     else:                     page_overview()
+
+    render_mobile_nav()
 
 
 if __name__ == "__main__":

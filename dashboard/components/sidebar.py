@@ -86,6 +86,26 @@ h1,h2,h3,h4,h5,h6{{font-family:'Montserrat',sans-serif!important;font-weight:700
 @media(max-width:768px){{.as-fixed-nav{{padding:0 .6rem!important;}}}}
 .as-logo{{font-family:'Montserrat',sans-serif;font-size:.9rem;font-weight:700;color:{TEAL};display:flex;align-items:center;gap:.4rem;white-space:nowrap;}}
 .as-content{{margin-top:48px;padding:.75rem 1.5rem;}}
+/* ── Mobile bottom nav bar ─────────────────────────────────────────────────── */
+.as-mnav{{display:none;position:fixed;bottom:0;left:0;right:0;
+  height:56px;z-index:999;
+  background:rgba(10,25,47,0.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-top:1px solid {BORDER};flex-direction:row;align-items:stretch;
+  padding-bottom:env(safe-area-inset-bottom,0px);}}
+@media(max-width:768px){{.as-mnav{{display:flex!important;}}}}
+.as-mnav-item{{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;cursor:pointer;padding:4px 2px;color:{TEXT2};font-size:1.15rem;
+  border:none;background:transparent;transition:color .15s,-webkit-tap-highlight-color .0s;
+  -webkit-tap-highlight-color:transparent;}}
+.as-mnav-item span{{font-size:.37rem;text-transform:uppercase;letter-spacing:.06em;
+  white-space:nowrap;font-family:'Open Sans',sans-serif;line-height:1;}}
+.as-mnav-item.active{{color:{TEAL};}}
+.as-mnav-item:active{{background:rgba(100,255,218,.07);}}
+/* Extra bottom padding on mobile so content isn't covered by the nav bar */
+@media(max-width:768px){{
+  .as-content{{padding-bottom:68px!important;}}
+  [data-testid="stSidebar"]{{display:none!important;}}
+}}
 /* Ensure nav strip buttons wrap on very small screens */
 #as-topnav-row{{flex-wrap:wrap!important;}}
 .as-alert-badge{{background:rgba(239,68,68,0.13);border:1px solid rgba(239,68,68,0.36);color:{RED};border-radius:4px;padding:.11rem .38rem;font-size:.6rem;font-family:'Roboto Mono',monospace;font-weight:600;}}
@@ -702,6 +722,47 @@ def render_sidebar():
             except Exception:
                 pass
             st.rerun()
+
+
+def render_mobile_nav():
+    """Fixed bottom nav bar — visible only on screens ≤ 768 px."""
+    lang   = LNG()
+    page   = st.session_state.page
+    labels = NAV_LABELS[lang]
+
+    items = [
+        ("overview", "⊕", labels["overview"]),
+        ("explorer", "≋", labels["explorer"]),
+        ("alerts",   "⚡", labels["alerts"]),
+        ("science",  "◆", labels["science"]),
+        ("ai",       "◈", labels["ai"]),
+        ("about",    "○", labels["about"]),
+    ]
+
+    nav_items_html = ""
+    for key, icon, lbl in items:
+        active = "active" if key == page else ""
+        short  = lbl[:7]
+        nav_items_html += (
+            f'<button class="as-mnav-item {active}" onclick="asMobileNav(\'{key}\')">'
+            f'{icon}<span>{short}</span></button>'
+        )
+
+    st.markdown(f"""
+<div class="as-mnav" id="as-mobile-nav">
+{nav_items_html}
+</div>
+<script>
+(function() {{
+  function asMobileNav(page) {{
+    var url = new URL(window.location.href);
+    url.searchParams.set('_mn', page);
+    window.location.href = url.toString();
+  }}
+  window.asMobileNav = asMobileNav;
+}})();
+</script>
+""", unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

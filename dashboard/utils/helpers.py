@@ -123,77 +123,72 @@ def health_impact(pm25):
 
 def live_source_attribution(wind_speed, wind_dir, month, region, precipitation,
                              humidity, pm25, shap_data=None):
-    """Compute dynamic source attribution from live meteorological conditions.
-
-    Returns dict {source: fraction} summing to 1.0.
-    Logic:
-      - Dust/Transported  : NE winds + Harmattan season + low precip
-      - Biomass Burning   : dry season + highland/savanna + SHAP is_dry_season
-      - Traffic/Local     : stagnation + urban region + SHAP city_enc weight
-      - Industry          : South West (oil) / Littoral (port) baseline + SHAP region_enc
-      - Secondary Aerosol : high humidity + solar-driven chemistry
-      - Other             : residual
-    """
+    """Compute dynamic source attribution from live meteorological conditions."""
     north   = region in NORTHERN
     highland= region in HIGHLAND
     urban   = region in URBAN
     sw      = region == "South West"
+    east    = region == "East"
+    south   = region == "South"
 
     # ── 1. Dust / Transported fraction ───────────────────────────────────────
     harmattan = month in [11, 12, 1, 2] and north
-    # NE wind = bearing 0-90° (coming from Sahara)
     ne_wind   = (wind_dir <= 90 or wind_dir >= 315) if wind_dir is not None else False
-    dust_base = 0.55 if north else (0.10 if highland else (0.05 if sw else 0.12))
+    dust_base = (0.55 if north else 0.10 if highland else 0.05 if sw
+                 else 0.04 if south else 0.06 if east else 0.12)
     dust = dust_base
     if harmattan and ne_wind:
         dust += 0.15 * min(1.0, wind_speed / 10)
-    if precipitation > 5:                        # rain washes dust
+    if precipitation > 5:
         dust *= max(0.3, 1 - precipitation / 30)
     dust = round(min(0.85, max(0.02, dust)), 3)
 
     # ── 2. Biomass burning fraction ───────────────────────────────────────────
-    dry_season  = month in [11, 12, 1, 2, 3]
-    bio_base    = 0.40 if highland else (0.35 if north else (0.25 if sw else 0.20))
-    biomass     = bio_base
-    if dry_season and not harmattan:             # savanna fires peak in dry season
+    dry_season = month in [11, 12, 1, 2, 3]
+    bio_base   = (0.40 if highland else 0.35 if north else 0.30 if east
+                  else 0.28 if south else 0.25 if sw else 0.20)
+    biomass    = bio_base
+    if dry_season and not harmattan:
         biomass += 0.10
-    if precipitation > 20:                       # fires suppressed by heavy rain
+    if precipitation > 20:
         biomass *= max(0.2, 1 - precipitation / 60)
-    if shap_data:                                # SHAP-weighted boost if is_dry_season matters
+    if shap_data:
         shap_dict = dict(shap_data) if shap_data else {}
         dry_shap  = shap_dict.get("is_dry_season", 0)
         biomass  += min(0.12, dry_shap * 2)
     biomass = round(min(0.65, max(0.03, biomass)), 3)
 
     # ── 3. Traffic / Local fraction ───────────────────────────────────────────
-    traffic_base = 0.50 if urban else (0.20 if highland else (0.10 if north else 0.18))
+    traffic_base = (0.50 if urban else 0.20 if highland else 0.10 if north
+                    else 0.08 if east else 0.08 if south else 0.18)
     stagnation   = wind_speed < 2
     traffic      = traffic_base
-    if stagnation:                               # trapped pollution amplifies local sources
+    if stagnation:
         traffic += 0.15
-    if not urban and wind_speed > 8:             # strong wind disperses local sources
+    if not urban and wind_speed > 8:
         traffic *= 0.6
     traffic = round(min(0.65, max(0.02, traffic)), 3)
 
     # ── 4. Industrial fraction ────────────────────────────────────────────────
-    industry_base = 0.35 if sw else (0.15 if urban else (0.05 if north else 0.08))
+    industry_base = (0.35 if sw else 0.15 if urban else 0.05 if north
+                     else 0.04 if east else 0.03 if south else 0.08)
     industry      = industry_base
     if shap_data:
-        shap_dict  = dict(shap_data) if shap_data else {}
-        reg_shap   = shap_dict.get("region_enc", 0)
-        industry  += min(0.10, reg_shap * 1.5)
+        shap_dict = dict(shap_data) if shap_data else {}
+        reg_shap  = shap_dict.get("region_enc", 0)
+        industry += min(0.10, reg_shap * 1.5)
     industry = round(min(0.50, max(0.02, industry)), 3)
 
     # ── 5. Secondary aerosol fraction ─────────────────────────────────────────
-    # Forms in high humidity + photochemistry; higher in wet months
-    secondary_base  = 0.10
-    wet_months      = month in [4, 5, 6, 7, 8, 9]
-    secondary       = secondary_base
+    # South and East are equatorial — high humidity → more secondary aerosol
+    secondary_base = 0.18 if south else (0.16 if east else 0.10)
+    wet_months     = month in [4, 5, 6, 7, 8, 9]
+    secondary      = secondary_base
     if wet_months:
-        secondary  += 0.06
+        secondary += 0.06
     if humidity > 75:
-        secondary  += min(0.05, (humidity - 75) / 100)
-    secondary = round(min(0.25, max(0.03, secondary)), 3)
+        secondary += min(0.05, (humidity - 75) / 100)
+    secondary = round(min(0.30, max(0.03, secondary)), 3)
 
     # ── 6. Normalise to sum to 1.0 ────────────────────────────────────────────
     raw   = {"Dust": dust, "Biomass Burning": biomass, "Traffic": traffic,
