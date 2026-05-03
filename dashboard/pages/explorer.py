@@ -10,7 +10,8 @@ from config import *
 from utils.helpers import (aqi, compute_bfai, bfai_label, bfai_col,
                            classify_source, health_impact, live_source_attribution,
                            city_source_attribution, LNG,
-                           get_threshold, threshold_label)
+                           get_threshold, threshold_label,
+                           get_compound_limit, get_active_std_name)
 from utils.models import (load_models, load_artefacts, get_conf_interval, get_alert_prob,
                            predict_7day, predict_7day_smart, predict_compounds_today,
                            infer_region_from_lat)
@@ -435,10 +436,23 @@ def page_explorer():
                 info_box("🟡 <strong>Estimated values</strong> — place models_multi.pkl in models/ "
                          "for real compound predictions.")
 
-            keys   = [k for k in COMPOUND_KEYS if k in comp_vals]
-            labels = [COMPOUND_LABELS[k] for k in keys]
-            vals   = [comp_vals[k] for k in keys]
-            colors = [COMPOUND_COLORS[k] for k in keys]
+            keys      = [k for k in COMPOUND_KEYS if k in comp_vals]
+            labels    = [COMPOUND_LABELS[k] for k in keys]
+            vals      = [comp_vals[k] for k in keys]
+            active_std = get_active_std_name()
+
+            # Color each bar by exceedance of the active standard's limit
+            def _bar_color(key, val):
+                lim = get_compound_limit(key)
+                if lim is None:
+                    return COMPOUND_COLORS[key]
+                r = val / lim
+                if r >= 1.0:   return "#ef4444"   # exceeds
+                if r >= 0.75:  return "#f97316"   # approaching
+                if r >= 0.5:   return "#f59e0b"   # moderate
+                return "#22c55e"                  # safe
+
+            colors = [_bar_color(k, comp_vals[k]) for k in keys]
 
             fig_cpd = go.Figure(go.Bar(
                 x=labels, y=vals,
@@ -448,19 +462,21 @@ def page_explorer():
                 hovertemplate="<b>%{x}</b><br>%{y:.2f} %{customdata}<extra></extra>",
                 customdata=[COMPOUND_UNITS.get(k,"") for k in keys]))
             fig_cpd.update_layout(**PLO(height=230, yaxis_title="Concentration",
-                xaxis=dict(gridcolor="rgba(0,0,0,0)"), showlegend=False))
+                xaxis=dict(gridcolor="rgba(0,0,0,0)"), showlegend=False,
+                title=dict(text=f"Standard: {active_std}", font=dict(size=10), x=1, xanchor="right")))
             st.plotly_chart(fig_cpd, use_container_width=True)
 
-            # Detail rows with WHO comparison
+            # Detail rows with active-standard comparison
             for k in keys:
-                v   = comp_vals[k]
-                lim = COMPOUND_WHO.get(k)
-                col = COMPOUND_COLORS[k]
-                pct = min(v/(lim*2)*100,100) if lim else min(v/max(vals)*100,100)
+                v      = comp_vals[k]
+                lim    = get_compound_limit(k)
+                col    = _bar_color(k, v)
+                pct    = min(v / (lim * 2) * 100, 100) if lim else min(v / max(vals) * 100, 100)
                 exceed = lim and v > lim
                 flag   = (f'<span style="font-size:.6rem;color:{RED};font-weight:700;margin-left:.4rem;">'
                           f'EXCEEDS</span>') if exceed else ""
-                mae_note = f"MAE={COMPOUND_TEST_MAE.get(k,'?'):.2f}  R²={COMPOUND_TEST_R2.get(k,'?'):.3f}" if comp_vals else ""
+                lim_label = f"{active_std}: {lim}" if lim else "No limit"
+                mae_note  = f"MAE={COMPOUND_TEST_MAE.get(k,'?'):.2f}  R²={COMPOUND_TEST_R2.get(k,'?'):.3f}" if comp_vals else ""
                 st.markdown(f"""<div style="display:flex;align-items:center;gap:.8rem;padding:.38rem 0;
   border-bottom:1px solid {_cborder()};">
   <span style="font-size:.68rem;color:{_ctxt2()};width:52px;flex-shrink:0;
@@ -469,8 +485,7 @@ def page_explorer():
     <div style="width:{pct:.0f}%;height:100%;background:{col};border-radius:3px;"></div></div>
   <span style="font-size:.68rem;font-family:'JetBrains Mono',monospace;
     color:{'#f87171' if exceed else _ctxt()};width:72px;text-align:right;">{v:.2f} {COMPOUND_UNITS.get(k,'')}</span>
-  <span style="font-size:.6rem;color:{_ctxt2()};width:60px;">
-    {"WHO: "+str(lim) if lim else "No limit"}</span>
+  <span style="font-size:.6rem;color:{_ctxt2()};width:80px;">{lim_label}</span>
   <span style="font-size:.58rem;color:{_ctxt2()};">{mae_note}</span>
   {flag}
 </div>""", unsafe_allow_html=True)
