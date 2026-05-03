@@ -133,6 +133,108 @@ def page_alerts_health():
   <div style="font-size:.68rem;color:{_ctxt2()};">{"Région" if lang=="fr" else "Region"}: {adv_region}</div>
 </div>""", unsafe_allow_html=True)
 
+        # ── Harmattan Early-Warning System ────────────────────────────────────
+        st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+
+        month_now = datetime.now().month
+        in_season = month_now in (11, 12, 1, 2)
+        is_north  = adv_region in NORTHERN
+
+        monthly    = MONTHLY_BY_REGION.get(adv_region, [15] * 12)
+        harm_peak  = max(monthly[0], monthly[1], monthly[10], monthly[11])
+
+        # Risk 0-100: scales with PM2.5 vs historical peak, weighted by month within season
+        _sw = {11: 0.65, 12: 0.80, 1: 1.0, 2: 1.0}.get(month_now, 0.15)
+        _cap = 100 if is_north else 40
+        risk_score = int(min(_cap, max(0, (adv_pm / max(harm_peak, 1)) * _sw * 100)))
+
+        if risk_score >= 90:   h_status, h_col = ("Extrême"   if lang=="fr" else "Extreme"),   RED
+        elif risk_score >= 70: h_status, h_col = ("Élevé"     if lang=="fr" else "High"),      ORANGE
+        elif risk_score >= 50: h_status, h_col = ("Modéré"    if lang=="fr" else "Elevated"),  AMBER
+        elif risk_score >= 25: h_status, h_col = ("Vigilance" if lang=="fr" else "Watch"),     TEAL
+        else:                  h_status, h_col = ("Faible"    if lang=="fr" else "Low Risk"),  GREEN
+
+        if lang == "fr":
+            _hadv = ("Restez à l'intérieur, fenêtres fermées. Portez un masque N95 à l'extérieur. "
+                     "Groupes vulnérables: évitez toute activité en plein air." if risk_score >= 70 else
+                     "Limitez les activités prolongées. Utilisez un masque anti-poussière." if risk_score >= 50 else
+                     "Poussière Harmattan élevée. Les groupes sensibles doivent réduire le temps dehors." if risk_score >= 25 else
+                     "Niveaux de poussière normaux. Précautions habituelles.")
+            _season_lbl = "🟠 SAISON HARMATTAN ACTIVE" if in_season else "⚪ HORS SAISON"
+            _zone_note  = "Région Nord — Zone d'impact primaire" if is_north else "Région Sud — Influence indirecte"
+            _peak_lbl   = "Pic régional"
+            _cur_lbl    = "Actuel"
+            _hist_lbl   = "Moy. historique"
+            _adv_hdr    = "Avis Sanitaire Harmattan"
+            _exp_lbl    = f"Système d'Alerte Précoce Harmattan — {adv_city}  ·  {_season_lbl}"
+        else:
+            _hadv = ("Stay indoors, windows closed. Wear N95/KN95 mask outside. "
+                     "Vulnerable groups (elderly, children, asthma) avoid all outdoor activity." if risk_score >= 70 else
+                     "Limit prolonged outdoor activities. Use a dust mask (10am–4pm)." if risk_score >= 50 else
+                     "Harmattan dust elevated. Sensitive groups should reduce outdoor time." if risk_score >= 25 else
+                     "Harmattan dust levels normal. Usual precautions apply.")
+            _season_lbl = "🟠 HARMATTAN SEASON ACTIVE" if in_season else "⚪ OFF-SEASON"
+            _zone_note  = "Northern region — primary Harmattan impact zone" if is_north else "Southern region — indirect Harmattan influence"
+            _peak_lbl   = "Regional peak"
+            _cur_lbl    = "Current"
+            _hist_lbl   = "Historical avg"
+            _adv_hdr    = "Harmattan Health Advisory"
+            _exp_lbl    = f"Harmattan Early-Warning System — {adv_city}  ·  {_season_lbl}"
+
+        month_names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+        with st.expander(_exp_lbl, expanded=in_season):
+            h1, h2 = st.columns([1, 2])
+
+            with h1:
+                st.markdown(harmattan_gauge_svg(risk_score, h_status, h_col),
+                            unsafe_allow_html=True)
+                cur_hist = monthly[month_now - 1]
+                st.markdown(
+                    f"<div style='text-align:center;margin-top:.2rem;'>"
+                    f"<div style='font-size:.6rem;color:{_ctxt2()};'>{month_names[month_now-1]} {_hist_lbl}</div>"
+                    f"<div style='font-size:1rem;font-weight:700;color:{h_col};'>{cur_hist} μg/m³</div>"
+                    f"<div style='font-size:.6rem;color:{_ctxt2()};'>{_cur_lbl}: {adv_pm:.1f} μg/m³</div>"
+                    f"<div style='font-size:.58rem;color:{_ctxt2()};margin-top:.3rem;'>"
+                    f"{_peak_lbl}: <strong style='color:{RED};'>{harm_peak} μg/m³</strong></div>"
+                    f"</div>",
+                    unsafe_allow_html=True)
+
+            with h2:
+                bar_cols = [RED if m in (1,2,11,12) else TEAL2 for m in range(1,13)]
+                fig_hw = go.Figure()
+                fig_hw.add_bar(x=month_names, y=monthly,
+                               marker=dict(color=bar_cols, opacity=0.8),
+                               text=[str(v) for v in monthly],
+                               textposition="outside", textfont=dict(size=7))
+                fig_hw.add_scatter(x=[month_names[month_now-1]], y=[adv_pm],
+                                   mode="markers+text",
+                                   marker=dict(size=9, color=h_col, symbol="diamond"),
+                                   text=[f"{_cur_lbl}: {adv_pm:.0f}"],
+                                   textposition="top center",
+                                   textfont=dict(size=8, color=h_col))
+                fig_hw.add_hline(y=get_threshold(), line_dash="dash",
+                                 line_color=RED, line_width=1,
+                                 annotation_text=threshold_label(),
+                                 annotation_position="top right",
+                                 annotation_font_size=7)
+                fig_hw.update_layout(**PLO(height=165, yaxis_title="PM2.5 μg/m³",
+                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                    showlegend=False, margin=dict(l=0, r=0, t=8, b=0)))
+                st.plotly_chart(fig_hw, use_container_width=True)
+
+                st.markdown(
+                    f"<div style='border-left:3px solid {h_col};border-radius:0 8px 8px 0;"
+                    f"padding:.55rem .8rem;margin-top:.2rem;background:{h_col}11;'>"
+                    f"<div style='font-size:.58rem;font-weight:700;color:{h_col};"
+                    f"text-transform:uppercase;letter-spacing:.6px;margin-bottom:.25rem;'>"
+                    f"{_adv_hdr}</div>"
+                    f"<div style='font-size:.67rem;color:{_ctxt()};line-height:1.6;'>{_hadv}</div>"
+                    f"<div style='font-size:.56rem;color:{_ctxt2()};margin-top:.35rem;'>"
+                    f"Season: Nov–Feb · {_zone_note}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True)
+
         # SMS preview
         st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
         with st.expander(_t("sms_preview_hdr"), expanded=False):
