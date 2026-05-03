@@ -34,7 +34,7 @@ def page_explorer():
     art = load_artefacts()
     st.markdown('<div class="as-content">', unsafe_allow_html=True)
 
-    # ── City selector ─────────────────────────────────────────────────────────
+    # ── City selector ─────────────────────────────────────────────────────────────────────────────
     r1, r2, r3 = st.columns([1.4, 1.4, 2.2])
     with r1: region = st.selectbox(t["select_region"], list(CITIES.keys()), key="ex_region")
     with r2:
@@ -77,13 +77,13 @@ def page_explorer():
 
     tab_fc, tab_an, tab_cmp = st.tabs([t["forecast_tab"], t["analytics_tab"], t["compare_tab"]])
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════════
     # TAB 1 — FORECAST  (7-day + historical date picker)
-    # ══════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════════
     with tab_fc:
         model, enc, fi = load_models()
 
-        # ── Mode toggle ───────────────────────────────────────────────────────
+        # ── Mode toggle ────────────────────────────────────────────────────────────────────
         mode_col, ref_col = st.columns([3, 1])
         with mode_col:
             fc_mode = st.radio(t.get("mode_label","Mode"), [t["mode_forecast"], t["mode_historical"]],
@@ -116,7 +116,7 @@ def page_explorer():
             forecasts = predict_7day(fd, city, region, lat, lon, model, enc, fi) if fd and model else None
             date_label = f"Historical: {hist_start} → {hist_end}"
 
-        # ── Show why forecasts are unavailable ───────────────────────────────
+        # ── Show why forecasts are unavailable ───────────────────────────────────────────
         if not model:
             st.error("⚠ Model not loaded — check that `models/xgb_pm25.json` and "
                      "`models/label_encoders.pkl` and `models/features.json` exist in your repo.")
@@ -126,7 +126,7 @@ def page_explorer():
         elif not forecasts:
             st.error("⚠ Prediction failed — check logs for feature mismatch errors.")
 
-        # ── KPI cards ─────────────────────────────────────────────────────────
+        # ── KPI cards ───────────────────────────────────────────────────────────────────────
         if forecasts:
             today = forecasts[0]
             fc_pm25 = today["pm25"]; wind = today["wind"]; hum = today["humidity"]
@@ -146,7 +146,7 @@ def page_explorer():
         _, fc_col, fc_ico, fc_raw = aqi(fc_pm25, LNG())
         bfai_sc = compute_bfai(fc_pm25, wind, hum, region)
 
-        # ── Data-driven source attribution ────────────────────────────────────
+        # ── Data-driven source attribution ──────────────────────────────────────────────────
         _shap_region = None
         if art.get("region_shap"):
             rs = art["region_shap"]
@@ -184,7 +184,7 @@ def page_explorer():
         with k5: card("Source",src_lbl[:18],src_sub[:30],
                       badge=f"{dom_src_pct}% dominant",badge_col=src_col,accent=src_col)
 
-        # ── BFAI gauge ────────────────────────────────────────────────────────
+        # ── BFAI gauge ────────────────────────────────────────────────────────────────────────────
         st.markdown("<div style='margin-top:.9rem;'></div>", unsafe_allow_html=True)
         ga, gb = st.columns(2)
         with ga:
@@ -221,7 +221,7 @@ def page_explorer():
                 unsafe_allow_html=True,
             )
 
-        # ── Forecast cards + trend ─────────────────────────────────────────────
+        # ── Forecast cards + trend ─────────────────────────────────────────────────────────────────────
         if forecasts:
             st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
             _src = forecasts[0].get("source", "local") if forecasts else "local"
@@ -278,16 +278,16 @@ def page_explorer():
         else:
             st.info(t["no_data"])
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════════
     # TAB 2 — ANALYTICS
-    # ══════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════════
     with tab_an:
         months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
         an_tabs = st.tabs([t["seasonal_tab"], t["climate_tab"], t["compounds_tab"],
                            t["source_tab"], t["health_tab"], t["africa_tab"]])
 
-        # ── Seasonal ──────────────────────────────────────────────────────────
+        # ── Seasonal ────────────────────────────────────────────────────────────────────────────
         with an_tabs[0]:
             sec(f"Monthly PM2.5 — {city} · {region}")
             seasonal = city_monthly_profile(city, region)
@@ -328,18 +328,14 @@ def page_explorer():
                 xaxis=dict(gridcolor="rgba(0,0,0,0)"),showlegend=False))
             st.plotly_chart(fig_cal, use_container_width=True)
 
-        # ── Climate vs AQ ─────────────────────────────────────────────────────
+        # ── Climate vs AQ ────────────────────────────────────────────────────────────────────────────
         with an_tabs[1]:
             sec(_t("climate_hdr") + f" — {city}")
 
-            # Fetch real monthly climate from Open-Meteo archive (past 12 months)
-
             @st.cache_data(ttl=86400)
             def _monthly_climate(lat, lon):
-                """Return (temp_m, prec_m, hum_m) 12-month lists from archive."""
                 from datetime import date as _date
                 today   = _date.today()
-                # Use previous full calendar year for stable monthly aggregates
                 yr      = today.year - 1
                 fd_hist = fetch_historical(lat, lon, f"{yr}-01-01", f"{yr}-12-31")
                 if not fd_hist:
@@ -368,7 +364,6 @@ def page_explorer():
             with st.spinner("Fetching real climate data…" if LNG()=="en" else "Récupération des données climatiques…"):
                 temp_m_raw, prec_m_raw, hum_m_raw = _monthly_climate(lat, lon)
 
-            # Fallback to regional estimates if archive unavailable
             is_n = region in NORTHERN
             if any(v is None for v in (temp_m_raw, prec_m_raw, hum_m_raw)) or temp_m_raw is None:
                 temp_m = [32,34,36,35,33,29,27,27,28,30,33,32] if is_n else [26,27,28,28,27,25,24,24,24,25,26,26]
@@ -411,7 +406,7 @@ def page_explorer():
                     fig_cl.update_yaxes(gridcolor=_grid,gridwidth=0.5,row=ri,col=ci)
             st.plotly_chart(fig_cl, use_container_width=True)
 
-        # ── Compounds ─────────────────────────────────────────────────────────
+        # ── Compounds ────────────────────────────────────────────────────────────────────────────
         with an_tabs[2]:
             sec(f"8-Compound Profile — {city}")
             with st.spinner("Running compound models…"):
@@ -422,7 +417,6 @@ def page_explorer():
                 info_box("🟢 <strong>Live predictions</strong> from trained XGBoost compound models "
                          f"(models_multi.pkl · {len(comp_vals)} compounds predicted).")
             else:
-                # Fallback: estimate from PM2.5 ratios
                 comp_vals = {
                     "pm2_5_target": pm25,
                     "pm10_target":  pm25 * 1.8,
@@ -439,7 +433,6 @@ def page_explorer():
             keys       = [k for k in COMPOUND_KEYS if k in comp_vals]
             active_std = get_active_std_name()
 
-            # Color each bar by exceedance ratio against the active standard
             def _bar_color(key, val):
                 lim = get_compound_limit(key)
                 if lim is None:
@@ -450,12 +443,9 @@ def page_explorer():
                 if r >= 0.5:  return "#f59e0b"
                 return "#22c55e"
 
-            # Split into compounds with a defined limit vs without
             limited   = [k for k in keys if get_compound_limit(k) is not None]
             unlimited = [k for k in keys if get_compound_limit(k) is None]
 
-            # Normalise bars to % of standard limit so all compounds share one scale.
-            # CO at 360/4000 = 9 % sits correctly beside PM2.5 at 30/15 = 200 %.
             norm_pct    = [(comp_vals[k] / get_compound_limit(k)) * 100 for k in limited]
             norm_labels = [COMPOUND_LABELS[k] for k in limited]
             norm_colors = [_bar_color(k, comp_vals[k]) for k in limited]
@@ -485,7 +475,6 @@ def page_explorer():
                             f"No guideline defined — {' · '.join(no_lim_parts)}</span>",
                             unsafe_allow_html=True)
 
-            # Detail rows — raw value + limit label + EXCEEDS flag
             for k in keys:
                 v      = comp_vals[k]
                 lim    = get_compound_limit(k)
@@ -509,11 +498,10 @@ def page_explorer():
   {flag}
 </div>""", unsafe_allow_html=True)
 
-        # ── Source ────────────────────────────────────────────────────────────
+        # ── Source ────────────────────────────────────────────────────────────────────────────
         with an_tabs[3]:
             sec(_t("source_fp_hdr") + f" — {city}")
 
-            # Fetch live weather conditions for this city
             with st.spinner(_t("loading")):
                 fd_src = fetch_forecast(lat, lon)
 
@@ -526,7 +514,6 @@ def page_explorer():
                 from datetime import datetime as _dt2
                 month_src = _dt2.today().month
 
-                # SHAP weights for this region (if available)
                 from utils.live_data import compute_live_shap as _cshap
                 _ls = _cshap() or {}
                 shap_data = _ls.get(region)
@@ -548,10 +535,8 @@ def page_explorer():
                     f"Precip: {precip:.1f} mm, Humidity: {hum:.0f}% · {season_note}."
                 )
             else:
-                # Fallback to region-type static estimates
                 from utils.helpers import city_profile as _cp
                 src = _cp(city, region, pm25)["src"]
-                # Rename keys to match live attribution labels
                 src = {
                     "Dust":            src.get("Dust", 0.12),
                     "Biomass Burning": src.get("Biomass", 0.25),
@@ -609,7 +594,7 @@ def page_explorer():
       opacity:{'.9' if is_dom else '.5'};border-radius:2px;"></div></div>
 </div>""", unsafe_allow_html=True)
 
-        # ── Health ────────────────────────────────────────────────────────────
+        # ── Health ────────────────────────────────────────────────────────────────────────────
         with an_tabs[4]:
             sec(f"Health Impact — {city} · PM2.5 {pm25:.1f} μg/m³")
             er,hr,ld = health_impact(pm25)
@@ -621,7 +606,7 @@ def page_explorer():
                           accent=RED if hr>10 else AMBER)
             with h3: card("Lost Work Days",f"{ld:.1f}","per 10,000 workers",accent=ORANGE)
 
-        # ── Africa benchmark ──────────────────────────────────────────────────
+        # ── Africa benchmark ──────────────────────────────────────────────────────────────────────────
         with an_tabs[5]:
             sec("Cameroon vs Africa — PM2.5 Benchmark")
             cities_b,vals_b,cols_b,is_cm = zip(*AFRICA_BENCHMARK)
@@ -639,9 +624,9 @@ def page_explorer():
                 yaxis=dict(gridcolor="rgba(0,0,0,0)"),showlegend=False))
             st.plotly_chart(fig_af, use_container_width=True)
 
-    # ══════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════════
     # TAB 3 — COMPARE
-    # ══════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════════
     with tab_cmp:
         sec(t["compare_hdr"])
         cc1, cc2 = st.columns(2)
