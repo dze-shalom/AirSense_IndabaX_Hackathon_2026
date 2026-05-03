@@ -436,47 +436,66 @@ def page_explorer():
                 info_box("🟡 <strong>Estimated values</strong> — place models_multi.pkl in models/ "
                          "for real compound predictions.")
 
-            keys      = [k for k in COMPOUND_KEYS if k in comp_vals]
-            labels    = [COMPOUND_LABELS[k] for k in keys]
-            vals      = [comp_vals[k] for k in keys]
+            keys       = [k for k in COMPOUND_KEYS if k in comp_vals]
             active_std = get_active_std_name()
 
-            # Color each bar by exceedance of the active standard's limit
+            # Color each bar by exceedance ratio against the active standard
             def _bar_color(key, val):
                 lim = get_compound_limit(key)
                 if lim is None:
                     return COMPOUND_COLORS[key]
                 r = val / lim
-                if r >= 1.0:   return "#ef4444"   # exceeds
-                if r >= 0.75:  return "#f97316"   # approaching
-                if r >= 0.5:   return "#f59e0b"   # moderate
-                return "#22c55e"                  # safe
+                if r >= 1.0:  return "#ef4444"
+                if r >= 0.75: return "#f97316"
+                if r >= 0.5:  return "#f59e0b"
+                return "#22c55e"
 
-            colors = [_bar_color(k, comp_vals[k]) for k in keys]
+            # Split into compounds with a defined limit vs without
+            limited   = [k for k in keys if get_compound_limit(k) is not None]
+            unlimited = [k for k in keys if get_compound_limit(k) is None]
+
+            # Normalise bars to % of standard limit so all compounds share one scale.
+            # CO at 360/4000 = 9 % sits correctly beside PM2.5 at 30/15 = 200 %.
+            norm_pct    = [(comp_vals[k] / get_compound_limit(k)) * 100 for k in limited]
+            norm_labels = [COMPOUND_LABELS[k] for k in limited]
+            norm_colors = [_bar_color(k, comp_vals[k]) for k in limited]
+            hover_vals  = [f"{comp_vals[k]:.2f} {COMPOUND_UNITS.get(k,'')}" for k in limited]
 
             fig_cpd = go.Figure(go.Bar(
-                x=labels, y=vals,
-                marker=dict(color=colors, opacity=0.85),
-                text=[f"{v:.1f}" for v in vals], textposition="outside",
+                x=norm_labels, y=norm_pct,
+                marker=dict(color=norm_colors, opacity=0.85),
+                text=[f"{p:.0f}%" for p in norm_pct], textposition="outside",
                 textfont=dict(size=9),
-                hovertemplate="<b>%{x}</b><br>%{y:.2f} %{customdata}<extra></extra>",
-                customdata=[COMPOUND_UNITS.get(k,"") for k in keys]))
-            fig_cpd.update_layout(**PLO(height=230, yaxis_title="Concentration",
+                hovertemplate="<b>%{x}</b><br>%{y:.1f}% of limit<br>Value: %{customdata}<extra></extra>",
+                customdata=hover_vals,
+                name="% of limit"))
+            fig_cpd.add_hline(y=100, line_dash="dash", line_color="#ef4444", line_width=1,
+                               annotation_text=f"{active_std} limit",
+                               annotation_position="top right",
+                               annotation_font_size=8)
+            fig_cpd.update_layout(**PLO(height=250, yaxis_title="% of standard limit",
                 xaxis=dict(gridcolor="rgba(0,0,0,0)"), showlegend=False,
                 title=dict(text=f"Standard: {active_std}", font=dict(size=10), x=1, xanchor="right")))
             st.plotly_chart(fig_cpd, use_container_width=True)
 
-            # Detail rows with active-standard comparison
+            if unlimited:
+                no_lim_parts = [f"<b>{COMPOUND_LABELS[k]}</b>: {comp_vals[k]:.3f} {COMPOUND_UNITS.get(k,'')}"
+                                for k in unlimited]
+                st.markdown(f"<span style='font-size:.65rem;color:{_ctxt2()};'>"
+                            f"No guideline defined — {' · '.join(no_lim_parts)}</span>",
+                            unsafe_allow_html=True)
+
+            # Detail rows — raw value + limit label + EXCEEDS flag
             for k in keys:
                 v      = comp_vals[k]
                 lim    = get_compound_limit(k)
                 col    = _bar_color(k, v)
-                pct    = min(v / (lim * 2) * 100, 100) if lim else min(v / max(vals) * 100, 100)
-                exceed = lim and v > lim
-                flag   = (f'<span style="font-size:.6rem;color:{RED};font-weight:700;margin-left:.4rem;">'
+                pct    = min(v / (lim * 2) * 100, 100) if lim else min(v / max(comp_vals[kk] for kk in keys) * 100, 100)
+                exceed = bool(lim and v > lim)
+                flag   = (f'<span style="font-size:.6rem;color:#ef4444;font-weight:700;margin-left:.4rem;">'
                           f'EXCEEDS</span>') if exceed else ""
                 lim_label = f"{active_std}: {lim}" if lim else "No limit"
-                mae_note  = f"MAE={COMPOUND_TEST_MAE.get(k,'?'):.2f}  R²={COMPOUND_TEST_R2.get(k,'?'):.3f}" if comp_vals else ""
+                mae_note  = f"MAE={COMPOUND_TEST_MAE.get(k,'?'):.2f}  R²={COMPOUND_TEST_R2.get(k,'?'):.3f}"
                 st.markdown(f"""<div style="display:flex;align-items:center;gap:.8rem;padding:.38rem 0;
   border-bottom:1px solid {_cborder()};">
   <span style="font-size:.68rem;color:{_ctxt2()};width:52px;flex-shrink:0;
