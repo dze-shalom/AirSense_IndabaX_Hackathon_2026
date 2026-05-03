@@ -628,7 +628,7 @@ def render_sidebar():
                 std_names = list(THRESHOLD_STANDARDS.keys())
                 cur_std   = st.session_state.get("threshold_std", "WHO 2021")
                 cur_idx   = std_names.index(cur_std) if cur_std in std_names else 0
-                new_std   = st.selectbox("PM2.5 Standard", std_names,
+                new_std   = st.selectbox("Air Quality Standard", std_names,
                                          index=cur_idx, key="sb_std")
                 if new_std != cur_std:
                     st.session_state.threshold_std = new_std

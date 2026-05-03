@@ -633,9 +633,63 @@ COMPOUND_LABELS = {"pm2_5_target":"PM2.5","pm10_target":"PM10","dust_target":"Du
 COMPOUND_UNITS  = {"pm2_5_target":"μg/m³","pm10_target":"μg/m³","dust_target":"μg/m³",
                    "co_target":"μg/m³","no2_target":"μg/m³","o3_target":"μg/m³",
                    "so2_target":"μg/m³","aod_target":"(550nm)"}
-COMPOUND_WHO    = {"pm2_5_target":15,"pm10_target":45,"dust_target":None,
-                   "co_target":4000,"no2_target":25,"o3_target":100,
-                   "so2_target":40,"aod_target":None}
+# Per-standard concentration limits for each compound.
+# Sources: WHO 2021 AQGs, EU Air Quality Directive 2024, US EPA NAAQS, ECOWAS/WHO-2005 IT-1.
+# All values in μg/m³ (24-h mean unless noted).  None = no guideline defined.
+COMPOUND_STANDARDS = {
+    "WHO 2021": {
+        "pm2_5_target": 15,    # AQG 24-h
+        "pm10_target":  45,    # AQG 24-h
+        "dust_target":  None,
+        "co_target":    4000,  # AQG 24-h (≈ 3.5 mg/m³ rounded)
+        "no2_target":   25,    # AQG 24-h
+        "o3_target":    100,   # AQG peak-season 8-h
+        "so2_target":   40,    # AQG 24-h
+        "aod_target":   None,
+    },
+    "EU 2024": {
+        "pm2_5_target": 25,    # Directive annual mean limit
+        "pm10_target":  50,    # Directive 24-h limit
+        "dust_target":  None,
+        "co_target":    10000, # Directive 8-h daily maximum
+        "no2_target":   40,    # Directive annual mean
+        "o3_target":    120,   # Directive 8-h daily max target value
+        "so2_target":   125,   # Directive 24-h limit
+        "aod_target":   None,
+    },
+    "US EPA": {
+        "pm2_5_target": 35,    # NAAQS 24-h primary standard
+        "pm10_target":  150,   # NAAQS 24-h primary standard
+        "dust_target":  None,
+        "co_target":    10000, # NAAQS 8-h (9 ppm ≈ 10 mg/m³)
+        "no2_target":   100,   # NAAQS annual (53 ppb ≈ 100 μg/m³)
+        "o3_target":    140,   # NAAQS 8-h (70 ppb ≈ 140 μg/m³)
+        "so2_target":   196,   # NAAQS 1-h primary (75 ppb ≈ 196 μg/m³)
+        "aod_target":   None,
+    },
+    "ECOWAS": {
+        "pm2_5_target": 50,    # WHO 2005 IT-1 adopted regionally
+        "pm10_target":  100,   # WHO 2005 IT-1
+        "dust_target":  None,
+        "co_target":    4000,  # WHO 2005 guideline
+        "no2_target":   40,    # WHO 2005 annual guideline
+        "o3_target":    120,   # WHO 2005 8-h guideline
+        "so2_target":   125,   # WHO 2005 24-h guideline
+        "aod_target":   None,
+    },
+    "Custom": {
+        "pm2_5_target": None,  # Driven by session-state threshold
+        "pm10_target":  None,
+        "dust_target":  None,
+        "co_target":    None,
+        "no2_target":   None,
+        "o3_target":    None,
+        "so2_target":   None,
+        "aod_target":   None,
+    },
+}
+# Backward-compat alias
+COMPOUND_WHO = COMPOUND_STANDARDS["WHO 2021"]
 COMPOUND_COLORS = {"pm2_5_target":"#ef4444","pm10_target":"#f97316",
                    "dust_target":"#f59e0b","co_target":"#0891b2",
                    "no2_target":"#8b5cf6","o3_target":"#22c55e",
