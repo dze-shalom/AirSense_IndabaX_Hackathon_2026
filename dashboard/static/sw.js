@@ -1,17 +1,22 @@
 /* AirSense Cameroon — Service Worker (PWA offline-first) */
-var CACHE_NAME = 'airsense-v1';
+var CACHE_NAME = 'airsense-v2';
+var OFFLINE_URL = '/app/static/offline.html';
 var SHELL_ASSETS = [
   '/',
   '/manifest.json',
+  OFFLINE_URL,
 ];
 
-/* ── Install: cache shell assets ─────────────────────────────────────────── */
+/* ── Install: pre-cache shell assets ─────────────────────────────────────── */
 self.addEventListener('install', function(event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(SHELL_ASSETS);
-    }).catch(function() {
-      // Silently ignore cache failures (e.g. when offline at install time)
+      // Cache individually so one failure doesn't block the others
+      return Promise.allSettled(
+        SHELL_ASSETS.map(function(url) {
+          return cache.add(url).catch(function() { /* ignore */ });
+        })
+      );
     })
   );
   self.skipWaiting();
@@ -38,11 +43,13 @@ self.addEventListener('fetch', function(event) {
   // Only handle GET requests
   if (req.method !== 'GET') return;
 
+  // Skip cross-origin requests (analytics, CDN fonts, etc.)
+  if (!req.url.startsWith(self.location.origin)) return;
+
   if (req.mode === 'navigate') {
-    // Navigation requests: try network first, fall back to cache
+    // Navigation: try network first, then cached page, then offline fallback
     event.respondWith(
       fetch(req).then(function(response) {
-        // Cache a copy of the successful navigation response
         var respClone = response.clone();
         caches.open(CACHE_NAME).then(function(cache) {
           cache.put(req, respClone);
@@ -50,12 +57,13 @@ self.addEventListener('fetch', function(event) {
         return response;
       }).catch(function() {
         return caches.match(req).then(function(cached) {
-          return cached || caches.match('/');
+          if (cached) return cached;
+          return caches.match(OFFLINE_URL);
         });
       })
     );
   } else {
-    // Non-navigation (assets, API): cache-first strategy
+    // Assets: cache-first, network fallback
     event.respondWith(
       caches.match(req).then(function(cached) {
         if (cached) return cached;
@@ -68,6 +76,9 @@ self.addEventListener('fetch', function(event) {
             cache.put(req, respClone);
           });
           return response;
+        }).catch(function() {
+          // Static asset unavailable offline — nothing to serve
+          return new Response('', { status: 503, statusText: 'Offline' });
         });
       })
     );

@@ -164,6 +164,35 @@ div[data-testid="metric-container"]{{background:rgba(255,255,255,.04)!important;
 .stTabs [data-baseweb="tab-list"]{{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;flex-wrap:nowrap!important;}}
 .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar{{height:2px;}}
 
+/* ── Mobile bottom nav bar ───────────────────────────────────────────────── */
+.as-mnav{{
+  position:fixed;bottom:0;left:0;right:0;
+  height:56px;
+  background:rgba(10,25,47,0.97);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid {BORDER};
+  display:none;
+  z-index:998;
+  padding:0 env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0);
+}}
+@media(max-width:768px){{
+  .as-mnav{{display:flex!important;}}
+  .as-content{{padding-bottom:calc(56px + .5rem)!important;}}
+}}
+.as-mnav-item{{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-size:1.15rem;color:{TEXT2};
+  background:transparent;border:none;cursor:pointer;
+  padding:.3rem 0 .2rem;gap:.18rem;
+  transition:color .15s;
+  font-family:'Open Sans',sans-serif;line-height:1;
+  -webkit-tap-highlight-color:transparent;
+  min-width:0;
+}}
+.as-mnav-item span{{font-size:.44rem;display:block;text-align:center;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}}
+.as-mnav-item.active{{color:{TEAL}!important;}}
+.as-mnav-item:active{{opacity:.7;}}
+
 </style>"""
 
 # ── Particle background ───────────────────────────────────────────────────────
@@ -197,10 +226,14 @@ def inject_css():
         unsafe_allow_html=True)
     st.markdown("""<script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/app/static/sw.js')
-    .catch(function(err) {
-      // registration failed — silently ignore (Streamlit hosting may block it)
+  // Try Streamlit Cloud path first, fall back to local dev path
+  var swPaths = ['/app/static/sw.js', '/static/sw.js', './static/sw.js'];
+  (function tryRegister(paths) {
+    if (!paths.length) return;
+    navigator.serviceWorker.register(paths[0]).catch(function() {
+      tryRegister(paths.slice(1));
     });
+  })(swPaths);
 }
 </script>""", unsafe_allow_html=True)
     st.markdown(CSS, unsafe_allow_html=True)
@@ -335,6 +368,13 @@ button[kind="primary"]{{
 /* Scrollbar */
 ::-webkit-scrollbar-track{{ background:#fdf5ee!important; }}
 ::-webkit-scrollbar-thumb{{ background:rgba(181,97,63,0.3)!important; }}
+/* Mobile bottom nav — light theme */
+.as-mnav{{
+    background:rgba(253,248,242,0.97)!important;
+    border-top-color:rgba(160,100,60,0.2)!important;
+}}
+.as-mnav-item{{ color:#7a5c40!important; }}
+.as-mnav-item.active{{ color:#b5613f!important; }}
 /* Chat input — cover all Streamlit versions */
 [data-testid="stBottom"],
 [data-testid="stBottom"] > div,
@@ -744,22 +784,34 @@ def render_mobile_nav():
     lang   = LNG()
     page   = st.session_state.page
     labels = NAV_LABELS[lang]
+    is_light = st.session_state.get("theme", "light") == "light"
 
-    items = [
-        ("overview", "⊕", labels["overview"]),
-        ("explorer", "≋", labels["explorer"]),
-        ("alerts",   "⚡", labels["alerts"]),
-        ("science",  "◆", labels["science"]),
-        ("ai",       "◈", labels["ai"]),
-        ("about",    "○", labels["about"]),
-    ]
+    # Short labels — keep them tight so they fit on narrow screens
+    SHORT = {
+        "overview": ("⊕", "Home"),
+        "explorer": ("≋", "Explore"),
+        "alerts":   ("⚡", "Alerts"),
+        "science":  ("◆", "Science"),
+        "ai":       ("◈", "AI"),
+        "about":    ("○", "About"),
+    }
+    if lang == "fr":
+        SHORT.update({
+            "overview": ("⊕", "Accueil"),
+            "explorer": ("≋", "Cartes"),
+            "alerts":   ("⚡", "Alertes"),
+            "science":  ("◆", "Science"),
+            "ai":       ("◈", "IA"),
+            "about":    ("○", "Info"),
+        })
 
     nav_items_html = ""
-    for key, icon, lbl in items:
+    for key in PAGE_KEYS:
+        icon, short = SHORT.get(key, ("·", key[:5]))
         active = "active" if key == page else ""
-        short  = lbl[:7]
         nav_items_html += (
-            f'<button class="as-mnav-item {active}" onclick="asMobileNav(\'{key}\')">'
+            f'<button class="as-mnav-item {active}" onclick="asMobileNav(\'{key}\')"'
+            f' aria-label="{labels.get(key, key)}">'
             f'{icon}<span>{short}</span></button>'
         )
 
@@ -772,7 +824,9 @@ def render_mobile_nav():
   function asMobileNav(page) {{
     var url = new URL(window.location.href);
     url.searchParams.set('_mn', page);
-    window.location.href = url.toString();
+    // Remove hash fragments that Streamlit sometimes adds
+    url.hash = '';
+    window.location.replace(url.toString());
   }}
   window.asMobileNav = asMobileNav;
 }})();

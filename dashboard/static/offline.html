@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a3c5e">
+<title>AirSense Cameroon — Offline</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:#0a192f;color:#e6f1ff;
+    font-family:'Segoe UI',system-ui,sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    padding:1.5rem;text-align:center;
+  }
+  .icon{font-size:3.5rem;margin-bottom:1rem;opacity:.8;}
+  h1{
+    font-size:clamp(1.2rem,4vw,1.6rem);font-weight:700;
+    color:#64ffda;margin-bottom:.5rem;letter-spacing:-.01em;
+  }
+  .subtitle{font-size:.9rem;color:#8892b0;margin-bottom:2rem;line-height:1.5;}
+  .card{
+    background:rgba(17,34,64,0.9);border:1px solid #233554;
+    border-radius:12px;padding:1.5rem;max-width:400px;width:100%;
+    margin-bottom:1.5rem;
+  }
+  .card h2{font-size:.95rem;color:#ccd6f6;margin-bottom:.75rem;}
+  .card p{font-size:.82rem;color:#8892b0;line-height:1.6;}
+  .retry-btn{
+    display:inline-flex;align-items:center;gap:.5rem;
+    background:rgba(100,255,218,.12);border:1px solid #64ffda;
+    color:#64ffda;border-radius:8px;
+    padding:.6rem 1.4rem;font-size:.85rem;font-weight:600;
+    cursor:pointer;transition:all .18s;text-decoration:none;
+    font-family:inherit;
+  }
+  .retry-btn:hover{background:rgba(100,255,218,.2);}
+  .logo{
+    display:flex;align-items:center;gap:.5rem;
+    margin-bottom:1.5rem;color:#64ffda;
+    font-size:1rem;font-weight:700;
+  }
+  .status{
+    font-size:.72rem;color:#8892b0;margin-top:1.5rem;
+    display:flex;align-items:center;justify-content:center;gap:.4rem;
+  }
+  .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:#ef4444;display:inline-block;
+  }
+  @media(prefers-color-scheme:light){
+    body{background:#fdf8f2;color:#1a0e04;}
+    h1{color:#b5613f;}
+    .card{background:rgba(255,252,248,.92);border-color:rgba(160,100,60,.18);}
+    .card h2{color:#3d1f06;}
+    .card p{color:#5c3a1e;}
+    .retry-btn{background:rgba(181,97,63,.12);border-color:#b5613f;color:#b5613f;}
+    .retry-btn:hover{background:rgba(181,97,63,.2);}
+    .logo{color:#b5613f;}
+    .subtitle,.status{color:#7a5c40;}
+  }
+</style>
+</head>
+<body>
+  <div class="logo">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
+    </svg>
+    AirSense Cameroon
+  </div>
+
+  <div class="icon">📡</div>
+  <h1>You're Offline</h1>
+  <p class="subtitle">
+    No internet connection detected.<br>
+    Air quality data requires a live connection.
+  </p>
+
+  <div class="card">
+    <h2>What you can do</h2>
+    <p>
+      Check your Wi-Fi or mobile data connection, then tap <strong>Retry</strong> to reload the app.
+      Previously viewed data may still be available when you reconnect.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>About AirSense</h2>
+    <p>
+      AirSense Cameroon monitors PM2.5 air quality across 40+ cities using
+      AI-powered predictions and real-time sensor data.
+    </p>
+  </div>
+
+  <button class="retry-btn" onclick="window.location.reload()">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="23 4 23 10 17 10"/>
+      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+    </svg>
+    Retry
+  </button>
+
+  <div class="status">
+    <span class="dot"></span>
+    <span>Offline — AirSense IndabaX 2026</span>
+  </div>
+
+  <script>
+    // Auto-retry when connectivity returns
+    window.addEventListener('online', function() {
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>
