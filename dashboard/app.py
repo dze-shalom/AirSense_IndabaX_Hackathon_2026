@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 from config import PAGE_KEYS
-from components.sidebar import inject_css, render_nav, render_sidebar
+from components.sidebar import inject_css, render_nav, render_sidebar, render_mobile_nav
 from pages.overview      import page_overview
 from pages.explorer      import page_explorer
 from pages.alerts        import page_alerts_health
@@ -39,11 +39,26 @@ for k, v in _DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
+# ── Handle mobile bottom-nav URL parameter ─────────────────────────────────────
+# render_mobile_nav() uses window.location.replace(?_mn=<page>) to signal
+# a page change without reloading the full app.  We read it here, update
+# session state, then clear the param so the URL stays clean.
+try:
+    _mn = st.query_params.get("_mn", "")
+    if _mn and _mn in PAGE_KEYS:
+        st.session_state.page = _mn
+        st.query_params.clear()
+except Exception:
+    pass
+
+
 # ── Render shell ──────────────────────────────────────────────────────────────
 def main():
     inject_css()
     render_nav()
     render_sidebar()
+
+    render_mobile_nav()
 
     page = st.session_state.page
     if   page == "overview":  page_overview()
