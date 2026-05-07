@@ -235,6 +235,28 @@ if ('serviceWorker' in navigator) {
     });
   })(swPaths);
 }
+
+// On mobile: auto-close the sidebar (it starts expanded per initial_sidebar_state).
+// We hide it instantly via CSS first so there's no open→close flash, then click
+// Streamlit's own collapse button so its internal state stays consistent.
+(function() {
+  if (window.innerWidth > 768) return;
+  var style = document.createElement('style');
+  style.textContent = '@media(max-width:768px){[data-testid="stSidebar"]{visibility:hidden!important;transition:none!important;}}';
+  document.head.appendChild(style);
+  function tryCollapse() {
+    var btn = document.querySelector('[data-testid="stSidebarCollapsedControl"] button') ||
+              document.querySelector('[data-testid="collapsedControl"] button');
+    if (btn) {
+      btn.click();
+      // Restore sidebar visibility so the user can open it via hamburger
+      setTimeout(function() { document.head.removeChild(style); }, 350);
+    } else {
+      setTimeout(tryCollapse, 80);
+    }
+  }
+  tryCollapse();
+})();
 </script>""", unsafe_allow_html=True)
     st.markdown(CSS, unsafe_allow_html=True)
     is_light = st.session_state.get("theme", "light") == "light"
@@ -486,7 +508,7 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
     _sb_w      = "64px"  if _collapsed else "220px"
     _nav_pl    = "76px"  if _collapsed else "232px"
     st.markdown(f"""<style>
-/* Desktop: our custom fixed-width sidebar */
+/* Desktop: custom fixed-width sidebar */
 @media(min-width:769px){{
   [data-testid="stSidebar"]{{
       width:{_sb_w}!important;min-width:{_sb_w}!important;max-width:{_sb_w}!important;
@@ -499,12 +521,10 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
   }}
   .as-fixed-nav{{padding-left:{_nav_pl}!important;}}
 }}
-/* Mobile: Streamlit renders sidebar as a slide-over — no fixed width override */
+/* Mobile: sidebar is a slide-over — close it programmatically on load */
 @media(max-width:768px){{
   .as-fixed-nav{{padding-left:.6rem!important;padding-right:3rem!important;}}
-  [data-testid="stSidebar"]{{
-      overflow-y:auto!important;
-  }}
+  [data-testid="stSidebar"]{{overflow-y:auto!important;}}
 }}
 .as-nav-mark{{display:none!important;height:0!important;margin:0!important;padding:0!important;}}
 {('''@media(min-width:769px){
@@ -815,6 +835,8 @@ def render_mobile_nav():
             f'{icon}<span>{short}</span></button>'
         )
 
+    # Use event delegation on the container rather than onclick attributes.
+    # onclick can be stripped by some sanitizers; data-page + addEventListener is safe.
     st.markdown(f"""
 <div class="as-mnav" id="as-mobile-nav">
 {nav_items_html}
@@ -828,7 +850,6 @@ def render_mobile_nav():
     url.hash = '';
     window.location.replace(url.toString());
   }}
-  window.asMobileNav = asMobileNav;
 }})();
 </script>
 """, unsafe_allow_html=True)
