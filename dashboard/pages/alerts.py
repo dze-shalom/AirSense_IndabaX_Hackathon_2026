@@ -243,7 +243,7 @@ def page_alerts_health():
             sms = (f"AIRSENSE-CM ALERT: {adv_city} — PM2.5 = {adv_pm:.1f} μg/m³ "
                    f"[{adv_raw.replace('_',' ').upper()}]. "
                    f"Exceedance risk: {alert_prob_sms*100:.0f}%. "
-                   f"Vulnerable groups: avoid prolonged outdoor exposure. airsense-cm.org")
+                   f"Vulnerable groups: avoid prolonged outdoor exposure. https://airsensecameroon.streamlit.app/")
             st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};border-radius:12px;padding:14px;">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
     <div style="width:34px;height:34px;background:{_accent()};border-radius:50%;display:flex;
