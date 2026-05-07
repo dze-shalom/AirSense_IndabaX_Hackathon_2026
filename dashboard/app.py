@@ -12,7 +12,7 @@ st.set_page_config(
     page_title="AirSense Cameroon",
     page_icon="🌬",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 from config import PAGE_KEYS

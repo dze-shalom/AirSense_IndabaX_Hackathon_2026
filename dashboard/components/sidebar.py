@@ -264,6 +264,28 @@ if ('serviceWorker' in navigator) {
     });
   })(swPaths);
 }
+
+// On mobile: auto-close the sidebar (it starts expanded per initial_sidebar_state).
+// We hide it instantly via CSS first so there's no open→close flash, then click
+// Streamlit's own collapse button so its internal state stays consistent.
+(function() {
+  if (window.innerWidth > 768) return;
+  var style = document.createElement('style');
+  style.textContent = '@media(max-width:768px){[data-testid="stSidebar"]{visibility:hidden!important;transition:none!important;}}';
+  document.head.appendChild(style);
+  function tryCollapse() {
+    var btn = document.querySelector('[data-testid="stSidebarCollapsedControl"] button') ||
+              document.querySelector('[data-testid="collapsedControl"] button');
+    if (btn) {
+      btn.click();
+      // Restore sidebar visibility so the user can open it via hamburger
+      setTimeout(function() { document.head.removeChild(style); }, 350);
+    } else {
+      setTimeout(tryCollapse, 80);
+    }
+  }
+  tryCollapse();
+})();
 </script>""", unsafe_allow_html=True)
     st.markdown(CSS, unsafe_allow_html=True)
     is_light = st.session_state.get("theme", "light") == "light"
@@ -516,16 +538,9 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
     _sb_w      = "64px"  if _collapsed else "220px"
     _nav_pl    = "76px"  if _collapsed else "232px"
     st.markdown(f"""<style>
-/* Desktop: force sidebar always visible (override Streamlit's collapsed state)
-   and set our custom fixed width. initial_sidebar_state="collapsed" is used
-   so mobile starts with the sidebar hidden, but desktop must always show it. */
+/* Desktop: custom fixed-width sidebar */
 @media(min-width:769px){{
   [data-testid="stSidebar"]{{
-      display:block!important;
-      transform:translateX(0)!important;
-      visibility:visible!important;
-      opacity:1!important;
-      pointer-events:auto!important;
       width:{_sb_w}!important;min-width:{_sb_w}!important;max-width:{_sb_w}!important;
       transition:width .22s cubic-bezier(.4,0,.2,1)!important;
       overflow-x:hidden!important;overflow-y:auto!important;
@@ -536,12 +551,10 @@ div[data-testid="metric-container"]{{ background:{NAVY2}!important; border-color
   }}
   .as-fixed-nav{{padding-left:{_nav_pl}!important;}}
 }}
-/* Mobile: Streamlit renders sidebar as a slide-over — no fixed width override */
+/* Mobile: sidebar is a slide-over — close it programmatically on load */
 @media(max-width:768px){{
   .as-fixed-nav{{padding-left:.6rem!important;padding-right:3rem!important;}}
-  [data-testid="stSidebar"]{{
-      overflow-y:auto!important;
-  }}
+  [data-testid="stSidebar"]{{overflow-y:auto!important;}}
 }}
 .as-nav-mark{{display:none!important;height:0!important;margin:0!important;padding:0!important;}}
 {('''@media(min-width:769px){
