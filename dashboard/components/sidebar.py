@@ -181,46 +181,17 @@ div[data-testid="metric-container"]{{background:rgba(255,255,255,.04)!important;
 }}
 .as-mnav-item{{
   flex:1;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;
-  font-size:1.45rem;
-  color:rgba(136,146,176,0.65);
-  background:transparent;
-  border:none;
-  border-top:2.5px solid transparent;
-  cursor:pointer;
-  padding:.32rem 0 .25rem;
-  gap:.14rem;
-  transition:color .12s ease,border-color .12s ease,transform .08s ease;
-  font-family:'Open Sans',sans-serif;
-  line-height:1;
-  -webkit-tap-highlight-color:rgba(100,255,218,0.18);
+  justify-content:center;font-size:1.15rem;color:{TEXT2};
+  background:transparent;border:none;cursor:pointer;
+  padding:.3rem 0 .2rem;gap:.18rem;
+  transition:color .15s;
+  font-family:'Open Sans',sans-serif;line-height:1;
+  -webkit-tap-highlight-color:transparent;
   min-width:0;
-  touch-action:manipulation;
-  user-select:none;-webkit-user-select:none;
-  -webkit-appearance:none;
-  outline:none;
 }}
-.as-mnav-item span{{
-  font-size:.55rem;
-  display:block;
-  text-align:center;
-  font-weight:600;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-  max-width:100%;
-  text-transform:uppercase;
-  letter-spacing:.05em;
-  line-height:1.2;
-}}
-.as-mnav-item.active{{
-  color:{TEAL}!important;
-  border-top-color:{TEAL}!important;
-}}
-.as-mnav-item:active{{
-  transform:scale(0.84)!important;
-  color:rgba(100,255,218,0.8)!important;
-}}
+.as-mnav-item span{{font-size:.44rem;display:block;text-align:center;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}}
+.as-mnav-item.active{{color:{TEAL}!important;}}
+.as-mnav-item:active{{opacity:.7;}}
 
 </style>"""
 
@@ -424,9 +395,8 @@ button[kind="primary"]{{
     background:rgba(253,248,242,0.97)!important;
     border-top-color:rgba(160,100,60,0.2)!important;
 }}
-.as-mnav-item{{ color:rgba(122,92,64,0.6)!important; }}
-.as-mnav-item.active{{ color:#b5613f!important; border-top-color:#b5613f!important; }}
-.as-mnav-item:active{{ color:rgba(181,97,63,0.85)!important; }}
+.as-mnav-item{{ color:#7a5c40!important; }}
+.as-mnav-item.active{{ color:#b5613f!important; }}
 /* Chat input — cover all Streamlit versions */
 [data-testid="stBottom"],
 [data-testid="stBottom"] > div,
@@ -860,8 +830,8 @@ def render_mobile_nav():
         icon, short = SHORT.get(key, ("·", key[:5]))
         active = "active" if key == page else ""
         nav_items_html += (
-            f'<button class="as-mnav-item {active}" data-page="{key}"'
-            f' aria-label="{labels.get(key, key)}" type="button">'
+            f'<button class="as-mnav-item {active}" onclick="asMobileNav(\'{key}\')"'
+            f' aria-label="{labels.get(key, key)}">'
             f'{icon}<span>{short}</span></button>'
         )
 
@@ -873,27 +843,12 @@ def render_mobile_nav():
 </div>
 <script>
 (function() {{
-  function attachNav() {{
-    var nav = document.getElementById('as-mobile-nav');
-    if (!nav) {{ setTimeout(attachNav, 150); return; }}
-    nav.addEventListener('click', function(e) {{
-      var btn = e.target.closest('[data-page]');
-      if (!btn) return;
-      var page = btn.getAttribute('data-page');
-      if (!page) return;
-      // Provide immediate visual feedback while the page loads
-      btn.style.transform = 'scale(0.84)';
-      btn.style.opacity = '0.7';
-      var u = new URL(window.location.href);
-      u.searchParams.set('_mn', page);
-      u.hash = '';
-      window.location.replace(u.toString());
-    }});
-  }}
-  if (document.readyState === 'loading') {{
-    document.addEventListener('DOMContentLoaded', attachNav);
-  }} else {{
-    attachNav();
+  function asMobileNav(page) {{
+    var url = new URL(window.location.href);
+    url.searchParams.set('_mn', page);
+    // Remove hash fragments that Streamlit sometimes adds
+    url.hash = '';
+    window.location.replace(url.toString());
   }}
 }})();
 </script>
