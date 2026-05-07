@@ -164,34 +164,55 @@ div[data-testid="metric-container"]{{background:rgba(255,255,255,.04)!important;
 .stTabs [data-baseweb="tab-list"]{{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;flex-wrap:nowrap!important;}}
 .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar{{height:2px;}}
 
-/* ── Mobile bottom nav bar ───────────────────────────────────────────────── */
-.as-mnav{{
-  position:fixed;bottom:0;left:0;right:0;
-  height:56px;
-  background:rgba(10,25,47,0.97);
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border-top:1px solid {BORDER};
-  display:none;
-  z-index:998;
-  padding:0 env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0);
+/* ── Mobile bottom nav (Streamlit-button based, CSS :has() positioned) ───── */
+/* Anchor marker — never takes visual space */
+#as-mnav-anchor{{display:none!important;height:0!important;}}
+[data-testid="element-container"]:has(#as-mnav-anchor){{
+  display:none!important;height:0!important;margin:0!important;padding:0!important;
 }}
+/* Desktop (≥769px): hide the nav columns entirely */
+@media(min-width:769px){{
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]{{
+    display:none!important;height:0!important;overflow:hidden!important;
+  }}
+}}
+/* Mobile (≤768px): fix the nav columns at the bottom of the viewport */
 @media(max-width:768px){{
-  .as-mnav{{display:flex!important;}}
-  .as-content{{padding-bottom:calc(56px + .5rem)!important;}}
+  .as-content{{padding-bottom:calc(58px + .5rem)!important;}}
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]{{
+    position:fixed!important;bottom:0!important;left:0!important;right:0!important;
+    z-index:999!important;
+    padding:2px 0 env(safe-area-inset-bottom,0)!important;
+  }}
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
+  [data-testid="stHorizontalBlock"]{{gap:0!important;flex-wrap:nowrap!important;}}
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
+  [data-testid="column"]{{padding:0!important;min-width:0!important;}}
+  /* Button reset */
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
+  .stButton>button{{
+    background:transparent!important;border:none!important;
+    border-top:2.5px solid transparent!important;border-radius:0!important;
+    padding:.28rem .05rem!important;min-height:52px!important;width:100%!important;
+    display:flex!important;flex-direction:column!important;
+    align-items:center!important;justify-content:center!important;
+    box-shadow:none!important;touch-action:manipulation!important;
+    -webkit-tap-highlight-color:rgba(100,255,218,0.15)!important;
+    transition:transform .08s ease,opacity .1s ease!important;
+  }}
+  /* Icon line bigger, label line smaller via ::first-line */
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
+  .stButton>button p{{
+    white-space:pre-wrap!important;text-align:center!important;
+    font-size:.52rem!important;line-height:1.25!important;
+    margin:0!important;color:inherit!important;
+  }}
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
+  .stButton>button p::first-line{{font-size:1.45rem!important;}}
+  /* Press feedback */
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
+  .stButton>button:active{{transform:scale(0.85)!important;opacity:.65!important;}}
 }}
-.as-mnav-item{{
-  flex:1;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;font-size:1.15rem;color:{TEXT2};
-  background:transparent;border:none;cursor:pointer;
-  padding:.3rem 0 .2rem;gap:.18rem;
-  transition:color .15s;
-  font-family:'Open Sans',sans-serif;line-height:1;
-  -webkit-tap-highlight-color:transparent;
-  min-width:0;
-}}
-.as-mnav-item span{{font-size:.44rem;display:block;text-align:center;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}}
-.as-mnav-item.active{{color:{TEAL}!important;}}
-.as-mnav-item:active{{opacity:.7;}}
 
 </style>"""
 
@@ -390,13 +411,6 @@ button[kind="primary"]{{
 /* Scrollbar */
 ::-webkit-scrollbar-track{{ background:#fdf5ee!important; }}
 ::-webkit-scrollbar-thumb{{ background:rgba(181,97,63,0.3)!important; }}
-/* Mobile bottom nav — light theme */
-.as-mnav{{
-    background:rgba(253,248,242,0.97)!important;
-    border-top-color:rgba(160,100,60,0.2)!important;
-}}
-.as-mnav-item{{ color:#7a5c40!important; }}
-.as-mnav-item.active{{ color:#b5613f!important; }}
 /* Chat input — cover all Streamlit versions */
 [data-testid="stBottom"],
 [data-testid="stBottom"] > div,
@@ -800,14 +814,18 @@ def render_sidebar():
 
 
 def render_mobile_nav():
-    """Fixed bottom nav bar — visible only on screens ≤ 768 px."""
-    lang   = LNG()
-    page   = st.session_state.page
-    labels = NAV_LABELS[lang]
+    """Bottom nav bar — real Streamlit buttons, fixed to viewport bottom on mobile only.
+
+    Uses CSS :has(#as-mnav-anchor) to position the button row and hide it on
+    desktop without any JavaScript.  Streamlit buttons are used instead of raw
+    HTML <button> elements so clicks are handled by Streamlit's own event system
+    and survive React re-renders.
+    """
+    lang     = LNG()
+    page     = st.session_state.page
     is_light = st.session_state.get("theme", "light") == "light"
 
-    # Short labels — keep them tight so they fit on narrow screens
-    SHORT = {
+    SHORT_EN = {
         "overview": ("⊕", "Home"),
         "explorer": ("≋", "Explore"),
         "alerts":   ("⚡", "Alerts"),
@@ -815,44 +833,61 @@ def render_mobile_nav():
         "ai":       ("◈", "AI"),
         "about":    ("○", "About"),
     }
-    if lang == "fr":
-        SHORT.update({
-            "overview": ("⊕", "Accueil"),
-            "explorer": ("≋", "Cartes"),
-            "alerts":   ("⚡", "Alertes"),
-            "science":  ("◆", "Science"),
-            "ai":       ("◈", "IA"),
-            "about":    ("○", "Info"),
-        })
+    SHORT_FR = {
+        "overview": ("⊕", "Accueil"),
+        "explorer": ("≋", "Cartes"),
+        "alerts":   ("⚡", "Alertes"),
+        "science":  ("◆", "Science"),
+        "ai":       ("◈", "IA"),
+        "about":    ("○", "Info"),
+    }
+    SHORT = SHORT_FR if lang == "fr" else SHORT_EN
 
-    nav_items_html = ""
-    for key in PAGE_KEYS:
-        icon, short = SHORT.get(key, ("·", key[:5]))
-        active = "active" if key == page else ""
-        nav_items_html += (
-            f'<button class="as-mnav-item {active}" onclick="asMobileNav(\'{key}\')"'
-            f' aria-label="{labels.get(key, key)}">'
-            f'{icon}<span>{short}</span></button>'
-        )
+    # Theme colours
+    bg     = "rgba(253,248,242,0.97)" if is_light else "rgba(10,25,47,0.97)"
+    border = "rgba(160,100,60,0.2)"   if is_light else BORDER
+    teal   = "#b5613f"                if is_light else TEAL
+    muted  = "rgba(122,92,64,0.55)"   if is_light else "rgba(136,146,176,0.6)"
 
-    # Use event delegation on the container rather than onclick attributes.
-    # onclick can be stripped by some sanitizers; data-page + addEventListener is safe.
-    st.markdown(f"""
-<div class="as-mnav" id="as-mobile-nav">
-{nav_items_html}
-</div>
-<script>
-(function() {{
-  function asMobileNav(page) {{
-    var url = new URL(window.location.href);
-    url.searchParams.set('_mn', page);
-    // Remove hash fragments that Streamlit sometimes adds
-    url.hash = '';
-    window.location.replace(url.toString());
+    # Hidden anchor — CSS :has() uses this to locate and style the next sibling
+    # (the stHorizontalBlock that holds the nav buttons).
+    st.markdown('<div id="as-mnav-anchor"></div>', unsafe_allow_html=True)
+
+    cols = st.columns(len(PAGE_KEYS))
+    for i, key in enumerate(PAGE_KEYS):
+        icon, short = SHORT.get(key, ("·", key[:4]))
+        with cols[i]:
+            # Label: icon on line 1, short text on line 2 (pre-wrap + ::first-line)
+            if st.button(
+                f"{icon}\n{short}",
+                key=f"mnav_{key}",
+                use_container_width=True,
+                type="primary" if page == key else "secondary",
+            ):
+                st.session_state.page = key
+                st.rerun()
+
+    # Theme-dependent colours injected here; layout/hide rules are in the global CSS.
+    st.markdown(f"""<style>
+@media(max-width:768px){{
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]{{
+    background:{bg}!important;
+    border-top:1px solid {border}!important;
+    backdrop-filter:blur(20px)!important;-webkit-backdrop-filter:blur(20px)!important;
   }}
-}})();
-</script>
-""", unsafe_allow_html=True)
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
+  .stButton>button{{color:{muted}!important;}}
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
+  .stButton>button[kind="primary"]{{
+    color:{teal}!important;border-top-color:{teal}!important;
+    background:transparent!important;box-shadow:none!important;
+  }}
+  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
+  .stButton>button[kind="secondary"]:hover{{
+    color:{teal}!important;background:transparent!important;border-color:transparent!important;
+  }}
+}}
+</style>""", unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
