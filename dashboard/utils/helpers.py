@@ -4,8 +4,9 @@ from config import (T, WHO_24H, WHO_ANN, NORTHERN, HIGHLAND, URBAN,
                     GREEN, AMBER, ORANGE, RED, PURPLE, TEAL, TEAL2, TEXT2,
                     COMPOUND_STANDARDS)
 import streamlit as st
+from utils.standards import get_all_standards, get_all_threshold_standards
 
-# ── PM2.5 threshold standards ─────────────────────────────────────────────────
+# ── PM2.5 threshold standards (built-ins; runtime always uses get_all_threshold_standards) ──
 THRESHOLD_STANDARDS = {
     "WHO 2021":  15.0,
     "EU 2024":   25.0,
@@ -35,11 +36,13 @@ def get_active_std_name() -> str:
 def get_compound_limit(key: str):
     """Return the concentration limit for a compound under the active standard.
 
+    Reads from the live merged standards (built-ins + user overrides/additions).
     For the Custom standard, PM2.5 falls back to the user-set session threshold.
     Returns None when the standard defines no limit for that compound.
     """
     std = get_active_std_name()
-    limits = COMPOUND_STANDARDS.get(std, COMPOUND_STANDARDS["WHO 2021"])
+    all_stds = get_all_standards()
+    limits = all_stds.get(std, all_stds.get("WHO 2021", COMPOUND_STANDARDS["WHO 2021"]))
     lim = limits.get(key)
     if lim is None and key == "pm2_5_target" and std == "Custom":
         raw = st.session_state.get("threshold")

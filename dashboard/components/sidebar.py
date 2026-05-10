@@ -6,6 +6,11 @@ from config import (
     CITY_STATS, T,
 )
 from utils.helpers import LNG, THRESHOLD_STANDARDS, get_threshold
+from utils.standards import (
+    get_all_standards, get_all_threshold_standards,
+    is_builtin, add_standard, update_standard, delete_standard, reset_standard,
+    COMPOUND_KEYS,
+)
 
 # lazy import to avoid circular at module load time
 def _get_live_stats():
@@ -699,31 +704,120 @@ def render_sidebar():
                         st.session_state.lang = "fr" if lang == "en" else "en"
                         st.rerun()
 
-                std_names = list(THRESHOLD_STANDARDS.keys())
+                # ── Standards selector (live — includes user-added) ────────────
+                all_thr   = get_all_threshold_standards()
+                all_stds  = get_all_standards()
+                std_names = list(all_thr.keys())
                 cur_std   = st.session_state.get("threshold_std", "WHO 2021")
-                cur_idx   = std_names.index(cur_std) if cur_std in std_names else 0
+                if cur_std not in std_names:
+                    cur_std = "WHO 2021"
+                cur_idx   = std_names.index(cur_std)
                 new_std   = st.selectbox("Air Quality Standard", std_names,
                                          index=cur_idx, key="sb_std")
                 if new_std != cur_std:
                     st.session_state.threshold_std = new_std
-                    if THRESHOLD_STANDARDS[new_std] is not None:
-                        st.session_state.threshold = THRESHOLD_STANDARDS[new_std]
+                    pm25_val = all_thr.get(new_std)
+                    if pm25_val is not None:
+                        st.session_state.threshold = pm25_val
                     st.rerun()
 
-                if THRESHOLD_STANDARDS[new_std] is None:
+                # PM2.5 limit display / input
+                pm25_limit = all_thr.get(new_std)
+                if pm25_limit is None:
                     custom_val = st.number_input(
-                        "Custom limit (µg/m³)", min_value=1.0, max_value=500.0,
+                        "Custom PM2.5 limit (µg/m³)", min_value=1.0, max_value=500.0,
                         value=float(st.session_state.get("threshold", 15.0)),
                         step=1.0, key="sb_custom_thr")
                     if custom_val != st.session_state.get("threshold"):
                         st.session_state.threshold = custom_val
                         st.rerun()
                 else:
-                    thr = THRESHOLD_STANDARDS[new_std]
                     st.markdown(
                         f"<div style='font-size:.55rem;color:{TEAL};margin-top:-.3rem;"
-                        f"margin-bottom:.2rem;'>Limit: {thr:.0f} µg/m³</div>",
+                        f"margin-bottom:.2rem;'>PM2.5 limit: {pm25_limit:.0f} µg/m³</div>",
                         unsafe_allow_html=True)
+
+                # ── Edit standard values ───────────────────────────────────────
+                _LABELS = {"pm2_5_target":"PM2.5","pm10_target":"PM10",
+                           "dust_target":"Dust","co_target":"CO",
+                           "no2_target":"NO₂","o3_target":"O₃",
+                           "so2_target":"SO₂","aod_target":"AOD"}
+                _UNITS  = {"pm2_5_target":"µg/m³","pm10_target":"µg/m³",
+                           "dust_target":"µg/m³","co_target":"µg/m³",
+                           "no2_target":"µg/m³","o3_target":"µg/m³",
+                           "so2_target":"µg/m³","aod_target":"(550nm)"}
+
+                with st.expander("Edit values", expanded=False):
+                    cur_vals = all_stds.get(new_std, {})
+                    edited   = {}
+                    for k in COMPOUND_KEYS:
+                        label = f"{_LABELS[k]} ({_UNITS[k]})"
+                        cur_v = cur_vals.get(k)
+                        new_v = st.number_input(
+                            label,
+                            min_value=0.0, max_value=100000.0,
+                            value=float(cur_v) if cur_v is not None else 0.0,
+                            step=1.0,
+                            key=f"sb_edit_{new_std}_{k}",
+                            help="Set to 0 to mark as 'no guideline'",
+                        )
+                        edited[k] = new_v if new_v > 0 else None
+
+                    col_save, col_reset = st.columns(2)
+                    with col_save:
+                        if st.button("Save", key="sb_edit_save", use_container_width=True):
+                            update_standard(new_std, edited)
+                            pm25_new = edited.get("pm2_5_target")
+                            if pm25_new:
+                                st.session_state.threshold = pm25_new
+                            st.rerun()
+                    with col_reset:
+                        reset_label = "Reset" if is_builtin(new_std) else "Reset"
+                        if is_builtin(new_std):
+                            if st.button(reset_label, key="sb_edit_reset",
+                                         use_container_width=True):
+                                reset_standard(new_std)
+                                st.rerun()
+
+                # ── Add new standard ───────────────────────────────────────────
+                with st.expander("Add standard", expanded=False):
+                    new_name = st.text_input("Standard name", key="sb_new_std_name",
+                                             placeholder="e.g. Nigeria NESREA")
+                    new_vals = {}
+                    for k in COMPOUND_KEYS:
+                        label = f"{_LABELS[k]} ({_UNITS[k]})"
+                        new_vals[k] = st.number_input(
+                            label, min_value=0.0, max_value=100000.0,
+                            value=0.0, step=1.0,
+                            key=f"sb_new_{k}",
+                            help="Leave 0 if no guideline for this compound",
+                        )
+                    if st.button("Add", key="sb_add_std", use_container_width=True):
+                        name_clean = new_name.strip()
+                        if not name_clean:
+                            st.warning("Enter a standard name.")
+                        elif name_clean in all_stds:
+                            st.warning(f"'{name_clean}' already exists.")
+                        else:
+                            payload = {k: (v if v > 0 else None)
+                                       for k, v in new_vals.items()}
+                            if add_standard(name_clean, payload):
+                                st.session_state.threshold_std = name_clean
+                                if payload.get("pm2_5_target"):
+                                    st.session_state.threshold = payload["pm2_5_target"]
+                                st.rerun()
+
+                # ── Delete user-added standard ─────────────────────────────────
+                if not is_builtin(new_std):
+                    st.markdown(
+                        f"<div style='height:4px;'></div>",
+                        unsafe_allow_html=True)
+                    if st.button(f"Delete '{new_std}'", key="sb_del_std",
+                                 use_container_width=True, type="primary"):
+                        delete_standard(new_std)
+                        st.session_state.threshold_std = "WHO 2021"
+                        st.session_state.threshold = WHO_24H
+                        st.rerun()
 
                 st.markdown("</div>", unsafe_allow_html=True)
 
