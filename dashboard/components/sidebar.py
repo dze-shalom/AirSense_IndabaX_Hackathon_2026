@@ -93,7 +93,8 @@ h1,h2,h3,h4,h5,h6{{font-family:'Montserrat',sans-serif!important;font-weight:700
 .as-content{{margin-top:48px;padding:.75rem 1.5rem;}}
 /* Ensure nav strip buttons wrap on very small screens */
 #as-topnav-row{{flex-wrap:wrap!important;}}
-.as-alert-badge{{background:rgba(239,68,68,0.13);border:1px solid rgba(239,68,68,0.36);color:{RED};border-radius:4px;padding:.11rem .38rem;font-size:.6rem;font-family:'Roboto Mono',monospace;font-weight:600;}}
+.as-alert-badge{{background:rgba(239,68,68,0.13);border:1px solid rgba(239,68,68,0.36);color:{RED};border-radius:4px;padding:.11rem .38rem;font-size:.6rem;font-family:'Roboto Mono',monospace;font-weight:600;cursor:pointer;text-decoration:none;transition:background .15s,box-shadow .15s;}}
+.as-alert-badge:hover{{background:rgba(239,68,68,0.24)!important;box-shadow:0 0 0 2px rgba(239,68,68,0.28);text-decoration:none;}}
 @keyframes as-pulse{{0%,100%{{opacity:1;transform:scale(1);}}50%{{opacity:.55;transform:scale(.78);}}}}
 .as-hamburger-btn{{width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid rgba(0,0,0,0.12);background:transparent;transition:background .15s;color:inherit;}}.as-hamburger-btn:hover{{background:rgba(0,0,0,0.06);}}.as-live-dot{{width:6px;height:6px;border-radius:50%;background:{TEAL};animation:as-pulse 2.1s ease infinite;display:inline-block;}}
 .as-stat-strip{{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:.75rem;padding:.8rem 0;border-top:1px solid {BORDER};border-bottom:1px solid {BORDER};margin-bottom:1.2rem;}}
@@ -596,7 +597,7 @@ def render_nav():
         f'<span style="font-size:.72rem;color:{muted_col};">{page_lbl}</span>'
         '</div>'
         '<div style="display:flex;align-items:center;gap:.5rem;">'
-        f'<span class="as-alert-badge" style="color:{RED};">{n_alerts} {alert_lbl}</span>'
+        f'<a class="as-alert-badge" href="?_mn=alerts" style="color:{RED};">{n_alerts} {alert_lbl}</a>'
         f'<span style="font-size:.55rem;color:{muted_col};display:flex;align-items:center;gap:3px;">'
         '<span class="as-live-dot"></span>'
         f'<span style="color:{muted_col};">{live_word}</span>'
