@@ -77,7 +77,7 @@ logger = logging.getLogger("airsense_api")
 ROOT   = Path(__file__).parent.parent          # project root
 MODELS = ROOT / "models"
 
-# ── Constants (mirror app.py exactly) ─────────────────────────────────────────
+# ── Constants (keep in sync with dashboard/config.py) ─────────────────────────
 WHO_24H   = 15.0
 WHO_ANN   = 5.0
 NORTHERN  = {"Far North", "North", "Adamawa"}
@@ -410,7 +410,7 @@ def get_alert_prob(pm25: float) -> float:
 
 
 def compute_bfai(pm25: float, wind: float, hum: float, region: str) -> int:
-    """Breath of Fresh Air Index 0–100 — identical to app.py."""
+    """Breath of Fresh Air Index 0–100 — keep in sync with dashboard/utils/helpers.py."""
     pm_s  = max(0, round(100 - (pm25 / 150) * 80))
     wi_s  = min(100, round((wind / 8) * 60 + 20))
     hu_s  = min(100, round((hum - 40) * 1.2)) if hum > 40 else 30
@@ -419,7 +419,7 @@ def compute_bfai(pm25: float, wind: float, hum: float, region: str) -> int:
 
 def classify_source(wind_speed: float, wind_dir: float,
                     region: str, month: int) -> tuple:
-    """Source attribution — identical to app.py classify_source()."""
+    """Source attribution — keep in sync with dashboard/utils/helpers.py."""
     north     = region in NORTHERN
     harmattan = month in [11, 12, 1, 2] and north and (wind_dir > 270 or wind_dir < 90)
     if harmattan and wind_speed > 3:
