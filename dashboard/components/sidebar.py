@@ -583,6 +583,8 @@ def render_nav():
     muted_col = "#7a5c40" if is_light else TEXT2
     live_word = "LIVE" if lang == "en" else "EN DIRECT"
     alert_lbl = "alerts" if lang == "en" else "alertes"
+    # JS used in onclick — single-quoted selector avoids breaking the double-quoted HTML attr
+    _badge_js = "var b=document.querySelector('button[aria-label^=_nav_alert]');if(b)b.click();"
 
     nav_html = (
         '<div class="as-fixed-nav">'
@@ -598,7 +600,8 @@ def render_nav():
         f'<span style="font-size:.72rem;color:{muted_col};">{page_lbl}</span>'
         '</div>'
         '<div style="display:flex;align-items:center;gap:.5rem;">'
-        f'<a class="as-alert-badge" href="?_mn=alerts" style="color:{RED};">{n_alerts} {alert_lbl}</a>'
+        f'<span class="as-alert-badge" style="color:{RED};cursor:pointer;" onclick="{_badge_js}">'
+        f'{n_alerts} {alert_lbl}</span>'
         f'<span style="font-size:.55rem;color:{muted_col};display:flex;align-items:center;gap:3px;">'
         '<span class="as-live-dot"></span>'
         f'<span style="color:{muted_col};">{live_word}</span>'
@@ -607,6 +610,18 @@ def render_nav():
         '</div>'
     )
     st.markdown(nav_html, unsafe_allow_html=True)
+
+    # Hidden Streamlit button triggered by the badge onclick above.
+    # Using a real st.button means navigation stays in-session (no full page reload).
+    if st.button("_nav_alert_", key="as_nav_alert_trigger"):
+        st.session_state.page = "alerts"
+        st.rerun()
+    # Collapse the hidden button to zero height so it doesn't affect layout.
+    st.markdown(
+        "<style>[data-testid='stButton']:has(button[aria-label^=_nav_alert])"
+        "{display:none!important;}</style>",
+        unsafe_allow_html=True,
+    )
 
     # Desktop: hide Streamlit's hamburger — we use our own ‹/› toggle.
     # Mobile: keep it, float it into the top-right of our fixed nav bar.
