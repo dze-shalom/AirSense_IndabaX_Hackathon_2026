@@ -7,7 +7,10 @@ dashboard/user_standards.json so they survive page reloads.
 Schema of user_standards.json:
 {
     "user_standards": {
-        "<name>": {"pm2_5_target": float|null, "pm10_target": float|null, ...}
+        "<name>": {
+            "pm2_5_target": float|null, "pm10_target": float|null, ...,
+            "_meta": {"year": int, "source": str, "notes": str}  # optional
+        }
     },
     "overrides": {
         "<builtin_name>": {"pm2_5_target": float, ...}   # only changed keys
@@ -78,12 +81,24 @@ def is_builtin(name: str) -> bool:
     return name in BUILTIN_NAMES
 
 
-def add_standard(name: str, values: Dict) -> bool:
+def get_standard_meta(name: str) -> Dict:
+    """Return metadata dict (year, source, notes) for a user standard."""
+    if name in BUILTIN_NAMES:
+        return {}
+    data = _load_file()
+    entry = data["user_standards"].get(name, {})
+    return dict(entry.get("_meta", {}))
+
+
+def add_standard(name: str, values: Dict, meta: Optional[Dict] = None) -> bool:
     """Add a new user standard. Returns False if name already exists."""
     data = _load_file()
     if name in BUILTIN_NAMES or name in data["user_standards"]:
         return False
-    data["user_standards"][name] = {k: values.get(k) for k in COMPOUND_KEYS}
+    entry: Dict = {k: values.get(k) for k in COMPOUND_KEYS}
+    if meta:
+        entry["_meta"] = {k: v for k, v in meta.items() if v is not None}
+    data["user_standards"][name] = entry
     _save_file(data)
     return True
 
@@ -112,6 +127,21 @@ def delete_standard(name: str) -> bool:
         _save_file(data)
         return True
     return False
+
+
+def update_standard_meta(name: str, meta: Dict) -> None:
+    """Update metadata (year, source, notes) for a user-added standard."""
+    if name in BUILTIN_NAMES:
+        return
+    data = _load_file()
+    if name not in data["user_standards"]:
+        return
+    cleaned = {k: v for k, v in meta.items() if v is not None}
+    if cleaned:
+        data["user_standards"][name]["_meta"] = cleaned
+    else:
+        data["user_standards"][name].pop("_meta", None)
+    _save_file(data)
 
 
 def reset_standard(name: str) -> None:
