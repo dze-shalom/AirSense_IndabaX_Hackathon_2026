@@ -39,14 +39,11 @@ for k, v in _DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ── Handle ?_mn=<page> links (e.g. the alert-badge tap in the top nav bar) ───
-try:
-    _mn = st.query_params.get("_mn", "")
-    if _mn and _mn in PAGE_KEYS:
-        st.session_state.page = _mn
-        st.query_params.clear()
-except Exception:
-    pass
+# ── Handle ?_mn=<page> deep-links (fallback for bookmarked URLs) ─────────────
+_mn = st.query_params.get("_mn", "")
+if _mn in PAGE_KEYS:
+    st.session_state.page = _mn
+    del st.query_params["_mn"]
 
 # ── Render shell ──────────────────────────────────────────────────────────────
 def main():

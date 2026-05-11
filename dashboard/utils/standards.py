@@ -32,8 +32,6 @@ COMPOUND_KEYS = [
 
 _USER_FILE = Path(__file__).parent.parent / "user_standards.json"
 
-_EMPTY: Dict = {"user_standards": {}, "overrides": {}}
-
 
 # ── Persistence ────────────────────────────────────────────────────────────────
 
@@ -62,7 +60,7 @@ def get_all_standards() -> Dict[str, Dict]:
     for name, values in COMPOUND_STANDARDS.items():
         base = dict(values)
         if name in data["overrides"]:
-            base.update({k: v for k, v in data["overrides"][name].items() if v is not None})
+            base.update({k: v for k, v in data["overrides"][name].items() if k in COMPOUND_KEYS})
         merged[name] = base
     for name, values in data["user_standards"].items():
         merged[name] = {k: values.get(k) for k in COMPOUND_KEYS}
@@ -110,11 +108,12 @@ def update_standard(name: str, values: Dict) -> None:
         current = data["overrides"].setdefault(name, {})
         current.update({k: v for k, v in values.items() if k in COMPOUND_KEYS})
         data["overrides"][name] = current
+        _save_file(data)
     elif name in data["user_standards"]:
         current = data["user_standards"][name]
         current.update({k: v for k, v in values.items() if k in COMPOUND_KEYS})
         data["user_standards"][name] = current
-    _save_file(data)
+        _save_file(data)
 
 
 def delete_standard(name: str) -> bool:
