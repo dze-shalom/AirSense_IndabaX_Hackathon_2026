@@ -9,6 +9,7 @@ from utils.helpers import LNG, THRESHOLD_STANDARDS, get_threshold
 from utils.standards import (
     get_all_standards, get_all_threshold_standards,
     is_builtin, add_standard, update_standard, delete_standard, reset_standard,
+    get_standard_meta, update_standard_meta,
     COMPOUND_KEYS,
 )
 
@@ -738,6 +739,28 @@ def render_sidebar():
                         f"margin-bottom:.2rem;'>PM2.5 limit: {pm25_limit:.0f} µg/m³</div>",
                         unsafe_allow_html=True)
 
+                # Metadata badge for user standards
+                if not is_builtin(new_std):
+                    _meta = get_standard_meta(new_std)
+                    if _meta:
+                        _meta_parts = []
+                        if _meta.get("year"):
+                            _meta_parts.append(str(_meta["year"]))
+                        if _meta.get("notes"):
+                            _meta_parts.append(_meta["notes"])
+                        if _meta_parts:
+                            st.markdown(
+                                f"<div style='font-size:.5rem;color:{TEXT2};"
+                                f"margin-top:-.1rem;margin-bottom:.1rem;'>"
+                                f"{' · '.join(_meta_parts)}</div>",
+                                unsafe_allow_html=True)
+                        if _meta.get("source"):
+                            st.markdown(
+                                f"<div style='font-size:.5rem;margin-bottom:.2rem;'>"
+                                f"<a href='{_meta['source']}' target='_blank' "
+                                f"style='color:{TEAL};'>Source</a></div>",
+                                unsafe_allow_html=True)
+
                 # ── Edit standard values ───────────────────────────────────────
                 _LABELS = {"pm2_5_target":"PM2.5","pm10_target":"PM10",
                            "dust_target":"Dust","co_target":"CO",
@@ -764,18 +787,49 @@ def render_sidebar():
                         )
                         edited[k] = new_v if new_v > 0 else None
 
+                    # Metadata editing — only for user-added standards
+                    edited_meta = None
+                    if not is_builtin(new_std):
+                        st.markdown(
+                            f"<div style='font-size:.55rem;color:{TEXT2};"
+                            f"margin-top:.4rem;margin-bottom:.1rem;'>"
+                            f"Reference info</div>",
+                            unsafe_allow_html=True)
+                        cur_meta = get_standard_meta(new_std)
+                        meta_year = st.number_input(
+                            "Year published", min_value=1900, max_value=2100,
+                            value=int(cur_meta.get("year", 2024)), step=1,
+                            key=f"sb_meta_year_{new_std}")
+                        meta_source = st.text_input(
+                            "Source / URL", value=cur_meta.get("source", ""),
+                            key=f"sb_meta_source_{new_std}",
+                            placeholder="https://...")
+                        meta_notes = st.text_area(
+                            "Notes", value=cur_meta.get("notes", ""),
+                            height=60, key=f"sb_meta_notes_{new_std}",
+                            placeholder="Scope or applicability")
+                        edited_meta = {
+                            "year": int(meta_year),
+                            "source": meta_source.strip() or None,
+                            "notes": meta_notes.strip() or None,
+                        }
+
                     col_save, col_reset = st.columns(2)
                     with col_save:
                         if st.button("Save", key="sb_edit_save", use_container_width=True):
                             update_standard(new_std, edited)
+                            if edited_meta is not None:
+                                update_standard_meta(new_std, {
+                                    k: v for k, v in edited_meta.items()
+                                    if v is not None
+                                })
                             pm25_new = edited.get("pm2_5_target")
                             if pm25_new:
                                 st.session_state.threshold = pm25_new
                             st.rerun()
                     with col_reset:
-                        reset_label = "Reset" if is_builtin(new_std) else "Reset"
                         if is_builtin(new_std):
-                            if st.button(reset_label, key="sb_edit_reset",
+                            if st.button("Reset", key="sb_edit_reset",
                                          use_container_width=True):
                                 reset_standard(new_std)
                                 st.rerun()
@@ -783,16 +837,40 @@ def render_sidebar():
                 # ── Add new standard ───────────────────────────────────────────
                 with st.expander("Add standard", expanded=False):
                     new_name = st.text_input("Standard name", key="sb_new_std_name",
-                                             placeholder="e.g. Nigeria NESREA")
+                                             placeholder="e.g. Nigeria NESREA 2024")
+
+                    # Clone from existing — pre-fills compound values
+                    _clone_opts = ["— none —"] + list(all_stds.keys())
+                    _clone_from = st.selectbox("Clone values from", _clone_opts,
+                                               key="sb_clone_from",
+                                               help="Pre-fill limits from an existing standard")
+                    _clone_vals = (all_stds.get(_clone_from, {})
+                                   if _clone_from != "— none —" else {})
+
+                    # Metadata fields
+                    new_year = st.number_input(
+                        "Year published", min_value=1900, max_value=2100,
+                        value=2024, step=1, key="sb_new_year")
+                    new_source = st.text_input(
+                        "Source / URL", key="sb_new_source",
+                        placeholder="e.g. https://www.who.int/...")
+                    new_notes = st.text_area(
+                        "Notes", key="sb_new_notes", height=60,
+                        placeholder="Brief description of scope or applicability")
+
+                    # Compound limits — keys include clone selection so Streamlit
+                    # re-renders with fresh values whenever the clone changes
                     new_vals = {}
                     for k in COMPOUND_KEYS:
                         label = f"{_LABELS[k]} ({_UNITS[k]})"
+                        _default = float(_clone_vals.get(k) or 0.0)
                         new_vals[k] = st.number_input(
                             label, min_value=0.0, max_value=100000.0,
-                            value=0.0, step=1.0,
-                            key=f"sb_new_{k}",
+                            value=_default, step=1.0,
+                            key=f"sb_new_{_clone_from}_{k}",
                             help="Leave 0 if no guideline for this compound",
                         )
+
                     if st.button("Add", key="sb_add_std", use_container_width=True):
                         name_clean = new_name.strip()
                         if not name_clean:
@@ -802,7 +880,12 @@ def render_sidebar():
                         else:
                             payload = {k: (v if v > 0 else None)
                                        for k, v in new_vals.items()}
-                            if add_standard(name_clean, payload):
+                            meta: dict = {"year": int(new_year)}
+                            if new_source.strip():
+                                meta["source"] = new_source.strip()
+                            if new_notes.strip():
+                                meta["notes"] = new_notes.strip()
+                            if add_standard(name_clean, payload, meta):
                                 st.session_state.threshold_std = name_clean
                                 if payload.get("pm2_5_target"):
                                     st.session_state.threshold = payload["pm2_5_target"]
