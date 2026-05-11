@@ -707,8 +707,8 @@ def render_sidebar():
                         st.rerun()
 
                 # ── Standards selector (live — includes user-added) ────────────
-                all_thr   = get_all_threshold_standards()
                 all_stds  = get_all_standards()
+                all_thr   = {n: v.get("pm2_5_target") for n, v in all_stds.items()}
                 std_names = list(all_thr.keys())
                 cur_std   = st.session_state.get("threshold_std", "WHO 2021")
                 if cur_std not in std_names:
