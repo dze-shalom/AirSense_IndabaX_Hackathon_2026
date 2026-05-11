@@ -368,7 +368,7 @@ docker run -p 8000:8000 airsense-api
 
 **Dze-Kum Shalom Chow** — Lead developer, ML modelling, dashboard design
 **Ayanda Blessing Khumalo** — Statistical Lead, Statistical validation and hypothesis testing
-**Dze-Kum Shalom Chow** — Lead developer, ML modelling, dashboard design
+**MALLA NDASSI Marie Ange** — Domain Expert, Atmospheric physics insights
 **Dze-Kum Shalom Chow** — Lead developer, ML modelling, dashboard design
 IndabaX Cameroon 2026
 
