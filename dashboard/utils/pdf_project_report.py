@@ -621,8 +621,309 @@ def generate_project_report(lang: str = "en") -> bytes:
              leading=11, borderPad=3),
     ))
 
+    elems.append(PageBreak())
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # PAGE 6 — NOTEBOOKS & REPRODUCIBILITY
+    # ══════════════════════════════════════════════════════════════════════════
+    elems.append(Paragraph(
+        "5. Notebooks et reproductibilité" if fr else "5. Notebooks & Reproducibility",
+        SEC_HDR,
+    ))
+    hr()
+
+    elems.append(Paragraph(
+        ("L'ensemble du pipeline — collecte des données, analyse exploratoire, "
+         "entraînement des modèles et génération des graphiques — est documenté "
+         "dans quatre notebooks Jupyter ordonnés. Chaque notebook est autonome, "
+         "annoté scientifiquement et produit des artefacts explicitement nommés "
+         "consommés par le suivant. L'exécution dans l'ordre garantit une "
+         "reproduction complète des résultats."
+         if fr else
+         "The entire pipeline — data collection, exploratory analysis, model "
+         "training, and chart generation — is documented in four ordered Jupyter "
+         "notebooks. Each notebook is self-contained, scientifically annotated, "
+         "and produces explicitly named artefacts consumed by the next. "
+         "Running them in order fully reproduces all results."),
+        BODY,
+    ))
+    elems.append(Spacer(1, 4*mm))
+
+    # ── Notebook pipeline table ───────────────────────────────────────────────
+    elems.append(Paragraph(
+        "Pipeline des notebooks :" if fr else "Notebook Pipeline:",
+        _sty("BoldNb1", fontSize=9, fontName="Helvetica-Bold",
+             textColor=BLACK, leading=14),
+    ))
+    elems.append(Spacer(1, 1*mm))
+
+    nb_hdr = [
+        Paragraph("#", TH),
+        Paragraph("Fichier" if fr else "File", TH),
+        Paragraph("Objectif" if fr else "Purpose", TH),
+        Paragraph(("Sorties clés" if fr else "Key Outputs"), TH),
+    ]
+    nb_rows = [
+        [
+            "00",
+            "00_Data_Cleaning.ipynb",
+            ("Nettoyage, ingénierie des variables, récupération CAMS + ERA5, "
+             "construction des proxys et validation"
+             if fr else
+             "Data cleaning, feature engineering, CAMS + ERA5 fetching, "
+             "proxy target construction and validation"),
+            ("airsense_clean.parquet\n(87 240 lignes, 40 variables)"
+             if fr else
+             "airsense_clean.parquet\n(87,240 rows, 40 features)"),
+        ],
+        [
+            "01",
+            "01_EDA.ipynb",
+            ("Analyse exploratoire : distribution de la cible, corrélations "
+             "météo, saisonnalité Harmattan, classements de villes, "
+             "tendances inter-annuelles"
+             if fr else
+             "Exploratory analysis: target distribution, weather correlations, "
+             "Harmattan seasonality, city rankings, "
+             "year-over-year worsening trend"),
+            ("Décisions de modélisation documentées,\ngraphiques EDA"
+             if fr else
+             "Documented modelling decisions,\nEDA charts"),
+        ],
+        [
+            "02",
+            "02_Modelling.ipynb",
+            ("Entraînement : baselines → XGBoost + Optuna → "
+             "Two-Stage Harmattan → Ensemble → GNN → Transformer → "
+             "Calibration Platt → SHAP → Généralisation spatiale → "
+             "Projections CMIP6 → Sauvegarde artefacts"
+             if fr else
+             "Training: baselines → XGBoost + Optuna → "
+             "Two-Stage Harmattan → Ensemble → GNN → Transformer → "
+             "Platt calibration → SHAP → Spatial generalisation → "
+             "CMIP6 projections → Artefact save"),
+            ("xgb_pm25.json, models/*.pkl,\n"
+             "conformal_intervals.json,\n"
+             "platt_alert_calibration.json,\n"
+             "region_shap.pkl, climate_projections.json"
+             ),
+        ],
+        [
+            "03",
+            "03_Pitch_Charts.ipynb",
+            ("Génération des graphiques prêts à publier : excédances PM2.5, "
+             "régimes de pollution, tendance temporelle, performance du modèle, "
+             "SHAP, calibration des alertes, généralisation spatiale, "
+             "projections 2050"
+             if fr else
+             "Publication-ready chart generation: PM2.5 exceedances, "
+             "pollution regimes, trend, model performance, SHAP, "
+             "alert calibration, spatial generalisation, 2050 projections"),
+            "outputs/*.png",
+        ],
+    ]
+
+    nb_data = [nb_hdr]
+    for row in nb_rows:
+        nb_data.append([
+            Paragraph(row[0], TD),
+            Paragraph(row[1], _sty(f"Mono{row[0]}", fontSize=7,
+                                   fontName="Helvetica-Bold",
+                                   textColor=TEAL2, leading=10)),
+            Paragraph(row[2], TD_L),
+            Paragraph(row[3], _sty(f"MonoOut{row[0]}", fontSize=7,
+                                   fontName="Helvetica",
+                                   textColor=GREY, leading=10,
+                                   alignment=TA_LEFT)),
+        ])
+    nb_tbl = Table(nb_data, colWidths=[8*mm, 42*mm, 72*mm, 52*mm + 6*mm])
+    nb_tbl.setStyle(_tbl_base())
+    elems.append(nb_tbl)
+    elems.append(Spacer(1, 5*mm))
+
+    # ── Model artefacts ───────────────────────────────────────────────────────
+    elems.append(Paragraph(
+        "Artefacts du modèle (models/) :" if fr else "Model Artefacts (models/):",
+        _sty("BoldNb2", fontSize=9, fontName="Helvetica-Bold",
+             textColor=BLACK, leading=14),
+    ))
+    elems.append(Spacer(1, 1*mm))
+
+    art_hdr = [
+        Paragraph("Fichier" if fr else "File", TH),
+        Paragraph("Contenu" if fr else "Contents", TH),
+        Paragraph(("Notebook source" if fr else "Source Notebook"), TH),
+    ]
+    art_rows = [
+        ("xgb_pm25.json",
+         "Modèle XGBoost principal (PM2.5)" if fr else "Primary XGBoost model (PM2.5)",
+         "02 — Step 5b"),
+        ("models_multi.pkl",
+         "8 modèles composés (PM10, NO₂, O₃…)" if fr else "8 compound models (PM10, NO₂, O₃…)",
+         "02 — Step 6"),
+        ("model_harmattan.pkl / model_non_harmattan.pkl",
+         "Two-Stage Harmattan model" if fr else "Two-stage Harmattan model",
+         "02 — Step 6b"),
+        ("platt_alert_calibration.json",
+         "Paramètres de calibration Platt (σ, b)" if fr else "Platt calibration params (σ, b)",
+         "02 — Step 7"),
+        ("conformal_intervals.json",
+         "Intervalles de confiance 90% par ville" if fr else "90% conformal intervals per city",
+         "02 — Step 5b"),
+        ("region_shap.pkl",
+         "Top-7 SHAP par région" if fr else "Top-7 SHAP features per region",
+         "02 — Step 8b"),
+        ("climate_projections.json",
+         "Projections CMIP6 SSP1–SSP5, 2025–2100" if fr else "CMIP6 SSP1–SSP5 projections 2025–2100",
+         "02 — Step 10"),
+        ("label_encoders.pkl",
+         "Encodeurs ville + région" if fr else "City + region label encoders",
+         "02 — Step 2"),
+        ("city_confidence_tiers.json",
+         "Niveaux de confiance par ville (High/Med/Low)" if fr else "City confidence tiers (High/Med/Low)",
+         "02 — Step 9c"),
+    ]
+    art_data = [art_hdr]
+    for f, c, s in art_rows:
+        art_data.append([
+            Paragraph(f, _sty(f"AF{f}", fontSize=7, fontName="Helvetica-Bold",
+                               textColor=TEAL2, leading=10)),
+            Paragraph(c, TD_L),
+            Paragraph(s, TD),
+        ])
+    art_tbl = Table(art_data, colWidths=[56*mm, 84*mm, 40*mm])
+    art_tbl.setStyle(_tbl_base())
+    elems.append(art_tbl)
+    elems.append(Spacer(1, 5*mm))
+
+    # ── Reproduction steps ────────────────────────────────────────────────────
+    elems.append(Paragraph(
+        "Étapes de reproduction :" if fr else "Reproduction Steps:",
+        _sty("BoldNb3", fontSize=9, fontName="Helvetica-Bold",
+             textColor=BLACK, leading=14),
+    ))
+    elems.append(Spacer(1, 1*mm))
+
+    steps = (
+        [
+            ("1 — Cloner", "git clone https://github.com/dze-shalom/airsense_indabax_hackathon_2026"),
+            ("2 — Installer", "pip install -r requirements.txt   # Python 3.10+"),
+            ("3 — Données", "Placer Dataset_complet_Meteo.csv dans data/   (fourni par IndabaX)"),
+            ("4 — Nettoyage", "Exécuter notebooks/00_Data_Cleaning.ipynb   → produit airsense_clean.parquet"),
+            ("5 — EDA", "Exécuter notebooks/01_EDA.ipynb   → décisions de modélisation"),
+            ("6 — Entraînement", "Exécuter notebooks/02_Modelling.ipynb   → produit tous les artefacts dans models/"),
+            ("7 — Graphiques", "Exécuter notebooks/03_Pitch_Charts.ipynb   → produit outputs/*.png"),
+            ("8 — Dashboard", "cd dashboard && streamlit run app.py   → http://localhost:8501"),
+            ("9 — API (optionnel)", "uvicorn api.main:app --reload --port 8000   → http://localhost:8000/docs"),
+        ]
+        if fr else
+        [
+            ("1 — Clone", "git clone https://github.com/dze-shalom/airsense_indabax_hackathon_2026"),
+            ("2 — Install", "pip install -r requirements.txt   # Python 3.10+"),
+            ("3 — Data", "Place Dataset_complet_Meteo.csv in data/   (provided by IndabaX)"),
+            ("4 — Clean", "Run notebooks/00_Data_Cleaning.ipynb   → produces airsense_clean.parquet"),
+            ("5 — EDA", "Run notebooks/01_EDA.ipynb   → modelling decisions"),
+            ("6 — Train", "Run notebooks/02_Modelling.ipynb   → produces all artefacts in models/"),
+            ("7 — Charts", "Run notebooks/03_Pitch_Charts.ipynb   → produces outputs/*.png"),
+            ("8 — Dashboard", "cd dashboard && streamlit run app.py   → http://localhost:8501"),
+            ("9 — API (optional)", "uvicorn api.main:app --reload --port 8000   → http://localhost:8000/docs"),
+        ]
+    )
+
+    step_hdr = [
+        Paragraph("Étape" if fr else "Step", TH),
+        Paragraph("Commande / Action" if fr else "Command / Action", TH),
+    ]
+    step_data = [step_hdr]
+    for lbl, cmd in steps:
+        step_data.append([
+            Paragraph(lbl, _sty(f"SL{lbl}", fontSize=8, fontName="Helvetica-Bold",
+                                 textColor=BLACK, leading=11)),
+            Paragraph(cmd, _sty(f"SC{lbl}", fontSize=7.5, fontName="Helvetica",
+                                 textColor=GREY, leading=11, alignment=TA_LEFT)),
+        ])
+    step_tbl = Table(step_data, colWidths=[38*mm, 142*mm])
+    step_tbl.setStyle(_tbl_base())
+    elems.append(step_tbl)
+    elems.append(Spacer(1, 4*mm))
+
+    # ── Dependencies ──────────────────────────────────────────────────────────
+    elems.append(Paragraph(
+        "Dépendances principales :" if fr else "Key Dependencies:",
+        _sty("BoldNb4", fontSize=9, fontName="Helvetica-Bold",
+             textColor=BLACK, leading=14),
+    ))
+    elems.append(Spacer(1, 1*mm))
+
+    dep_pairs = [
+        ("xgboost ≥ 2.0", "Modèle PM2.5 principal" if fr else "Primary PM2.5 model"),
+        ("lightgbm ≥ 4.0", "Membre de l'ensemble" if fr else "Ensemble member"),
+        ("optuna ≥ 3.4", "Optimisation hyperparamètres" if fr else "Hyperparameter optimisation"),
+        ("shap ≥ 0.44", "Explicabilité des facteurs" if fr else "Feature explainability"),
+        ("scikit-learn ≥ 1.3", "Calibration Platt, encodeurs, métriques" if fr
+         else "Platt calibration, encoders, metrics"),
+        ("streamlit ≥ 1.32", "Dashboard web" if fr else "Web dashboard"),
+        ("fastapi ≥ 0.110", "API REST" if fr else "REST API"),
+        ("reportlab ≥ 4.0", "Génération PDF" if fr else "PDF generation"),
+        ("pandas ≥ 2.0 / numpy ≥ 1.24", "Traitement des données" if fr else "Data processing"),
+        ("plotly ≥ 5.18", "Visualisations interactives" if fr else "Interactive visualisations"),
+    ]
+    # Two columns
+    mid = (len(dep_pairs) + 1) // 2
+    col_a = dep_pairs[:mid]
+    col_b = dep_pairs[mid:]
+    dep_rows = []
+    for i in range(max(len(col_a), len(col_b))):
+        la = col_a[i] if i < len(col_a) else ("", "")
+        lb = col_b[i] if i < len(col_b) else ("", "")
+        dep_rows.append([
+            Paragraph(la[0], _sty(f"DK{i}a", fontSize=7.5, fontName="Helvetica-Bold",
+                                   textColor=TEAL2, leading=11)),
+            Paragraph(la[1], _sty(f"DV{i}a", fontSize=7.5, fontName="Helvetica",
+                                   textColor=BLACK, leading=11, alignment=TA_LEFT)),
+            Paragraph(lb[0], _sty(f"DK{i}b", fontSize=7.5, fontName="Helvetica-Bold",
+                                   textColor=TEAL2, leading=11)),
+            Paragraph(lb[1], _sty(f"DV{i}b", fontSize=7.5, fontName="Helvetica",
+                                   textColor=BLACK, leading=11, alignment=TA_LEFT)),
+        ])
+    dep_tbl = Table(dep_rows, colWidths=[38*mm, 52*mm, 38*mm, 52*mm])
+    dep_style = TableStyle([
+        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [WHITE, colors.HexColor("#f9fafb")]),
+        ("GRID",       (0, 0), (-1, -1), 0.3, colors.HexColor("#e5e7eb")),
+        ("TOPPADDING",    (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+        ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
+    ])
+    dep_tbl.setStyle(dep_style)
+    elems.append(dep_tbl)
+    elems.append(Spacer(1, 4*mm))
+
+    # ── Reproducibility note ──────────────────────────────────────────────────
+    note = (
+        "Note de reproductibilité : les modèles .json/.pkl versionnés dans Git "
+        "permettent de faire fonctionner le dashboard sans ré-entraînement. "
+        "Si les fichiers .pkl sont absents (LFS non disponible), "
+        "python scripts/setup_models.py génère des modèles de substitution "
+        "fonctionnels en ~5 secondes. La clé API Groq est optionnelle — "
+        "l'assistant IA utilise un fallback basé sur des règles sans elle."
+        if fr else
+        "Reproducibility note: the .json/.pkl model artefacts versioned in Git "
+        "allow the dashboard to run without re-training. "
+        "If .pkl files are absent (Git LFS unavailable), "
+        "python scripts/setup_models.py generates functional stub models in ~5 s. "
+        "The Groq API key is optional — the AI assistant falls back to "
+        "rule-based responses without it."
+    )
+    elems.append(Paragraph(
+        note,
+        _sty("ReproNote", fontSize=7.5, textColor=GREY,
+             fontName="Helvetica-Oblique", leading=11),
+    ))
+
     # ── Footer on final page ──────────────────────────────────────────────────
-    elems.append(Spacer(1, 10*mm))
+    elems.append(Spacer(1, 8*mm))
     elems.append(HRFlowable(width="100%", thickness=0.5, color=LIGHT))
     elems.append(Spacer(1, 2*mm))
     footer = (
