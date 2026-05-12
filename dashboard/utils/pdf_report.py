@@ -353,8 +353,8 @@ def generate_pdf_report(
     footer_txt = (
         f"AirSense Cameroon | IndabaX 2026 | "
         f"{'Donnees' if fr else 'Data'}: CAMS Reanalysis + Open-Meteo | "
-        f"{'Modele' if fr else 'Model'}: XGBoost (MAE 3.1 ug/m3, R2 0.91) | "
-        f"WHO 2021: 15 ug/m3 (24h)"
+        f"{'Modele' if fr else 'Model'}: XGBoost (MAE 6.27 µg/m³, R² 0.603) | "
+        f"WHO 2021: 15 µg/m³ (24h)"
     )
     elems.append(Paragraph(footer_txt, footer_s))
 

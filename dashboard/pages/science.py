@@ -791,8 +791,49 @@ it was applied to unseen cities at three difficulty levels:<br>
     # ══════════════════════════════════════════════════════════════════════════
     with tab_pdf:
         from utils.pdf_report import generate_pdf_report
+        from utils.pdf_project_report import generate_project_report
         sec("Rapport PDF" if lang == "fr" else "PDF Report")
 
+        # ── Stakeholder project report ─────────────────────────────────────
+        st.markdown(
+            f'<div style="font-size:.78rem;color:{_ctxt2()};margin-bottom:.5rem;">'
+            + ("Téléchargez le rapport de projet complet (aperçu national, "
+               "performance du modèle ML, statistiques de qualité de l'air et "
+               "estimations d'impact sanitaire) pour les parties prenantes."
+               if lang == "fr" else
+               "Download the full project report (national overview, ML model "
+               "performance, air quality statistics, and health impact estimates) "
+               "for stakeholders and decision-makers.")
+            + '</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button(
+            "Générer le rapport de projet (PDF)" if lang == "fr"
+            else "Generate Project Report (PDF)",
+            use_container_width=True, key="gen_project_pdf_btn",
+        ):
+            with st.spinner(
+                "Génération du rapport…" if lang == "fr" else "Generating report…"
+            ):
+                project_pdf_bytes = generate_project_report(lang=lang)
+            proj_fname = f"AirSense_Project_Report_{datetime.now().strftime('%Y%m%d')}.pdf"
+            st.download_button(
+                label="Télécharger le rapport (PDF)" if lang == "fr"
+                      else "Download Project Report (PDF)",
+                data=project_pdf_bytes,
+                file_name=proj_fname,
+                mime="application/pdf",
+                use_container_width=True,
+                key="dl_project_pdf_btn",
+            )
+            st.success(
+                "Rapport de projet prêt." if lang == "fr"
+                else "Project report ready."
+            )
+
+        st.divider()
+
+        # ── Per-city report ────────────────────────────────────────────────
         st.markdown(
             f'<div style="font-size:.78rem;color:{_ctxt2()};margin-bottom:.8rem;">'
             + ("Generez un rapport PDF complet pour une ville : qualite de l'air actuelle, "
