@@ -249,18 +249,37 @@ def inject_css():
         '<meta name="apple-mobile-web-app-capable" content="yes">'
         '<meta name="apple-mobile-web-app-status-bar-style" content="default">'
         '<meta name="apple-mobile-web-app-title" content="AirSense CM">'
-        '<link rel="manifest" href="manifest.json">'
-        '<meta name="theme-color" content="#1a3c5e">',
+        '<meta name="theme-color" content="#64ffda">',
         unsafe_allow_html=True)
     st.markdown("""<script>
+// ── Manifest: detect correct static path and set <link rel="manifest"> ───────
+(function() {
+  var candidates = ['/app/static/manifest.json', '/static/manifest.json'];
+  var link = document.querySelector('link[rel="manifest"]') ||
+             (function(){ var l=document.createElement('link');
+               l.rel='manifest'; document.head.appendChild(l); return l; })();
+  (function try_(i) {
+    if (i >= candidates.length) return;
+    fetch(candidates[i], {method: 'HEAD'})
+      .then(function(r){ if (r.ok) link.href = candidates[i]; else try_(i+1); })
+      .catch(function(){ try_(i+1); });
+  })(0);
+})();
+
+// ── Service Worker: try scope '/' first; fall back to default scope ───────────
 if ('serviceWorker' in navigator) {
-  // Try Streamlit Cloud path first, fall back to local dev path
-  var swPaths = ['/app/static/sw.js', '/static/sw.js', './static/sw.js'];
+  var swPaths = ['/app/static/sw.js', '/static/sw.js'];
   (function tryRegister(paths) {
     if (!paths.length) return;
-    navigator.serviceWorker.register(paths[0]).catch(function() {
-      tryRegister(paths.slice(1));
-    });
+    var url = paths[0];
+    // Attempt broad scope so the SW can intercept navigation to '/'
+    navigator.serviceWorker.register(url, {scope: '/'})
+      .catch(function() {
+        // Server didn't send Service-Worker-Allowed: / — use default scope
+        navigator.serviceWorker.register(url).catch(function() {
+          tryRegister(paths.slice(1));
+        });
+      });
   })(swPaths);
 }
 
@@ -583,8 +602,6 @@ def render_nav():
     muted_col = "#7a5c40" if is_light else TEXT2
     live_word = "LIVE" if lang == "en" else "EN DIRECT"
     alert_lbl = "alerts" if lang == "en" else "alertes"
-    # JS used in onclick — single-quoted selector avoids breaking the double-quoted HTML attr
-    _badge_js = "var b=document.querySelector('button[aria-label^=_nav_alert]');if(b)b.click();"
 
     nav_html = (
         '<div class="as-fixed-nav">'
@@ -600,8 +617,7 @@ def render_nav():
         f'<span style="font-size:.72rem;color:{muted_col};">{page_lbl}</span>'
         '</div>'
         '<div style="display:flex;align-items:center;gap:.5rem;">'
-        f'<span class="as-alert-badge" style="color:{RED};cursor:pointer;" onclick="{_badge_js}">'
-        f'{n_alerts} {alert_lbl}</span>'
+        f'<a class="as-alert-badge" href="?_mn=alerts" style="color:{RED};">{n_alerts} {alert_lbl}</a>'
         f'<span style="font-size:.55rem;color:{muted_col};display:flex;align-items:center;gap:3px;">'
         '<span class="as-live-dot"></span>'
         f'<span style="color:{muted_col};">{live_word}</span>'
@@ -610,18 +626,6 @@ def render_nav():
         '</div>'
     )
     st.markdown(nav_html, unsafe_allow_html=True)
-
-    # Hidden Streamlit button triggered by the badge onclick above.
-    # Using a real st.button means navigation stays in-session (no full page reload).
-    if st.button("_nav_alert_", key="as_nav_alert_trigger"):
-        st.session_state.page = "alerts"
-        st.rerun()
-    # Collapse the hidden button to zero height so it doesn't affect layout.
-    st.markdown(
-        "<style>[data-testid='stButton']:has(button[aria-label^=_nav_alert])"
-        "{display:none!important;}</style>",
-        unsafe_allow_html=True,
-    )
 
     # Desktop: hide Streamlit's hamburger — we use our own ‹/› toggle.
     # Mobile: keep it, float it into the top-right of our fixed nav bar.

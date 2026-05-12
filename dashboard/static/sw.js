@@ -1,9 +1,13 @@
 /* AirSense Cameroon — Service Worker (PWA offline-first) */
 var CACHE_NAME = 'airsense-v2';
-var OFFLINE_URL = '/app/static/offline.html';
+// Derive paths from the SW's own location so this works on local dev
+// (/static/sw.js) and Streamlit Cloud (/app/static/sw.js) without changes.
+var _BASE = self.location.pathname.replace('sw.js', '');
+var OFFLINE_URL = _BASE + 'offline.html';
+var MANIFEST_URL = _BASE + 'manifest.json';
 var SHELL_ASSETS = [
   '/',
-  '/manifest.json',
+  MANIFEST_URL,
   OFFLINE_URL,
 ];
 
