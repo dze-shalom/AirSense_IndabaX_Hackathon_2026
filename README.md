@@ -206,12 +206,23 @@ def predict_7day(city, lat, lon):
 
 ### Retrain from scratch
 
+Run the notebooks **in order** using Jupyter:
+
 ```bash
-python notebooks/01_data_collection.ipynb
-python notebooks/02_feature_engineering.ipynb
-python notebooks/03_train_xgb.ipynb
-python notebooks/04_calibration.ipynb
-python notebooks/05_shap_analysis.ipynb
+# 1. Clean raw data, engineer features, fetch CAMS + ERA5, build proxy targets
+jupyter nbconvert --to notebook --execute notebooks/00_Data_Cleaning.ipynb
+
+# 2. Exploratory data analysis — distributions, correlations, Harmattan seasonality
+jupyter nbconvert --to notebook --execute notebooks/01_EDA.ipynb
+
+# 3. Train all models (XGBoost + Optuna, ensemble, GNN, Transformer),
+#    calibrate alerts, compute SHAP, save all artefacts to models/
+jupyter nbconvert --to notebook --execute notebooks/02_Modelling.ipynb
+
+# 4. Generate publication-ready pitch charts to outputs/
+jupyter nbconvert --to notebook --execute notebooks/03_Pitch_Charts.ipynb
+
+# Optional: rebuild stub artefacts without re-training (if models/ is missing)
 python scripts/setup_models.py
 ```
 
