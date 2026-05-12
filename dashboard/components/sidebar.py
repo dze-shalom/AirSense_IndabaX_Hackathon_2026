@@ -249,18 +249,37 @@ def inject_css():
         '<meta name="apple-mobile-web-app-capable" content="yes">'
         '<meta name="apple-mobile-web-app-status-bar-style" content="default">'
         '<meta name="apple-mobile-web-app-title" content="AirSense CM">'
-        '<link rel="manifest" href="manifest.json">'
-        '<meta name="theme-color" content="#1a3c5e">',
+        '<meta name="theme-color" content="#64ffda">',
         unsafe_allow_html=True)
     st.markdown("""<script>
+// ── Manifest: detect correct static path and set <link rel="manifest"> ───────
+(function() {
+  var candidates = ['/app/static/manifest.json', '/static/manifest.json'];
+  var link = document.querySelector('link[rel="manifest"]') ||
+             (function(){ var l=document.createElement('link');
+               l.rel='manifest'; document.head.appendChild(l); return l; })();
+  (function try_(i) {
+    if (i >= candidates.length) return;
+    fetch(candidates[i], {method: 'HEAD'})
+      .then(function(r){ if (r.ok) link.href = candidates[i]; else try_(i+1); })
+      .catch(function(){ try_(i+1); });
+  })(0);
+})();
+
+// ── Service Worker: try scope '/' first; fall back to default scope ───────────
 if ('serviceWorker' in navigator) {
-  // Try Streamlit Cloud path first, fall back to local dev path
-  var swPaths = ['/app/static/sw.js', '/static/sw.js', './static/sw.js'];
+  var swPaths = ['/app/static/sw.js', '/static/sw.js'];
   (function tryRegister(paths) {
     if (!paths.length) return;
-    navigator.serviceWorker.register(paths[0]).catch(function() {
-      tryRegister(paths.slice(1));
-    });
+    var url = paths[0];
+    // Attempt broad scope so the SW can intercept navigation to '/'
+    navigator.serviceWorker.register(url, {scope: '/'})
+      .catch(function() {
+        // Server didn't send Service-Worker-Allowed: / — use default scope
+        navigator.serviceWorker.register(url).catch(function() {
+          tryRegister(paths.slice(1));
+        });
+      });
   })(swPaths);
 }
 
