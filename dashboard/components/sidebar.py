@@ -171,55 +171,9 @@ div[data-testid="metric-container"]{{background:rgba(255,255,255,.04)!important;
 .stTabs [data-baseweb="tab-list"]{{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;flex-wrap:nowrap!important;}}
 .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar{{height:2px;}}
 
-/* ── Mobile bottom nav (Streamlit-button based, CSS :has() positioned) ───── */
-/* Anchor marker — never takes visual space */
-#as-mnav-anchor{{display:none!important;height:0!important;}}
-[data-testid="element-container"]:has(#as-mnav-anchor){{
-  display:none!important;height:0!important;margin:0!important;padding:0!important;
-}}
-/* Desktop (≥769px): hide the nav columns entirely */
-@media(min-width:769px){{
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]{{
-    display:none!important;height:0!important;overflow:hidden!important;
-  }}
-}}
-/* Mobile (≤768px): fix the nav columns at the bottom of the viewport */
-@media(max-width:768px){{
-  .as-content{{padding-bottom:calc(58px + .5rem)!important;}}
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]{{
-    position:fixed!important;bottom:0!important;left:0!important;right:0!important;
-    z-index:999!important;
-    padding:2px 0 env(safe-area-inset-bottom,0)!important;
-  }}
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
-  [data-testid="stHorizontalBlock"]{{gap:0!important;flex-wrap:nowrap!important;}}
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
-  [data-testid="column"]{{padding:0!important;min-width:0!important;}}
-  /* Button reset */
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
-  .stButton>button{{
-    background:transparent!important;border:none!important;
-    border-top:2.5px solid transparent!important;border-radius:0!important;
-    padding:.28rem .05rem!important;min-height:52px!important;width:100%!important;
-    display:flex!important;flex-direction:column!important;
-    align-items:center!important;justify-content:center!important;
-    box-shadow:none!important;touch-action:manipulation!important;
-    -webkit-tap-highlight-color:rgba(100,255,218,0.15)!important;
-    transition:transform .08s ease,opacity .1s ease!important;
-  }}
-  /* Icon line bigger, label line smaller via ::first-line */
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
-  .stButton>button p{{
-    white-space:pre-wrap!important;text-align:center!important;
-    font-size:.52rem!important;line-height:1.25!important;
-    margin:0!important;color:inherit!important;
-  }}
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
-  .stButton>button p::first-line{{font-size:1.45rem!important;}}
-  /* Press feedback */
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
-  .stButton>button:active{{transform:scale(0.85)!important;opacity:.65!important;}}
-}}
+/* ── Mobile bottom nav — hidden by default; JS tags wrapper as #as-mnav-wrap ── */
+/* All show/hide and layout rules live in render_mobile_nav() inline CSS+JS     */
+#as-mnav-sentinel{{display:none!important;height:0!important;}}
 
 </style>"""
 
@@ -1061,15 +1015,14 @@ def render_mobile_nav():
     teal   = "#b5613f"                if is_light else TEAL
     muted  = "rgba(122,92,64,0.55)"   if is_light else "rgba(136,146,176,0.6)"
 
-    # Hidden anchor — CSS :has() uses this to locate and style the next sibling
-    # (the stHorizontalBlock that holds the nav buttons).
-    st.markdown('<div id="as-mnav-anchor"></div>', unsafe_allow_html=True)
+    # Wrap every button in a container that JS can tag with id="as-mnav-wrap".
+    # This makes the desktop-hide rule reliable regardless of Streamlit's DOM depth.
+    st.markdown('<div id="as-mnav-sentinel"></div>', unsafe_allow_html=True)
 
     cols = st.columns(len(PAGE_KEYS))
     for i, key in enumerate(PAGE_KEYS):
         icon, short = SHORT.get(key, ("·", key[:4]))
         with cols[i]:
-            # Label: icon on line 1, short text on line 2 (pre-wrap + ::first-line)
             if st.button(
                 f"{icon}\n{short}",
                 key=f"mnav_{key}",
@@ -1079,27 +1032,67 @@ def render_mobile_nav():
                 st.session_state.page = key
                 st.rerun()
 
-    # Theme-dependent colours injected here; layout/hide rules are in the global CSS.
+    # JS walks up from the sentinel to tag its grandparent block, then CSS
+    # hides/shows that block via #as-mnav-wrap — no fragile sibling selectors needed.
     st.markdown(f"""<style>
+#as-mnav-wrap{{display:none!important;}}
 @media(max-width:768px){{
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]{{
+  #as-mnav-wrap{{
+    display:block!important;
+    position:fixed!important;bottom:0!important;left:0!important;right:0!important;
+    z-index:999!important;
     background:{bg}!important;
     border-top:1px solid {border}!important;
     backdrop-filter:blur(20px)!important;-webkit-backdrop-filter:blur(20px)!important;
+    padding:2px 0 env(safe-area-inset-bottom,0)!important;
   }}
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
-  .stButton>button{{color:{muted}!important;}}
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
-  .stButton>button[kind="primary"]{{
+  .as-content{{padding-bottom:calc(58px + .5rem)!important;}}
+  #as-mnav-wrap [data-testid="stHorizontalBlock"]{{gap:0!important;flex-wrap:nowrap!important;}}
+  #as-mnav-wrap [data-testid="column"]{{padding:0!important;min-width:0!important;}}
+  #as-mnav-wrap .stButton>button{{
+    background:transparent!important;border:none!important;
+    border-top:2.5px solid transparent!important;border-radius:0!important;
+    padding:.28rem .05rem!important;min-height:52px!important;width:100%!important;
+    display:flex!important;flex-direction:column!important;
+    align-items:center!important;justify-content:center!important;
+    box-shadow:none!important;color:{muted}!important;
+    touch-action:manipulation!important;
+    transition:transform .08s ease,opacity .1s ease!important;
+  }}
+  #as-mnav-wrap .stButton>button p{{
+    white-space:pre-wrap!important;text-align:center!important;
+    font-size:.52rem!important;line-height:1.25!important;margin:0!important;color:inherit!important;
+  }}
+  #as-mnav-wrap .stButton>button p::first-line{{font-size:1.45rem!important;}}
+  #as-mnav-wrap .stButton>button[kind="primary"]{{
     color:{teal}!important;border-top-color:{teal}!important;
     background:transparent!important;box-shadow:none!important;
   }}
-  [data-testid="element-container"]:has(#as-mnav-anchor)+[data-testid="element-container"]
-  .stButton>button[kind="secondary"]:hover{{
+  #as-mnav-wrap .stButton>button[kind="secondary"]:hover{{
     color:{teal}!important;background:transparent!important;border-color:transparent!important;
   }}
+  #as-mnav-wrap .stButton>button:active{{transform:scale(0.85)!important;opacity:.65!important;}}
 }}
-</style>""", unsafe_allow_html=True)
+</style>
+<script>
+(function(){{
+  var s = document.getElementById('as-mnav-sentinel');
+  if (!s) return;
+  // Walk up to the stVerticalBlockBorderWrapper that contains both sentinel + button row
+  var p = s;
+  for (var i = 0; i < 6; i++) {{
+    p = p.parentElement;
+    if (!p) return;
+    if (p.dataset && p.dataset.testid === 'stVerticalBlockBorderWrapper') {{
+      p.id = 'as-mnav-wrap';
+      return;
+    }}
+  }}
+  // Fallback: tag the closest element-container ancestor
+  p = s.closest('[data-testid="element-container"]');
+  if (p && p.parentElement) p.parentElement.id = 'as-mnav-wrap';
+}})();
+</script>""", unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
