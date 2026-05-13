@@ -206,36 +206,29 @@ def inject_css():
         '<meta name="theme-color" content="#64ffda">',
         unsafe_allow_html=True)
     st.markdown("""<script>
-// ── Manifest: detect correct static path and set <link rel="manifest"> ───────
-(function() {
-  var candidates = ['/app/static/manifest.json', '/static/manifest.json'];
-  var link = document.querySelector('link[rel="manifest"]') ||
-             (function(){ var l=document.createElement('link');
-               l.rel='manifest'; document.head.appendChild(l); return l; })();
-  (function try_(i) {
-    if (i >= candidates.length) return;
-    fetch(candidates[i], {method: 'HEAD'})
-      .then(function(r){ if (r.ok) link.href = candidates[i]; else try_(i+1); })
-      .catch(function(){ try_(i+1); });
-  })(0);
-})();
+// ── PWA bootstrap: manifest link + service worker ─────────────────────────────
+(function bootstrap() {
+  // Streamlit serves static files at /app/static/ (enableStaticServing = true).
+  var STATIC = '/app/static/';
 
-// ── Service Worker: try scope '/' first; fall back to default scope ───────────
-if ('serviceWorker' in navigator) {
-  var swPaths = ['/app/static/sw.js', '/static/sw.js'];
-  (function tryRegister(paths) {
-    if (!paths.length) return;
-    var url = paths[0];
-    // Attempt broad scope so the SW can intercept navigation to '/'
-    navigator.serviceWorker.register(url, {scope: '/'})
-      .catch(function() {
-        // Server didn't send Service-Worker-Allowed: / — use default scope
-        navigator.serviceWorker.register(url).catch(function() {
-          tryRegister(paths.slice(1));
-        });
-      });
-  })(swPaths);
-}
+  // ── 1. Manifest link ────────────────────────────────────────────────────────
+  var manifestUrl = STATIC + 'manifest.json';
+  if (!document.querySelector('link[rel="manifest"]')) {
+    var link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = manifestUrl;
+    document.head.appendChild(link);
+  }
+
+  // ── 2. Service Worker ───────────────────────────────────────────────────────
+  // Registered at /app/static/sw.js — default scope is /app/static/.
+  // A broader scope requires Service-Worker-Allowed header from the server;
+  // Streamlit doesn't send it, so we use the default scope here.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register(STATIC + 'sw.js')
+      .catch(function() { /* SW unavailable — PWA still installable */ });
+  }
+})();
 
 // On mobile: auto-close the sidebar (it starts expanded per initial_sidebar_state).
 // We hide it instantly via CSS first so there's no open→close flash, then click
