@@ -241,7 +241,7 @@ def page_overview():
 
         # Layer 1 — density heatmap
         if show_heat and not df_map.empty:
-            fig.add_trace(go.Densitymapbox(
+            fig.add_trace(go.Densitymap(
                 lat=df_map["lat"], lon=df_map["lon"], z=df_map["pm25"],
                 radius=42, opacity=0.42,
                 colorscale=[[0,"rgba(0,20,40,0)"],[0.2,"rgba(34,197,94,0.38)"],
@@ -254,8 +254,7 @@ def page_overview():
             hlats, hlons = _region_hull(reg)
             if hlats:
                 rc = REGION_COLORS.get(reg, TEAL)
-                # Fill polygon lightly
-                fig.add_trace(go.Scattermapbox(
+                fig.add_trace(go.Scattermap(
                     lat=hlats, lon=hlons, mode="lines",
                     line=dict(color=rc, width=1.5), opacity=0.30,
                     fill="toself",
@@ -276,7 +275,7 @@ def page_overview():
                     all_alats.extend(al + [None])
                     all_alons.extend(ao + [None])
         if all_alats:
-            fig.add_trace(go.Scattermapbox(
+            fig.add_trace(go.Scattermap(
                 lat=all_alats, lon=all_alons, mode="lines",
                 line=dict(color="rgba(100,255,218,0.65)" if st.session_state.get("theme","light")=="dark" else "rgba(60,120,90,0.75)", width=1.8),
                 showlegend=False, hoverinfo="skip", name="wind"))
@@ -285,7 +284,7 @@ def page_overview():
         if show_city and not df_map.empty:
             for _, r in df_map.iterrows():
                 live_note = " ●" if r["live"] else ""
-                fig.add_trace(go.Scattermapbox(
+                fig.add_trace(go.Scattermap(
                     lat=[r["lat"]], lon=[r["lon"]], mode="markers+text",
                     marker=dict(size=r["bsize"], color=r["col"], opacity=0.9),
                     text=[r["city"]], textposition="top center",
@@ -297,7 +296,7 @@ def page_overview():
                     showlegend=False, name=r["city"]))
 
         fig.update_layout(
-            mapbox=dict(
+            map=dict(
                 style="carto-positron" if st.session_state.get("theme","light")=="light" else "carto-darkmatter",
                 center=dict(lat=5.5, lon=12.3), zoom=4.8),
             **PLO(height=430, margin=dict(l=0,r=0,t=0,b=0), showlegend=False))
@@ -594,7 +593,7 @@ def page_overview():
                 sizes.append(max(7, min(34, _pm * 0.55)))
                 colors.append(aqi(_pm)[1])
                 texts.append(f"<b>{_cn}</b><br>PM2.5: {_pm:.1f} µg/m³")
-            return go.Scattermapbox(
+            return go.Scattermap(
                 lat=lats, lon=lons, mode="markers",
                 marker=dict(size=sizes, color=colors, opacity=0.88),
                 text=texts, hovertemplate="%{text}<extra></extra>",
@@ -602,7 +601,7 @@ def page_overview():
 
         def _arrow_trace(mi):
             opacity = 0.75 if _is_harm_month[mi] else 0.0
-            return go.Scattermapbox(
+            return go.Scattermap(
                 lat=_arrow_paths_lat, lon=_arrow_paths_lon,
                 mode="lines",
                 line=dict(color=f"rgba(245,158,11,{opacity})", width=3),
@@ -610,7 +609,7 @@ def page_overview():
 
         def _tip_trace(mi):
             opacity = 0.9 if _is_harm_month[mi] else 0.0
-            return go.Scattermapbox(
+            return go.Scattermap(
                 lat=_tip_lats, lon=_tip_lons, mode="markers",
                 marker=dict(size=14, color=f"rgba(239,68,68,{opacity})",
                             symbol="circle"),
@@ -628,8 +627,8 @@ def page_overview():
                             text=f"{_month_names[mi]}  ·  {_season_labels[_is_harm_month[mi]]}",
                             font=dict(size=12, color=_txt_col), x=0.5,
                         ),
-                        mapbox=dict(style=_map_style,
-                                    center=dict(lat=6.5, lon=13.5), zoom=4.6),
+                        map=dict(style=_map_style,
+                                 center=dict(lat=6.5, lon=13.5), zoom=4.6),
                     ),
                 )
                 for mi in range(12)
@@ -641,7 +640,7 @@ def page_overview():
                 text=f"{_month_names[0]}  ·  {_season_labels[True]}",
                 font=dict(size=12, color=_txt_col), x=0.5,
             ),
-            mapbox=dict(style=_map_style, center=dict(lat=6.5, lon=13.5), zoom=4.6),
+            map=dict(style=_map_style, center=dict(lat=6.5, lon=13.5), zoom=4.6),
             updatemenus=[dict(
                 type="buttons", showactive=False,
                 y=0.02, x=0.5, xanchor="center", yanchor="bottom",

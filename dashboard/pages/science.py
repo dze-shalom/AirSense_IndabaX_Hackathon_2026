@@ -246,7 +246,7 @@ it was applied to unseen cities at three difficulty levels:<br>
             fig_sp = go.Figure()
             for reg, clist in CITIES.items():
                 for cname, clat, clon in clist:
-                    fig_sp.add_trace(go.Scattermapbox(
+                    fig_sp.add_trace(go.Scattermap(
                         lat=[clat], lon=[clon], mode="markers",
                         marker=dict(size=7, color=TEAL, opacity=0.35),
                         hovertemplate=f"<b>{cname}</b><br>Training city<extra></extra>",
@@ -255,7 +255,7 @@ it was applied to unseen cities at three difficulty levels:<br>
                 lvl = entry["level"].split("—")[0].strip()
                 col = level_colors.get(lvl, AMBER)
                 r2_str = f"{entry['r2']:.3f}" if entry["r2"] else "—"
-                fig_sp.add_trace(go.Scattermapbox(
+                fig_sp.add_trace(go.Scattermap(
                     lat=[entry["lat"]], lon=[entry["lon"]], mode="markers+text",
                     marker=dict(size=18, color=col, opacity=0.9),
                     text=[entry["city"]], textposition="top right",
@@ -264,7 +264,7 @@ it was applied to unseen cities at three difficulty levels:<br>
                                    f"MAE: {entry['mae']:.2f} μg/m³<br>R²: {r2_str}<extra></extra>"),
                     showlegend=False, name=entry["city"]))
             fig_sp.update_layout(
-                mapbox=dict(style="carto-darkmatter", center=dict(lat=6, lon=15), zoom=3.5),
+                map=dict(style="carto-darkmatter", center=dict(lat=6, lon=15), zoom=3.5),
                 **PLO(height=360, margin=dict(l=0,r=0,t=0,b=0), showlegend=False))
             st.plotly_chart(fig_sp, use_container_width=True)
 
