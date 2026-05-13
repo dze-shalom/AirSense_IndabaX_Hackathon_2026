@@ -3,6 +3,8 @@
 > **AI for Climate and Health Resilience in Cameroon**
 > Real-time PM2.5 monitoring, 7-day forecasting, and health advisory across 85+ cities in all 10 regions.
 
+**[Live Dashboard →](https://airsensecameroon.streamlit.app/)** | **[API Docs →](https://airsense-cm.onrender.com/docs)**
+
 ---
 
 ## Table of Contents
@@ -150,7 +152,7 @@ cd dashboard
 streamlit run app.py
 ```
 
-Open [http://localhost:8501](http://localhost:8501) in your browser.
+Open [http://localhost:8501](http://localhost:8501) in your browser, or use the [live hosted dashboard](https://airsensecameroon.streamlit.app/).
 
 ### 5. Run the API (optional)
 
