@@ -3,6 +3,8 @@
 > **AI for Climate and Health Resilience in Cameroon**
 > Real-time PM2.5 monitoring, 7-day forecasting, and health advisory across 85+ cities in all 10 regions.
 
+**[Live Dashboard →](https://airsensecameroon.streamlit.app/)** | **[API Docs →](https://airsense-cm.onrender.com/docs)**
+
 ---
 
 ## Table of Contents
@@ -150,7 +152,7 @@ cd dashboard
 streamlit run app.py
 ```
 
-Open [http://localhost:8501](http://localhost:8501) in your browser.
+Open [http://localhost:8501](http://localhost:8501) in your browser, or use the [live hosted dashboard](https://airsensecameroon.streamlit.app/).
 
 ### 5. Run the API (optional)
 
@@ -189,7 +191,7 @@ The PWA is powered by two files:
 
 #### Android (Chrome / Edge / Samsung Internet)
 
-1. Open the live dashboard URL in **Chrome** (or any Chromium-based browser).
+1. Open **[https://airsensecameroon.streamlit.app](https://airsensecameroon.streamlit.app)** in **Chrome** (or any Chromium-based browser).
 2. Tap the **three-dot menu** (⋮) in the top-right corner.
 3. Tap **"Add to Home screen"** or **"Install app"**.
 4. Confirm by tapping **"Add"** in the prompt.
@@ -203,7 +205,7 @@ The PWA is powered by two files:
 
 > PWA install is only available through **Safari** on iOS. Chrome/Firefox on iOS cannot install PWAs.
 
-1. Open the live dashboard URL in **Safari**.
+1. Open **[https://airsensecameroon.streamlit.app](https://airsensecameroon.streamlit.app)** in **Safari**.
 2. Tap the **Share** button (box with an arrow pointing up) in the bottom toolbar.
 3. Scroll down in the share sheet and tap **"Add to Home Screen"**.
 4. Edit the name if desired, then tap **"Add"** in the top-right corner.
@@ -215,7 +217,7 @@ The PWA is powered by two files:
 
 #### Desktop — Chrome / Edge (Windows, macOS, Linux)
 
-1. Open the live dashboard URL in **Chrome** or **Edge**.
+1. Open **[https://airsensecameroon.streamlit.app](https://airsensecameroon.streamlit.app)** in **Chrome** or **Edge**.
 2. Look for the **install icon** (monitor with a down-arrow) in the address bar on the right side.  
    - In Chrome it looks like **⊕** or a small desktop icon.  
    - In Edge it looks like a **+** inside a box.
