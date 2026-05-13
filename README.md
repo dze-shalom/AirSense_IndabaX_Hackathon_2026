@@ -3,7 +3,7 @@
 > **AI for Climate and Health Resilience in Cameroon**
 > Real-time PM2.5 monitoring, 7-day forecasting, and health advisory across 85+ cities in all 10 regions.
 
-**[Live Dashboard →](https://airsensecameroon.streamlit.app/)** | **[API Docs →](https://airsense-cm.onrender.com/docs)**
+**[Live Dashboard →](https://airsensecameroon.streamlit.app/)** | **[API Docs →](https://airsense-api.onrender.com)**
 
 ---
 
