@@ -76,7 +76,7 @@ WIND_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" view
 
 # ── Global CSS ────────────────────────────────────────────────────────────────
 CSS = f"""<style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Open+Sans:wght@300;400;500;600&family=Roboto+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Open+Sans:wght@300;400;500;600&family=Roboto+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap');
 #MainMenu,footer,header{{visibility:hidden;}}
 .stDeployButton,[data-testid="stToolbar"],[data-testid="stDecoration"],[data-testid="stSidebarHeader"]{{display:none!important;height:0!important;}}
 .stApp>header{{display:none;}}
@@ -162,7 +162,20 @@ div[data-testid="metric-container"]{{background:rgba(255,255,255,.04)!important;
 @media(max-width:360px){{
   .as-fixed-nav .as-logo span:not(:first-child){{display:none;}}
   .as-fc-grid{{grid-template-columns:repeat(3,1fr);}}
-  .as-stat-strip{{grid-template-columns:repeat(2,1fr);}}
+  .as-fc-card{{padding:.38rem .28rem;}}
+  .as-fc-val{{font-size:.92rem;}}
+  .as-fc-day{{font-size:.48rem;}}
+  .as-fc-unit,.as-fc-meta{{font-size:.46rem;}}
+  .as-fc-badge{{font-size:.48rem;padding:.08rem .18rem;}}
+  .as-stat-strip{{grid-template-columns:repeat(2,1fr);gap:.3rem;}}
+  .as-stat-val{{font-size:1rem;}}
+  .as-stat-lbl{{font-size:.48rem;}}
+  div[data-testid="metric-container"]{{padding:5px!important;}}
+  [data-testid="stMetricValue"]{{font-size:.88rem!important;}}
+  [data-testid="stMetricLabel"]{{font-size:.55rem!important;}}
+  .as-content{{padding:.3rem!important;}}
+  h1{{font-size:1rem!important;}}
+  h2{{font-size:.9rem!important;}}
 }}
 @media(display-mode:standalone){{
   .as-fixed-nav{{padding-top:env(safe-area-inset-top,0px);}}
@@ -552,6 +565,8 @@ def render_nav():
     # JS used in onclick — single-quoted selector avoids breaking the double-quoted HTML attr
     _badge_js = "var b=document.querySelector('button[aria-label^=_nav_alert]');if(b)b.click();"
 
+    _gear_js  = "var b=document.querySelector('button[aria-label^=_nav_settings]');if(b)b.click();"
+    _gear_col = "#b5613f" if is_light else TEAL
     nav_html = (
         '<div class="as-fixed-nav">'
         '<div style="display:flex;align-items:center;gap:.5rem;">'
@@ -565,13 +580,31 @@ def render_nav():
         f'<div style="width:1px;height:16px;background:rgba(0,0,0,0.15);margin:0 .2rem;"></div>'
         f'<span style="font-size:.72rem;color:{muted_col};">{page_lbl}</span>'
         '</div>'
-        '<div style="display:flex;align-items:center;gap:.5rem;">'
+        '<div style="display:flex;align-items:center;gap:.4rem;">'
         f'<span class="as-alert-badge" style="color:{RED};cursor:pointer;" onclick="{_badge_js}">'
         f'{n_alerts} {alert_lbl}</span>'
         f'<span style="font-size:.55rem;color:{muted_col};display:flex;align-items:center;gap:3px;">'
         '<span class="as-live-dot"></span>'
-        f'<span style="color:{muted_col};">{live_word}</span>'
+        f'<span style="color:{muted_col};" class="as-live-label">{live_word}</span>'
         '</span>'
+        # Gear icon — only visible on mobile (hidden on desktop via CSS)
+        f'<button class="as-mobile-gear" onclick="{_gear_js}" '
+        f'style="display:none;background:none;border:none;cursor:pointer;padding:4px;'
+        f'color:{_gear_col};line-height:0;" title="Settings">'
+        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" '
+        'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        '<circle cx="12" cy="12" r="3"/>'
+        '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06'
+        'a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09'
+        'A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06'
+        'A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09'
+        'A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06'
+        'A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09'
+        'a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06'
+        'A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09'
+        'a1.65 1.65 0 0 0-1.51 1z"/>'
+        '</svg>'
+        '</button>'
         '</div>'
         '</div>'
     )
@@ -582,12 +615,28 @@ def render_nav():
     if st.button("_nav_alert_", key="as_nav_alert_trigger"):
         st.session_state.page = "alerts"
         st.rerun()
-    # Collapse the hidden button to zero height so it doesn't affect layout.
-    st.markdown(
-        "<style>[data-testid='stButton']:has(button[aria-label^=_nav_alert])"
-        "{display:none!important;}</style>",
-        unsafe_allow_html=True,
-    )
+    # Hidden button triggered by mobile gear icon — opens settings panel in sidebar.
+    if st.button("_nav_settings_", key="as_nav_settings_trigger"):
+        st.session_state.show_settings = True
+        # Open the sidebar on mobile by clicking Streamlit's expand control via JS
+        st.markdown("""<script>
+(function(){
+  var btn = document.querySelector('[data-testid="stSidebarCollapsedControl"] button') ||
+            document.querySelector('[data-testid="collapsedControl"] button');
+  if (btn) btn.click();
+})();
+</script>""", unsafe_allow_html=True)
+        st.rerun()
+    # Hide both trigger buttons from layout.
+    st.markdown("""<style>
+[data-testid='stButton']:has(button[aria-label^=_nav_alert]),
+[data-testid='stButton']:has(button[aria-label^=_nav_settings])
+{display:none!important;}
+/* Show the gear icon only on mobile */
+@media(max-width:768px){.as-mobile-gear{display:inline-flex!important;align-items:center;}}
+/* Hide LIVE label on very small screens to save space for gear */
+@media(max-width:380px){.as-live-label{display:none!important;}}
+</style>""", unsafe_allow_html=True)
 
     # Desktop: hide Streamlit's hamburger — we use our own ‹/› toggle.
     # Mobile: keep it, float it into the top-right of our fixed nav bar.
@@ -1065,6 +1114,12 @@ def render_mobile_nav():
     color:{teal}!important;background:transparent!important;border-color:transparent!important;
   }}
   #as-mnav-wrap .stButton>button:active{{transform:scale(0.85)!important;opacity:.65!important;}}
+}}
+/* Icon-only at ≤360px — hide the text line, keep only the icon */
+@media(max-width:360px){{
+  #as-mnav-wrap .stButton>button{{min-height:44px!important;padding:.2rem .02rem!important;}}
+  #as-mnav-wrap .stButton>button p{{font-size:0!important;line-height:0!important;}}
+  #as-mnav-wrap .stButton>button p::first-line{{font-size:1.3rem!important;line-height:1.6!important;}}
 }}
 </style>
 <script>
