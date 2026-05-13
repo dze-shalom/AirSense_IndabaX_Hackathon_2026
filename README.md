@@ -10,14 +10,15 @@
 1. [Overview](#overview)
 2. [Architecture](#architecture)
 3. [Quick Start](#quick-start)
-4. [Data Pipeline](#data-pipeline)
-5. [Model Training](#model-training)
-6. [Public API](#public-api)
-7. [Dashboard Pages](#dashboard-pages)
-8. [Configuration](#configuration)
-9. [Deployment](#deployment)
-10. [Innovations](#innovations)
-11. [Team](#team)
+4. [Progressive Web App (PWA)](#progressive-web-app-pwa)
+5. [Data Pipeline](#data-pipeline)
+6. [Model Training](#model-training)
+7. [Public API](#public-api)
+8. [Dashboard Pages](#dashboard-pages)
+9. [Configuration](#configuration)
+10. [Deployment](#deployment)
+11. [Innovations](#innovations)
+12. [Team](#team)
 
 ---
 
@@ -160,6 +161,90 @@ uvicorn api.main:app --reload --port 8000
 ```
 
 Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## Progressive Web App (PWA)
+
+AirSense Cameroon ships as a **Progressive Web App** — it can be installed directly on your phone or desktop and works offline with cached data, without going through an app store.
+
+### What the PWA provides
+
+| Feature | Detail |
+|---------|--------|
+| **Installable** | Adds to your home screen / taskbar like a native app |
+| **Standalone mode** | Runs without browser chrome (no address bar) |
+| **Offline support** | Service worker caches the app shell; last-known data is shown when offline |
+| **Theme integration** | Matches system theme colour (`#4a6fa5` / `#1a3c5e`) |
+| **Bilingual** | Full EN/FR experience carries over to the installed app |
+
+The PWA is powered by two files:
+
+- `dashboard/manifest.json` — declares the app name, icons, colours, and display mode  
+- `dashboard/sw.js` — service worker that caches the app shell on install and uses a network-first strategy for navigation, cache-first for static assets
+
+---
+
+### How to install AirSense on your device
+
+#### Android (Chrome / Edge / Samsung Internet)
+
+1. Open the live dashboard URL in **Chrome** (or any Chromium-based browser).
+2. Tap the **three-dot menu** (⋮) in the top-right corner.
+3. Tap **"Add to Home screen"** or **"Install app"**.
+4. Confirm by tapping **"Add"** in the prompt.
+5. The AirSense icon appears on your home screen — tap it to launch in standalone mode.
+
+> **Tip:** Some Android browsers show an automatic install banner at the bottom of the screen after a few seconds. Tap **"Install"** there to skip the menu steps.
+
+---
+
+#### iPhone / iPad (Safari — iOS 16.4+)
+
+> PWA install is only available through **Safari** on iOS. Chrome/Firefox on iOS cannot install PWAs.
+
+1. Open the live dashboard URL in **Safari**.
+2. Tap the **Share** button (box with an arrow pointing up) in the bottom toolbar.
+3. Scroll down in the share sheet and tap **"Add to Home Screen"**.
+4. Edit the name if desired, then tap **"Add"** in the top-right corner.
+5. The AirSense icon appears on your home screen.
+
+> On iOS 16.4+, the installed app runs in standalone mode (no Safari UI) and the service worker caches the app shell for basic offline use.
+
+---
+
+#### Desktop — Chrome / Edge (Windows, macOS, Linux)
+
+1. Open the live dashboard URL in **Chrome** or **Edge**.
+2. Look for the **install icon** (monitor with a down-arrow) in the address bar on the right side.  
+   - In Chrome it looks like **⊕** or a small desktop icon.  
+   - In Edge it looks like a **+** inside a box.
+3. Click it and select **"Install"** in the confirmation dialog.
+4. AirSense opens in its own window and is pinned to your taskbar / Applications folder / dock.
+
+Alternatively:
+- **Chrome:** Menu (⋮) → **"Cast, save, and share"** → **"Install page as app…"**
+- **Edge:** Menu (…) → **"Apps"** → **"Install this site as an app"**
+
+---
+
+#### Verify the PWA is active (developer check)
+
+Open DevTools → **Application** tab → **Service Workers**. You should see `sw.js` listed as `activated and running`. Under **Manifest** you should see the AirSense app name, icons, and `display: standalone`.
+
+---
+
+### Running the PWA locally
+
+The service worker registers automatically when the Streamlit dashboard is served. For local testing, the dashboard must be served over **HTTPS** or **localhost** (both satisfy the secure-context requirement for service workers).
+
+```bash
+cd dashboard
+streamlit run app.py
+# Then open http://localhost:8501 — the service worker registers immediately
+```
+
+To test the offline fallback, open DevTools → **Network** tab → tick **"Offline"**, then reload the page. The cached shell should load.
 
 ---
 
@@ -372,6 +457,8 @@ docker run -p 8000:8000 airsense-api
 9. **API-First Architecture** — Dashboard routes all predictions through the FastAPI backend when available, with silent fallback to local XGBoost models. No user-visible difference.
 
 10. **Configurable Reference Standards** — WHO 2021, EU 2024, US EPA, ECOWAS, or custom threshold. All visualisations and alert counts update dynamically.
+
+11. **Progressive Web App (PWA)** — Full PWA with Web App Manifest and offline-capable service worker. Installable on Android, iOS, and desktop without an app store. App shell is cached on first load; network-first navigation with cache fallback ensures the dashboard remains usable on intermittent connectivity common in Cameroon.
 
 ---
 
