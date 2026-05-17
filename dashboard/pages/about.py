@@ -154,9 +154,6 @@ def page_about():
         ("clock",   "Harmattan Early Warning",
          "Two-stage model switches to a dedicated Harmattan regressor during Nov–Feb for "
          "northern regions, improving accuracy during peak pollution season."),
-        ("leaf",    "Africa Benchmark",
-         "Cameroon cities benchmarked against 12 African capitals. Maroua's annual mean "
-         "exceeds Lagos and is 5× worse than Nairobi."),
     ]
 
     features_fr = [
@@ -193,9 +190,6 @@ def page_about():
         ("clock",   "Alerte Précoce Harmattan",
          "Modèle à deux étapes qui bascule vers un régresseur Harmattan dédié en "
          "Nov–Fév pour les régions du nord."),
-        ("leaf",    "Comparaison Africaine",
-         "Villes camerounaises comparées à 12 capitales africaines. Maroua est 5× "
-         "plus polluée que Nairobi."),
     ]
 
     features = features_fr if lang == "fr" else features_en
@@ -223,40 +217,9 @@ def page_about():
     cards_html += '</div>'
     st.markdown(cards_html, unsafe_allow_html=True)
 
-    # ── Model stats strip ─────────────────────────────────────────────────────
+    # ── Air quality context charts ─────────────────────────────────────────────
     st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-    sec("Model Performance" if lang=="en" else "Performance du Modèle")
-
-    stats = [
-        ("MAE", f"{MODEL_MAE} μg/m³", "PM2.5 test error" if lang=="en" else "Erreur test PM2.5", TEAL),
-        ("R²",  f"{MODEL_R2}",        "Log-space accuracy" if lang=="en" else "Précision log-space", TEAL),
-        ("F1",  f"{MODEL_RL_F1}",     "Alert F1 @ P=0.50", GREEN),
-        ("COV", "97.4%",              "Conformal coverage" if lang=="en" else "Couverture conforme", TEAL2),
-        ("MAE↓","+26.5%",             "vs naive baseline" if lang=="en" else "vs référence naïve", AMBER),
-        ("CIT", "71",                 "Cities covered" if lang=="en" else "Villes couvertes", TEXT2),
-    ]
-    stats_html = (
-        '<div style="display:grid;'
-        'grid-template-columns:repeat(auto-fit,minmax(min(100%,90px),1fr));'
-        'gap:.5rem;margin-top:.8rem;">'
-    )
-    for abbr, val, lbl, col_c in stats:
-        stats_html += (
-            f'<div style="background:{_cbg()};border:1px solid {_cborder()};'
-            f'border-radius:9px;padding:.6rem;text-align:center;">'
-            f'<div style="font-size:1.15rem;font-weight:700;'
-            f'font-family:\'JetBrains Mono\',monospace;color:{col_c};">{val}</div>'
-            f'<div style="font-size:.52rem;color:{_T2()};text-transform:uppercase;'
-            f'letter-spacing:.07em;margin-top:.1rem;">{lbl}</div>'
-            f'</div>'
-        )
-    stats_html += '</div>'
-    st.markdown(stats_html, unsafe_allow_html=True)
-
-
-    # ── Key findings from training data ──────────────────────────────────────
-    st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-    sec("Key Findings from Training Data" if lang=="en" else "Résultats Clés des Données")
+    sec("Air Quality Situation in Cameroon" if lang=="en" else "Situation de la Qualité de l'Air au Cameroun")
 
     _is_lt = st.session_state.get("theme","light") == "light"
     _bg    = "rgba(0,0,0,0)"

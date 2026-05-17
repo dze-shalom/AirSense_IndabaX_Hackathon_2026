@@ -49,8 +49,8 @@ def page_science():
     st.markdown('<div class="as-content">', unsafe_allow_html=True)
 
     lang = LNG()
-    tab_sh, tab_cl, tab_sp, tab_mc, tab_pol, tab_brief, tab_pdf = st.tabs([
-        _t("shap_tab"), _t("climate_tab_sci"), _t("spatial_tab"), _t("model_tab"),
+    tab_sh, tab_cl, tab_pol, tab_brief, tab_pdf = st.tabs([
+        _t("shap_tab"), _t("climate_tab_sci"),
         _t("policy_sim_tab"), _t("policy_brief_tab"),
         "PDF Report" if lang == "en" else "Rapport PDF",
     ])
@@ -225,249 +225,7 @@ def page_science():
                  f"<strong>Far North rises by ~{fn_pct:.0f}% by {yr_sel}</strong> under this scenario.")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # TAB 3 — SPATIAL GENERALIZATION
-    # ══════════════════════════════════════════════════════════════════════════
-    with tab_sp:
-        sec(_t("spatial_hdr"))
-        st.markdown(f"""<div style="font-size:.78rem;color:{_ctxt2()};margin-bottom:1rem;line-height:1.6;">
-The model was trained on <strong>40 Cameroonian cities</strong>. To test generalization,
-it was applied to unseen cities at three difficulty levels:<br>
-<strong style="color:{GREEN};">L1</strong> — Cameroon cities not in training set &nbsp;·&nbsp;
-<strong style="color:{AMBER};">L2</strong> — Cross-border cities (N'Djamena, Chad) &nbsp;·&nbsp;
-<strong style="color:{RED};">L3</strong> — Fully out-of-domain (Nairobi, Kenya)
-</div>""", unsafe_allow_html=True)
-
-        level_colors = {"L1":GREEN,"L2":AMBER,"L3":RED}
-
-        # ── Map + donut side by side ──────────────────────────────────────────
-        map_col, donut_col = st.columns([1.7, 1])
-
-        with map_col:
-            fig_sp = go.Figure()
-            for reg, clist in CITIES.items():
-                for cname, clat, clon in clist:
-                    fig_sp.add_trace(go.Scattermap(
-                        lat=[clat], lon=[clon], mode="markers",
-                        marker=dict(size=7, color=TEAL, opacity=0.35),
-                        hovertemplate=f"<b>{cname}</b><br>Training city<extra></extra>",
-                        showlegend=False, name="train"))
-            for entry in SPATIAL_GEN:
-                lvl = entry["level"].split("—")[0].strip()
-                col = level_colors.get(lvl, AMBER)
-                r2_str = f"{entry['r2']:.3f}" if entry["r2"] else "—"
-                fig_sp.add_trace(go.Scattermap(
-                    lat=[entry["lat"]], lon=[entry["lon"]], mode="markers+text",
-                    marker=dict(size=18, color=col, opacity=0.9),
-                    text=[entry["city"]], textposition="top right",
-                    textfont=dict(size=10, color=_ctxt(), family="Open Sans"),
-                    hovertemplate=(f"<b>{entry['city']}</b><br>{entry['level']}<br>"
-                                   f"MAE: {entry['mae']:.2f} μg/m³<br>R²: {r2_str}<extra></extra>"),
-                    showlegend=False, name=entry["city"]))
-            fig_sp.update_layout(
-                map=dict(style="carto-darkmatter", center=dict(lat=6, lon=15), zoom=3.5),
-                **PLO(height=360, margin=dict(l=0,r=0,t=0,b=0), showlegend=False))
-            st.plotly_chart(fig_sp, use_container_width=True)
-
-        with donut_col:
-            sec(_t("r2_by_level"))
-
-            # Compute average R² per level for donut
-            from collections import defaultdict
-            level_r2   = defaultdict(list)
-            level_mae  = defaultdict(list)
-            level_name = {"L1":"L1 — Cameroon","L2":"L2 — Cross-border","L3":"L3 — Out-of-domain"}
-            for entry in SPATIAL_GEN:
-                lvl = entry["level"].split("—")[0].strip()
-                if entry["r2"]: level_r2[lvl].append(entry["r2"])
-                level_mae[lvl].append(entry["mae"])
-
-            donut_labels  = [level_name[lvl] for lvl in ["L1","L2","L3"]]
-            donut_r2_vals = [
-                round(sum(level_r2["L1"])/len(level_r2["L1"]),3) if level_r2["L1"] else 0,
-                round(sum(level_r2["L2"])/len(level_r2["L2"]),3) if level_r2["L2"] else 0,
-                round(sum(level_r2["L3"])/len(level_r2["L3"]),3) if level_r2["L3"] else 0,
-            ]
-            donut_mae_vals = [
-                round(sum(level_mae["L1"])/len(level_mae["L1"]),2) if level_mae["L1"] else 0,
-                round(sum(level_mae["L2"])/len(level_mae["L2"]),2) if level_mae["L2"] else 0,
-                round(sum(level_mae["L3"])/len(level_mae["L3"]),2) if level_mae["L3"] else 0,
-            ]
-            donut_colors = [GREEN, AMBER, RED]
-
-            # R² donut — slice size proportional to R² value
-            fig_donut = go.Figure(go.Pie(
-                labels=donut_labels,
-                values=donut_r2_vals,
-                marker=dict(colors=donut_colors,
-                            line=dict(color=_cbg(), width=3)),
-                hole=0.60,
-                direction="clockwise",
-                sort=False,
-                textinfo="label+percent",
-                textfont=dict(size=9, color=_ctxt(), family="Open Sans"),
-                hovertemplate=(
-                    "<b>%{label}</b><br>"
-                    "Mean R²: %{value:.3f}<br>"
-                    "Share of accuracy: %{percent}<extra></extra>"
-                ),
-                rotation=90,
-            ))
-            # Centre annotation — best R²
-            best_lvl  = max(zip(donut_r2_vals, donut_labels))[1]
-            best_r2   = max(donut_r2_vals)
-            fig_donut.add_annotation(
-                text=f"<b>{best_r2:.3f}</b><br><span style='font-size:9px'>Best R²<br>{best_lvl[:2]}</span>",
-                x=0.5, y=0.5, showarrow=False,
-                font=dict(color=_ctxt(), size=12), align="center"
-            )
-            fig_donut.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",
-                height=220,
-                margin=dict(l=0, r=0, t=8, b=0),
-                showlegend=False,
-                font=dict(family="Open Sans", color=_ctxt2()),
-            )
-            st.plotly_chart(fig_donut, use_container_width=True)
-
-            # MAE bar chart below the donut
-            sec(_t("mean_mae_by_level"))
-            fig_mae = go.Figure(go.Bar(
-                x=["L1","L2","L3"],
-                y=donut_mae_vals,
-                marker=dict(color=donut_colors, opacity=0.85),
-                text=[f"{v:.2f}" for v in donut_mae_vals],
-                textposition="outside",
-                textfont=dict(size=10, color=_ctxt2()),
-                hovertemplate="<b>%{x}</b><br>Mean MAE: %{y:.2f} μg/m³<extra></extra>",
-            ))
-            fig_mae.add_hline(y=MODEL_MAE, line=dict(color=TEAL, width=1.5, dash="dash"),
-                              annotation_text=f"Train MAE ({MODEL_MAE})",
-                              annotation_font_color=TEAL, annotation_font_size=9)
-            fig_mae.update_layout(**PLO(
-                height=180,
-                yaxis=dict(gridcolor=_cborder(), title="MAE (μg/m³)", range=[0, 16]),
-                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                showlegend=False,
-                margin=dict(l=0, r=0, t=18, b=0),
-            ))
-            st.plotly_chart(fig_mae, use_container_width=True)
-
-        # ── Results cards ─────────────────────────────────────────────────────
-        sec(_t("spatial_results_by_city"))
-        for entry in SPATIAL_GEN:
-            lvl = entry["level"].split("—")[0].strip()
-            col = level_colors.get(lvl, AMBER)
-            r2_str = f"{entry['r2']:.3f}" if entry["r2"] else "—"
-            quality = _t("quality_good") if entry["mae"]<7 else (_t("quality_fair") if entry["mae"]<12 else _t("quality_poor"))
-            q_color = GREEN if quality=="Good" else (AMBER if quality=="Fair" else RED)
-            st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
-  border-left:3px solid {col};border-radius:8px;padding:.65rem .9rem;
-  margin-bottom:.3rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">
-  <div>
-    <div style="font-size:.82rem;font-weight:700;color:{col};">{entry['city']}</div>
-    <div style="font-size:.62rem;color:{_ctxt2()};">{entry['level']}</div>
-  </div>
-  <div style="display:flex;gap:1.4rem;align-items:center;">
-    <div style="text-align:center;">
-      <div style="font-size:.62rem;color:{_ctxt2()};">MAE</div>
-      <div style="font-size:.88rem;font-weight:700;color:{_ctxt()};
-        font-family:'JetBrains Mono',monospace;">{entry['mae']:.2f}</div>
-    </div>
-    <div style="text-align:center;">
-      <div style="font-size:.62rem;color:{_ctxt2()};">R²</div>
-      <div style="font-size:.88rem;font-weight:700;color:{_ctxt()};
-        font-family:'JetBrains Mono',monospace;">{r2_str}</div>
-    </div>
-    <div style="background:{q_color}22;border:1px solid {q_color}55;color:{q_color};
-      border-radius:4px;padding:.15rem .45rem;font-size:.65rem;font-weight:700;">
-      {quality}
-    </div>
-  </div>
-</div>""", unsafe_allow_html=True)
-
-        info_box("<strong>Key finding:</strong> The model generalises well within Cameroon (MAE 3.7–6.6 μg/m³) "
-                 "and neighbouring regions (Chad). Performance degrades for fully out-of-domain cities like Nairobi "
-                 "— expected given the model was calibrated on Central/West African aerosol regimes.")
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # TAB 4 — MODEL COMPARISON
-    # ══════════════════════════════════════════════════════════════════════════
-    with tab_mc:
-        sec(_t("model_comparison_hdr"))
-        st.markdown(f"<div style='font-size:.76rem;color:{_ctxt2()};margin-bottom:.9rem;'>"
-                    "All models evaluated on the same held-out test set "
-                    "(17,840 rows · 2024-10-01 → 2025-12-20 · 100% CAMS real data).</div>",
-                    unsafe_allow_html=True)
-
-        flag_colors = {"baseline":_ctxt2(),"primary":TEAL,"ensemble":AMBER,"deep":PURPLE}
-        flag_labels = {"baseline":"Baseline","primary":"Primary","ensemble":"Ensemble","deep":"Deep Learning"}
-
-        for row in MODEL_COMPARISON:
-            fc = flag_colors.get(row["flag"], _ctxt2())
-            fl = flag_labels.get(row["flag"], "")
-            mae_str = f"{row['mae']:.3f}" if row["mae"] else "—"
-            r2_str  = f"{row['r2']:.3f}"  if row["r2"]  else "—"
-            hm_str  = f"{row['harm_mae']:.2f}" if row["harm_mae"] else "—"
-            best = row["flag"] == "primary" and row["mae"] and row["mae"] < 6.0
-            _best_bg    = "rgba(100,255,218,0.06)" if st.session_state.get("theme","light")=="dark" else "rgba(80,160,100,0.06)"
-            _card_bg    = _best_bg if best else _cbg()
-            _border_col = "rgba(100,255,218,0.3)" if best else _cborder()
-            _card_style = (f"background:{_card_bg};border:1px solid {_border_col};"
-                           f"{'border-left:3px solid '+TEAL+';' if best else ''}"
-                           f"border-radius:8px;padding:.6rem .9rem;margin-bottom:.3rem;"
-                           f"display:flex;justify-content:space-between;align-items:center;"
-                           f"flex-wrap:wrap;gap:.4rem;")
-            _fw = "700" if best else "500"
-            _val_col = TEAL if best else _ctxt()
-            st.markdown(
-                f'<div style="{_card_style}">'
-                f'<div style="flex:1;min-width:200px;">'
-                f'<span style="font-size:.78rem;font-weight:{_fw};color:{fc};">{row["model"]}</span>'
-                f'<span style="font-size:.58rem;color:{fc};margin-left:.5rem;opacity:.7;">{fl}</span>'
-                f'</div>'
-                f'<div style="display:flex;gap:1.4rem;">'
-                f'<div style="text-align:center;">'
-                f'<div style="font-size:.58rem;color:{_ctxt2()};">Test MAE</div>'
-                f'<div style="font-size:.82rem;font-weight:700;color:{_val_col};font-family:\'JetBrains Mono\',monospace;">{mae_str}</div>'
-                f'</div>'
-                f'<div style="text-align:center;">'
-                f'<div style="font-size:.58rem;color:{_ctxt2()};">R²</div>'
-                f'<div style="font-size:.82rem;font-weight:700;color:{_ctxt()};font-family:\'JetBrains Mono\',monospace;">{r2_str}</div>'
-                f'</div>'
-                f'<div style="text-align:center;">'
-                f'<div style="font-size:.58rem;color:{_ctxt2()};">Harm MAE</div>'
-                f'<div style="font-size:.82rem;font-weight:700;color:{ORANGE if hm_str != "—" else _ctxt2()};font-family:\'JetBrains Mono\',monospace;">{hm_str}</div>'
-                f'</div>'
-                f'</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-
-        # MAE bar chart
-        st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-        sec(_t("mae_comparison"))
-        valid = [r for r in MODEL_COMPARISON if r["mae"]]
-        fig_mc = go.Figure(go.Bar(
-            x=[r["model"][:30] for r in valid],
-            y=[r["mae"] for r in valid],
-            marker=dict(color=[flag_colors[r["flag"]] for r in valid], opacity=0.85),
-            text=[f"{r['mae']:.2f}" for r in valid],
-            textposition="outside", textfont=dict(size=9, color=_ctxt2()),
-            hovertemplate="<b>%{x}</b><br>MAE: %{y:.3f} μg/m³<extra></extra>"))
-        fig_mc.add_hline(y=7.521, line=dict(color=ORANGE,width=1.5,dash="dot"),
-                         annotation_text="City-month baseline (7.52)",annotation_font_color=ORANGE,annotation_font_size=9)
-        fig_mc.update_layout(**PLO(height=280,
-            yaxis=dict(gridcolor=_cborder(),title="Test MAE (μg/m³)"),
-            xaxis=dict(tickangle=-25,gridcolor="rgba(0,0,0,0)"),showlegend=False))
-        st.plotly_chart(fig_mc, use_container_width=True)
-
-        info_box("<strong>XGBoost CAMS-only (MAE=6.231)</strong> is the primary model — "
-                 "trained only on real CAMS measurements, no proxy circularity. "
-                 "The two-stage Harmattan model achieves the best Harmattan-season performance. "
-                 "The Transformer provides interpretable multi-day uncertainty but higher MAE than XGBoost.")
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # TAB 5 — POLICY SCENARIO SIMULATOR
+    # TAB 3 — POLICY SCENARIO SIMULATOR
     # ══════════════════════════════════════════════════════════════════════════
     with tab_pol:
         sec(_t("policy_sim_hdr"))
@@ -620,7 +378,7 @@ it was applied to unseen cities at three difficulty levels:<br>
         )
 
     # ══════════════════════════════════════════════════════════════════════════
-    # TAB 6 — AI POLICY BRIEF
+    # TAB 4 — AI POLICY BRIEF
     # ══════════════════════════════════════════════════════════════════════════
     with tab_brief:
         sec(_t("policy_brief_hdr"))
@@ -787,51 +545,11 @@ it was applied to unseen cities at three difficulty levels:<br>
             )
 
     # ══════════════════════════════════════════════════════════════════════════
-    # TAB 7 — PDF REPORT
+    # TAB 5 — PDF REPORT
     # ══════════════════════════════════════════════════════════════════════════
     with tab_pdf:
         from utils.pdf_report import generate_pdf_report
-        from utils.pdf_project_report import generate_project_report
         sec("Rapport PDF" if lang == "fr" else "PDF Report")
-
-        # ── Stakeholder project report ─────────────────────────────────────
-        st.markdown(
-            f'<div style="font-size:.78rem;color:{_ctxt2()};margin-bottom:.5rem;">'
-            + ("Téléchargez le rapport de projet complet (aperçu national, "
-               "performance du modèle ML, statistiques de qualité de l'air et "
-               "estimations d'impact sanitaire) pour les parties prenantes."
-               if lang == "fr" else
-               "Download the full project report (national overview, ML model "
-               "performance, air quality statistics, and health impact estimates) "
-               "for stakeholders and decision-makers.")
-            + '</div>',
-            unsafe_allow_html=True,
-        )
-        if st.button(
-            "Générer le rapport de projet (PDF)" if lang == "fr"
-            else "Generate Project Report (PDF)",
-            use_container_width=True, key="gen_project_pdf_btn",
-        ):
-            with st.spinner(
-                "Génération du rapport…" if lang == "fr" else "Generating report…"
-            ):
-                project_pdf_bytes = generate_project_report(lang=lang)
-            proj_fname = f"AirSense_Project_Report_{datetime.now().strftime('%Y%m%d')}.pdf"
-            st.download_button(
-                label="Télécharger le rapport (PDF)" if lang == "fr"
-                      else "Download Project Report (PDF)",
-                data=project_pdf_bytes,
-                file_name=proj_fname,
-                mime="application/pdf",
-                use_container_width=True,
-                key="dl_project_pdf_btn",
-            )
-            st.success(
-                "Rapport de projet prêt." if lang == "fr"
-                else "Project report ready."
-            )
-
-        st.divider()
 
         # ── Per-city report ────────────────────────────────────────────────
         st.markdown(
