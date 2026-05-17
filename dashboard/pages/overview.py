@@ -386,6 +386,76 @@ def page_overview():
                                    font=dict(size=11, color=_ctxt2()), x=0)))
                     st.plotly_chart(fig_sp, use_container_width=True)
 
+        # ── City share panel ──────────────────────────────────────────────────
+        if sel_fc:
+            import urllib.parse, json
+            from datetime import date as _date
+            _today_str = _date.today().strftime("%d %b %Y")
+            _s_city = _stats.get(sel_fc, CITY_STATS.get(sel_fc, {}))
+            _pm_city = _s_city.get("mean_pm25", 0.0)
+            _level_city, _col_city, _ico_city, _ = aqi(_pm_city, lang)
+            # compute above_who locally (right_col hasn't run yet)
+            _thr_share = get_threshold()
+            above_who = sum(1 for s in _stats.values() if s.get("mean_pm25", 0) > _thr_share)
+
+            if _pm_city < 15:
+                _advisory_en = "Air quality is safe today."
+                _advisory_fr = "La qualité de l'air est saine."
+            elif _pm_city < 35:
+                _advisory_en = "Sensitive groups should limit outdoor exposure."
+                _advisory_fr = "Les groupes sensibles doivent limiter l'exposition."
+            elif _pm_city < 55:
+                _advisory_en = "Avoid prolonged outdoor activity."
+                _advisory_fr = "Évitez les activités prolongées à l'extérieur."
+            else:
+                _advisory_en = "Stay indoors. Keep windows closed."
+                _advisory_fr = "Restez à l'intérieur. Gardez les fenêtres fermées."
+
+            _advisory = _advisory_fr if lang == "fr" else _advisory_en
+
+            if lang == "fr":
+                _bulletin = (
+                    f"📍 AirSense · {sel_fc}, Cameroun · {_today_str}\n"
+                    f"🌫️ PM2.5 : {_pm_city:.1f} µg/m³ — {_level_city}\n"
+                    f"⚠️ {_advisory}\n"
+                    f"🏙️ {above_who}/71 villes au-dessus de la limite OMS aujourd'hui\n"
+                    f"🔗 airsense.cm"
+                )
+            else:
+                _bulletin = (
+                    f"📍 AirSense · {sel_fc}, Cameroon · {_today_str}\n"
+                    f"🌫️ PM2.5: {_pm_city:.1f} µg/m³ — {_level_city}\n"
+                    f"⚠️ {_advisory}\n"
+                    f"🏙️ {above_who}/71 cities above WHO limit today\n"
+                    f"🔗 airsense.cm"
+                )
+
+            sec("Share" if lang == "en" else "Partager")
+
+            _wa_url = f"https://wa.me/?text={urllib.parse.quote(_bulletin)}"
+            _bulletin_js = json.dumps(_bulletin)
+            st.markdown(f"""<div style="margin-top:.3rem;">
+  <a href="{_wa_url}" target="_blank"
+     style="display:inline-block;padding:.45rem 1rem;background:#25D366;color:#fff;
+            font-size:.78rem;font-weight:600;border-radius:6px;text-decoration:none;
+            margin-bottom:.4rem;">
+    📲 {"Share on WhatsApp" if lang == "en" else "Partager sur WhatsApp"}
+  </a>
+  <span style="display:inline-block;margin-left:.5rem;">
+    <button onclick="navigator.clipboard.writeText({_bulletin_js})"
+       style="padding:.45rem 1rem;background:{TEAL};color:#0a192f;
+              font-size:.78rem;font-weight:600;border-radius:6px;
+              border:none;cursor:pointer;">
+      {"📋 Copy for group" if lang == "en" else "📋 Copier pour le groupe"}
+    </button>
+  </span>
+  <pre style="margin-top:.5rem;font-size:.68rem;line-height:1.5;
+              background:{'rgba(255,252,248,0.7)' if st.session_state.get('theme','light')=='light' else 'rgba(10,25,47,0.5)'};
+              border:1px solid {_cborder()};border-radius:6px;
+              padding:.5rem .7rem;color:{_ctxt()};white-space:pre-wrap;word-break:break-word;">
+{_bulletin}</pre>
+</div>""", unsafe_allow_html=True)
+
     # ── Right panel ───────────────────────────────────────────────────────────
     with right_col:
 
@@ -487,6 +557,34 @@ def page_overview():
             mime="text/csv",
             use_container_width=True,
         )
+
+        # ── National summary share ─────────────────────────────────────────────
+        import urllib.parse as _urllib_parse
+        from datetime import date as _date_ns
+        st.markdown("<div style='margin-top:.8rem;'></div>", unsafe_allow_html=True)
+        sec("Share national summary" if lang == "en" else "Partager le résumé national")
+        _today_ns = _date_ns.today().strftime("%d %b %Y")
+        if lang == "fr":
+            _nat_bulletin = (
+                f"📍 AirSense · Cameroun · {_today_ns}\n"
+                f"🌫️ {above_who}/71 villes au-dessus de la limite OMS · "
+                f"PM2.5 moyen : {mean_pm:.1f} µg/m³\n"
+                f"🔗 airsense.cm"
+            )
+        else:
+            _nat_bulletin = (
+                f"📍 AirSense · Cameroon · {_today_ns}\n"
+                f"🌫️ {above_who}/71 cities above WHO limit · "
+                f"Mean PM2.5: {mean_pm:.1f} µg/m³\n"
+                f"🔗 airsense.cm"
+            )
+        _wa_nat_url = f"https://wa.me/?text={_urllib_parse.quote(_nat_bulletin)}"
+        st.markdown(f"""<a href="{_wa_nat_url}" target="_blank"
+   style="display:block;width:100%;text-align:center;padding:.5rem 1rem;
+          background:#25D366;color:#fff;font-size:.78rem;font-weight:600;
+          border-radius:6px;text-decoration:none;box-sizing:border-box;">
+  📲 {"Share on WhatsApp" if lang == "en" else "Partager sur WhatsApp"}
+</a>""", unsafe_allow_html=True)
 
     # ── Regional bar charts ────────────────────────────────────────────────────
     st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)

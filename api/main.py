@@ -42,6 +42,17 @@ Innovations (match dashboard pages 1:1)
 IoT
   POST /ingest                    ESP32 sensor data ingestion
   GET  /sensor-feed               Recent sensor readings buffer
+
+Outreach
+  GET  /summary/{city}           Shareable plain-text bulletin (WhatsApp/SMS)
+  GET  /embed/{city}             Embeddable iframe widget HTML
+  POST /push/subscribe           Store Web Push subscription
+  POST /push/notify              Send push notification to subscribers
+  POST /email/subscribe          Add email to digest list
+  GET  /email/digest             Preview today's HTML email digest
+  POST /email/send-digest        Send digest to all subscribers
+  POST /webhook/whatsapp         Africa's Talking WhatsApp bot webhook
+  POST /webhook/sms              Africa's Talking SMS bot webhook
 """
 
 from __future__ import annotations
@@ -62,9 +73,9 @@ import numpy as np
 import pandas as pd
 import requests as http_req
 import xgboost as xgb
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 # ── Logging ────────────────────────────────────────────────────────────────────
@@ -256,6 +267,18 @@ STATE: Dict[str, Any] = {
 }
 
 sensor_buffer: List[Dict] = []   # ESP32 readings ring buffer
+
+# ── Outreach module-level state ────────────────────────────────────────────────
+_PUSH_SUBSCRIPTIONS: Dict[str, dict] = {}   # Web Push endpoint → subscription object
+_EMAIL_SUBS: List[str] = []                 # email digest subscriber list
+
+# pywebpush optional dependency
+try:
+    from pywebpush import webpush, WebPushException  # type: ignore
+    _WEBPUSH_AVAILABLE = True
+except ImportError:
+    _WEBPUSH_AVAILABLE = False
+    logger.warning("pywebpush not installed — /push/notify will be disabled")
 
 
 def _load_artefacts() -> None:

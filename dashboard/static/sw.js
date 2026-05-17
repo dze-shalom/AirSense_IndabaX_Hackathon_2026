@@ -88,3 +88,26 @@ self.addEventListener('fetch', function(event) {
     );
   }
 });
+
+/* ── Push notifications ───────────────────────────────────────────────────── */
+self.addEventListener('push', function(event) {
+  var data = { title: 'AirSense Alert', body: 'Air quality update', url: '/' };
+  try { if (event.data) data = Object.assign(data, event.data.json()); } catch(e) {}
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body:    data.body,
+      icon:    self.location.pathname.replace('sw.js', '') + 'icon-192.png',
+      badge:   self.location.pathname.replace('sw.js', '') + 'icon-192.png',
+      data:    { url: data.url },
+      vibrate: [200, 100, 200],
+      tag:     'airsense-alert',
+      renotify: true,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  var url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(clients.openWindow(url));
+});
