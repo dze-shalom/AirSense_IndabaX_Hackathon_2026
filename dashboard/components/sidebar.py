@@ -1,4 +1,5 @@
 """components/sidebar.py — CSS injection, top nav bar, left sidebar."""
+import os
 import streamlit as st
 from config import (
     NAVY, NAVY2, TEAL, TEAL2, TEXT1, TEXT2, BORDER, RED,
@@ -767,6 +768,14 @@ def render_sidebar():
                     if st.button(lang_lbl, key="sb_lang", use_container_width=True):
                         st.session_state.lang = "fr" if lang == "en" else "en"
                         st.rerun()
+
+                st.markdown(f'<div style="height:6px;"></div>', unsafe_allow_html=True)
+                # Push alerts
+                from utils.push_subscribe import render_push_subscribe_ui
+                render_push_subscribe_ui(api_base_url=os.getenv("AIRSENSE_API_URL", ""))
+                # Email digest
+                from utils.email_subscribe import render_email_subscribe_ui
+                render_email_subscribe_ui(api_base_url=os.getenv("AIRSENSE_API_URL", ""))
 
                 # ── Standards selector (live — includes user-added) ────────────
                 all_stds  = get_all_standards()
