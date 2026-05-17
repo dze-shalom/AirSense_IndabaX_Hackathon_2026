@@ -351,7 +351,7 @@ def generate_pdf_report(
     elems.append(HRFlowable(width=W, thickness=0.5, color=LIGHT))
     elems.append(Spacer(1, 2*mm))
     footer_txt = (
-        f"AirSense Cameroon | IndabaX 2026 | "
+        f"AirSense Cameroon | "
         f"{'Donnees' if fr else 'Data'}: CAMS Reanalysis + Open-Meteo | "
         f"{'Modele' if fr else 'Model'}: XGBoost (MAE 6.27 µg/m³, R² 0.603) | "
         f"WHO 2021: 15 µg/m³ (24h)"

@@ -157,7 +157,7 @@ def generate_project_report(lang: str = "en") -> bytes:
         leftMargin=20*mm, rightMargin=20*mm,
         topMargin=18*mm,  bottomMargin=18*mm,
         title="AirSense Cameroon — Project Report",
-        author="AirSense IndabaX 2026",
+        author="AirSense Team",
     )
     elems = []
     now   = datetime.now().strftime("%B %d, %Y")
@@ -191,8 +191,8 @@ def generate_project_report(lang: str = "en") -> bytes:
     ))
     elems.append(Spacer(1, 3*mm))
     elems.append(Paragraph(
-        ("Conférence IndabaX 2026 | Prédiction IA de la qualité de l'air" if fr
-         else "IndabaX 2026 Conference | AI-Powered Air Quality Prediction"),
+        ("Prédiction IA de la qualité de l'air au Cameroun" if fr
+         else "AI-Powered Air Quality Prediction for Cameroon"),
         COVER_META,
     ))
     elems.append(Spacer(1, 14*mm))
@@ -808,7 +808,7 @@ def generate_project_report(lang: str = "en") -> bytes:
         [
             ("1 — Cloner", "git clone https://github.com/dze-shalom/airsense_indabax_hackathon_2026"),
             ("2 — Installer", "pip install -r requirements.txt   # Python 3.10+"),
-            ("3 — Données", "Placer Dataset_complet_Meteo.csv dans data/   (fourni par IndabaX)"),
+            ("3 — Données", "Placer Dataset_complet_Meteo.csv dans data/"),
             ("4 — Nettoyage", "Exécuter notebooks/00_Data_Cleaning.ipynb   → produit airsense_clean.parquet"),
             ("5 — EDA", "Exécuter notebooks/01_EDA.ipynb   → décisions de modélisation"),
             ("6 — Entraînement", "Exécuter notebooks/02_Modelling.ipynb   → produit tous les artefacts dans models/"),
@@ -820,7 +820,7 @@ def generate_project_report(lang: str = "en") -> bytes:
         [
             ("1 — Clone", "git clone https://github.com/dze-shalom/airsense_indabax_hackathon_2026"),
             ("2 — Install", "pip install -r requirements.txt   # Python 3.10+"),
-            ("3 — Data", "Place Dataset_complet_Meteo.csv in data/   (provided by IndabaX)"),
+            ("3 — Data", "Place Dataset_complet_Meteo.csv in data/"),
             ("4 — Clean", "Run notebooks/00_Data_Cleaning.ipynb   → produces airsense_clean.parquet"),
             ("5 — EDA", "Run notebooks/01_EDA.ipynb   → modelling decisions"),
             ("6 — Train", "Run notebooks/02_Modelling.ipynb   → produces all artefacts in models/"),
@@ -927,7 +927,7 @@ def generate_project_report(lang: str = "en") -> bytes:
     elems.append(HRFlowable(width="100%", thickness=0.5, color=LIGHT))
     elems.append(Spacer(1, 2*mm))
     footer = (
-        f"AirSense Cameroon | IndabaX 2026 | "
+        f"AirSense Cameroon | "
         f"{'Données' if fr else 'Data'}: CAMS + ERA5 + Open-Meteo | "
         f"{'Modèle' if fr else 'Model'}: XGBoost + Optuna "
         f"(MAE {MODEL_MAE} µg/m³, R² {MODEL_R2}) | "

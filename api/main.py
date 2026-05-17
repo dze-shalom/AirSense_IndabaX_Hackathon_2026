@@ -1,7 +1,7 @@
 """
 AirSense Cameroon — FastAPI Backend v2
 =======================================
-Author: Dze-Kum Shalom Chow | IndabaX 2026
+Author: Dze-Kum Shalom Chow
 
 Run:  uvicorn api.main:app --reload --port 8000
 Docs: http://localhost:8000/docs
@@ -353,7 +353,7 @@ async def lifespan(app_: FastAPI):
 
 app = FastAPI(
     title="AirSense Cameroon API",
-    description="AI-powered air quality prediction for Cameroon — IndabaX 2026",
+    description="AI-powered air quality prediction for Cameroon",
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",

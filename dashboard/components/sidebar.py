@@ -184,6 +184,38 @@ div[data-testid="metric-container"]{{background:rgba(255,255,255,.04)!important;
 .stTabs [data-baseweb="tab-list"]{{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;flex-wrap:nowrap!important;}}
 .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar{{height:2px;}}
 
+/* ── Responsive chart pair — stack on mobile ─────────────────────────────── */
+@media(max-width:640px){{
+  .as-chart-pair [data-testid="stHorizontalBlock"]{{
+    flex-direction:column!important;
+  }}
+  .as-chart-pair [data-testid="column"]{{
+    width:100%!important;min-width:100%!important;flex:none!important;
+  }}
+}}
+
+/* ── Touch targets ────────────────────────────────────────────────────────── */
+@media(max-width:768px){{
+  .stButton>button{{min-height:44px!important;}}
+  .stSelectbox>div>div{{min-height:44px!important;}}
+  /* Plotly charts — limit height so they don't dominate small screens */
+  .js-plotly-plot .plotly .main-svg{{max-height:60vh;}}
+  /* Improve readability of small text on mobile */
+  .stMarkdown p{{font-size:14px!important;line-height:1.65!important;}}
+  /* Hero section padding */
+  .as-content>div>div[style*="padding:1.6rem"]{{padding:1rem 1rem!important;}}
+  /* Full-width selectbox in sidebar */
+  [data-testid="stSidebar"] .stSelectbox{{width:100%!important;}}
+  /* Prevent text overflow in top nav */
+  .as-fixed-nav .as-logo span{{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}}
+}}
+@media(max-width:480px){{
+  /* Hide breadcrumb page label in top bar on small phones to save space */
+  .as-fixed-nav>div:first-child>div:last-child{{display:none!important;}}
+  /* Make data source items stack cleanly */
+  .as-datasrc-row{{flex-direction:column!important;gap:.2rem!important;}}
+}}
+
 /* ── Mobile bottom nav — hidden by default; JS tags wrapper as #as-mnav-wrap ── */
 /* All show/hide and layout rules live in render_mobile_nav() inline CSS+JS     */
 #as-mnav-sentinel{{display:none!important;height:0!important;}}
@@ -1003,7 +1035,7 @@ def render_sidebar():
                 f'{data_note}<br>'
                 f'PM2.5 Prediction · Health Alerts · SHAP Analysis<br>'
                 f'Climate Projections · AI Health Assistant<br>'
-                f'<strong style="color:{TEAL};">AirSense Team · IndabaX 2026</strong>'
+                f'<strong style="color:{TEAL};">AirSense Team</strong>'
                 f'</div></div>',
                 unsafe_allow_html=True)
 
