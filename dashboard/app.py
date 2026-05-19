@@ -1,5 +1,5 @@
 """
-AirSense Cameroon — IndabaX 2026
+AirSense Cameroon
 Author: Dze-Kum Shalom Chow
 
 Entry point. Routing only — all logic lives in pages/, components/, utils/.

@@ -134,7 +134,7 @@ T = {
         "mean_mae_by_level":"Mean MAE by Level",
         "spatial_results_by_city":"Generalization Results by City",
         "quality_good":"Good","quality_fair":"Fair","quality_poor":"Poor",
-        "model_comparison_hdr":"Master Model Comparison — IndabaX 2026",
+        "model_comparison_hdr":"Master Model Comparison",
         "mae_comparison":"MAE Comparison",
         # ── AI Assistant ──
         "ai_assistant_hdr":"AI Health Assistant — Powered by Claude (Anthropic)",
@@ -270,7 +270,7 @@ T = {
         "mean_mae_by_level":"MAE Moyen par Niveau",
         "spatial_results_by_city":"Résultats de Généralisation par Ville",
         "quality_good":"Bon","quality_fair":"Acceptable","quality_poor":"Faible",
-        "model_comparison_hdr":"Comparaison Principale des Modèles — IndabaX 2026",
+        "model_comparison_hdr":"Comparaison Principale des Modèles",
         "mae_comparison":"Comparaison MAE",
         # ── Assistant IA ──
         "ai_assistant_hdr":"Assistant Santé IA — Propulsé par Claude (Anthropic)",

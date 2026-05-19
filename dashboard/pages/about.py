@@ -154,9 +154,6 @@ def page_about():
         ("clock",   "Harmattan Early Warning",
          "Two-stage model switches to a dedicated Harmattan regressor during Nov–Feb for "
          "northern regions, improving accuracy during peak pollution season."),
-        ("leaf",    "Africa Benchmark",
-         "Cameroon cities benchmarked against 12 African capitals. Maroua's annual mean "
-         "exceeds Lagos and is 5× worse than Nairobi."),
     ]
 
     features_fr = [
@@ -193,60 +190,36 @@ def page_about():
         ("clock",   "Alerte Précoce Harmattan",
          "Modèle à deux étapes qui bascule vers un régresseur Harmattan dédié en "
          "Nov–Fév pour les régions du nord."),
-        ("leaf",    "Comparaison Africaine",
-         "Villes camerounaises comparées à 12 capitales africaines. Maroua est 5× "
-         "plus polluée que Nairobi."),
     ]
 
     features = features_fr if lang == "fr" else features_en
 
-    # 3-column grid of feature cards
-    for row_start in range(0, len(features), 3):
-        cols = st.columns(3)
-        for col_i, feat in enumerate(features[row_start:row_start+3]):
-            ico_key, title, desc = feat
-            with cols[col_i]:
-                st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
-  border-radius:10px;padding:.85rem 1rem;margin-bottom:.5rem;height:100%;
-  transition:border-color .2s;">
-  <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;">
-    <div style="width:28px;height:28px;border-radius:7px;flex-shrink:0;
-      background:{_IC()};border:1px solid {_IB()};
-      display:flex;align-items:center;justify-content:center;">
-      {_icon(ICONS[ico_key], 14)}
-    </div>
-    <span style="font-size:.72rem;font-weight:700;color:{_T1()};">{title}</span>
-  </div>
-  <div style="font-size:.63rem;color:{_T2()};line-height:1.65;">{desc}</div>
-</div>""", unsafe_allow_html=True)
+    # Responsive CSS grid — 3 cols on desktop, 2 on tablet, 1 on phone
+    cards_html = (
+        '<div style="display:grid;'
+        'grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));'
+        'gap:.6rem;margin-bottom:.5rem;">'
+    )
+    for ico_key, title, desc in features:
+        cards_html += (
+            f'<div style="background:{_cbg()};border:1px solid {_cborder()};'
+            f'border-radius:10px;padding:.85rem 1rem;transition:border-color .2s;">'
+            f'<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;">'
+            f'<div style="width:28px;height:28px;border-radius:7px;flex-shrink:0;'
+            f'background:{_IC()};border:1px solid {_IB()};'
+            f'display:flex;align-items:center;justify-content:center;">'
+            f'{_icon(ICONS[ico_key], 14)}</div>'
+            f'<span style="font-size:.72rem;font-weight:700;color:{_T1()};">{title}</span>'
+            f'</div>'
+            f'<div style="font-size:.63rem;color:{_T2()};line-height:1.65;">{desc}</div>'
+            f'</div>'
+        )
+    cards_html += '</div>'
+    st.markdown(cards_html, unsafe_allow_html=True)
 
-    # ── Model stats strip ─────────────────────────────────────────────────────
+    # ── Air quality context charts ─────────────────────────────────────────────
     st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-    sec("Model Performance" if lang=="en" else "Performance du Modèle")
-
-    stats = [
-        ("MAE", f"{MODEL_MAE} μg/m³", "PM2.5 test error" if lang=="en" else "Erreur test PM2.5", TEAL),
-        ("R²",  f"{MODEL_R2}",        "Log-space accuracy" if lang=="en" else "Précision log-space", TEAL),
-        ("F1",  f"{MODEL_RL_F1}",     "Alert F1 @ P=0.50", GREEN),
-        ("COV", "97.4%",              "Conformal coverage" if lang=="en" else "Couverture conforme", TEAL2),
-        ("MAE↓","+26.5%",             "vs naive baseline" if lang=="en" else "vs référence naïve", AMBER),
-        ("CIT", "71",                 "Cities covered" if lang=="en" else "Villes couvertes", TEXT2),
-    ]
-    stat_cols = st.columns(len(stats))
-    for col, (abbr, val, lbl, col_c) in zip(stat_cols, stats):
-        with col:
-            st.markdown(f"""<div style="background:{_cbg()};border:1px solid {_cborder()};
-  border-radius:9px;padding:.6rem;text-align:center;">
-  <div style="font-size:1.15rem;font-weight:700;font-family:'JetBrains Mono',monospace;
-    color:{col_c};">{val}</div>
-  <div style="font-size:.52rem;color:{_T2()};text-transform:uppercase;letter-spacing:.07em;
-    margin-top:.1rem;">{lbl}</div>
-</div>""", unsafe_allow_html=True)
-
-
-    # ── Key findings from training data ──────────────────────────────────────
-    st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
-    sec("Key Findings from Training Data" if lang=="en" else "Résultats Clés des Données")
+    sec("Air Quality Situation in Cameroon" if lang=="en" else "Situation de la Qualité de l'Air au Cameroun")
 
     _is_lt = st.session_state.get("theme","light") == "light"
     _bg    = "rgba(0,0,0,0)"
@@ -308,9 +281,11 @@ def page_about():
         yaxis=dict(title="Mean PM2.5 (µg/m³)", color=_txt2, gridcolor=_grid),
         margin=dict(l=0,r=20,t=30,b=8), showlegend=False))
 
+    st.markdown('<div class="as-chart-pair">', unsafe_allow_html=True)
     ca, cb = st.columns(2)
     with ca: st.plotly_chart(fig_exc, use_container_width=True)
     with cb: st.plotly_chart(fig_pm,  use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     st.plotly_chart(fig_tr, use_container_width=True)
 
     # ── Data sources ──────────────────────────────────────────────────────────
@@ -342,11 +317,9 @@ def page_about():
 </div>""", unsafe_allow_html=True)
 
     info_box(
-        "Built for <strong>IndabaX Cameroon 2026</strong> · "
         "<em>AI for Climate and Health Resilience in Cameroon</em> · "
         "Developed by the <strong>AirSense Team</strong>"
         if lang=="en" else
-        "Conçu pour <strong>IndabaX Cameroun 2026</strong> · "
         "<em>L'IA au service de la résilience climatique et sanitaire au Cameroun</em> · "
         "Développé par l'équipe <strong>AirSense Team</strong>"
     )

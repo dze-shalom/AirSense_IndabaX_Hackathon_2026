@@ -1,7 +1,7 @@
 """
 AirSense Cameroon — FastAPI Backend v2
 =======================================
-Author: Dze-Kum Shalom Chow | IndabaX 2026
+Author: Dze-Kum Shalom Chow
 
 Run:  uvicorn api.main:app --reload --port 8000
 Docs: http://localhost:8000/docs
@@ -42,6 +42,17 @@ Innovations (match dashboard pages 1:1)
 IoT
   POST /ingest                    ESP32 sensor data ingestion
   GET  /sensor-feed               Recent sensor readings buffer
+
+Outreach
+  GET  /summary/{city}           Shareable plain-text bulletin (WhatsApp/SMS)
+  GET  /embed/{city}             Embeddable iframe widget HTML
+  POST /push/subscribe           Store Web Push subscription
+  POST /push/notify              Send push notification to subscribers
+  POST /email/subscribe          Add email to digest list
+  GET  /email/digest             Preview today's HTML email digest
+  POST /email/send-digest        Send digest to all subscribers
+  POST /webhook/whatsapp         Africa's Talking WhatsApp bot webhook
+  POST /webhook/sms              Africa's Talking SMS bot webhook
 """
 
 from __future__ import annotations
@@ -62,9 +73,9 @@ import numpy as np
 import pandas as pd
 import requests as http_req
 import xgboost as xgb
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 # ── Logging ────────────────────────────────────────────────────────────────────
@@ -257,6 +268,18 @@ STATE: Dict[str, Any] = {
 
 sensor_buffer: List[Dict] = []   # ESP32 readings ring buffer
 
+# ── Outreach module-level state ────────────────────────────────────────────────
+_PUSH_SUBSCRIPTIONS: Dict[str, dict] = {}   # Web Push endpoint → subscription object
+_EMAIL_SUBS: List[str] = []                 # email digest subscriber list
+
+# pywebpush optional dependency
+try:
+    from pywebpush import webpush, WebPushException  # type: ignore
+    _WEBPUSH_AVAILABLE = True
+except ImportError:
+    _WEBPUSH_AVAILABLE = False
+    logger.warning("pywebpush not installed — /push/notify will be disabled")
+
 
 def _load_artefacts() -> None:
     logger.info("Loading AirSense artefacts from %s …", MODELS)
@@ -353,7 +376,7 @@ async def lifespan(app_: FastAPI):
 
 app = FastAPI(
     title="AirSense Cameroon API",
-    description="AI-powered air quality prediction for Cameroon — IndabaX 2026",
+    description="AI-powered air quality prediction for Cameroon",
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -1613,3 +1636,412 @@ def sensor_feed(
         "count":      len(feed),
         "total_seen": len(sensor_buffer),
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# OUTREACH ENDPOINTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── 1. /summary/{city} — Shareable plain-text bulletin ────────────────────────
+
+@app.get("/summary/{city}", tags=["Outreach"])
+def city_summary(city: str, lang: str = "en"):
+    """Return a formatted plain-text bulletin for sharing via WhatsApp or SMS."""
+    lat, lon, region = lookup_city(city)
+    pm25 = CITY_STATS.get(city, {}).get("mean_pm25", 20.0)
+    level_key = get_aqi_level(pm25)
+
+    level_label = AQI_LEVELS[level_key]["fr"] if lang == "fr" else AQI_LEVELS[level_key]["en"]
+
+    # Build advisory text
+    if lang == "fr":
+        if pm25 < 15:
+            advisory = "La qualité de l'air est sûre."
+        elif pm25 < 35:
+            advisory = "Groupes sensibles : limitez l'exposition en plein air."
+        elif pm25 < 55:
+            advisory = "Évitez les activités prolongées en plein air."
+        else:
+            advisory = "Restez à l'intérieur. Gardez les fenêtres fermées."
+    else:
+        if pm25 < 15:
+            advisory = "Air quality is safe."
+        elif pm25 < 35:
+            advisory = "Sensitive groups: limit outdoor exposure."
+        elif pm25 < 55:
+            advisory = "Avoid prolonged outdoor activity."
+        else:
+            advisory = "Stay indoors. Keep windows closed."
+
+    above_who = sum(1 for s in CITY_STATS.values() if s.get("mean_pm25", 0) > 15)
+    today = date.today().strftime("%Y-%m-%d")
+
+    bulletin = (
+        f"📍 AirSense · {city}, Cameroon · {today}\n"
+        f"🌫️ PM2.5: {pm25:.1f} µg/m³ — {level_label}\n"
+        f"⚠️ {advisory}\n"
+        f"🏙️ {above_who}/71 cities above WHO limit today\n"
+        f"🔗 airsense.cm"
+    )
+
+    return {
+        "city":    city,
+        "lang":    lang,
+        "bulletin": bulletin,
+        "pm25":    pm25,
+        "level":   level_label,
+    }
+
+
+# ── 2. /embed/{city} — Embeddable iframe widget ───────────────────────────────
+
+@app.get("/embed/{city}", response_class=HTMLResponse, tags=["Outreach"])
+def embed_widget(city: str, lang: str = "en", theme: str = "dark"):
+    """Return a minimal self-contained HTML page suitable for iframe embedding."""
+    lat, lon, region = lookup_city(city)
+    pm25 = CITY_STATS.get(city, {}).get("mean_pm25", 20.0)
+    level_key = get_aqi_level(pm25)
+    level_label = AQI_LEVELS[level_key]["fr"] if lang == "fr" else AQI_LEVELS[level_key]["en"]
+
+    if pm25 < 15:
+        badge_color = "#22c55e"
+    elif pm25 < 35:
+        badge_color = "#f59e0b"
+    elif pm25 < 55:
+        badge_color = "#f97316"
+    elif pm25 < 80:
+        badge_color = "#ef4444"
+    else:
+        badge_color = "#a855f7"
+
+    if theme == "dark":
+        bg_color   = "#1a1a2e"
+        text_color = "#e2e8f0"
+        sub_color  = "#94a3b8"
+    else:
+        bg_color   = "#ffffff"
+        text_color = "#1e293b"
+        sub_color  = "#64748b"
+
+    html = f"""<!DOCTYPE html>
+<!-- Embed: <iframe src="/embed/{city}" width="280" height="140" frameborder="0"></iframe> -->
+<html lang="{lang}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="300">
+<title>AirSense · {city}</title>
+<style>
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
+  body {{
+    background:{bg_color}; color:{text_color};
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    width:280px; height:140px; overflow:hidden;
+    display:flex; flex-direction:column; justify-content:space-between;
+    padding:12px 14px 8px;
+  }}
+  .city {{ font-size:13px; font-weight:600; color:{sub_color}; letter-spacing:.04em; text-transform:uppercase; }}
+  .pm25 {{ font-size:30px; font-weight:700; line-height:1.1; margin-top:2px; }}
+  .unit {{ font-size:12px; font-weight:400; color:{sub_color}; }}
+  .badge {{
+    display:inline-block; background:{badge_color}; color:#fff;
+    font-size:11px; font-weight:600; padding:2px 8px; border-radius:99px;
+    margin-top:4px;
+  }}
+  .footer {{ font-size:10px; color:{sub_color}; text-align:right; }}
+  .footer a {{ color:{sub_color}; text-decoration:none; }}
+</style>
+</head>
+<body>
+  <div>
+    <div class="city">{city}, Cameroon</div>
+    <div class="pm25">{pm25:.1f} <span class="unit">µg/m³ PM2.5</span></div>
+    <div class="badge">{level_label}</div>
+  </div>
+  <div class="footer"><a href="https://airsense.cm" target="_blank">Powered by AirSense</a></div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
+# ── 3. Push notification endpoints ────────────────────────────────────────────
+
+@app.post("/push/subscribe", tags=["Outreach"])
+async def push_subscribe(subscription: dict = Body(...)):
+    """Store a Web Push subscription. Client sends the PushSubscription JSON object."""
+    endpoint = subscription.get("endpoint")
+    if not endpoint:
+        raise HTTPException(status_code=400, detail="Subscription must contain an 'endpoint' field.")
+    _PUSH_SUBSCRIPTIONS[endpoint] = subscription
+    return {"status": "subscribed", "total": len(_PUSH_SUBSCRIPTIONS)}
+
+
+@app.post("/push/notify", tags=["Outreach"])
+async def push_notify(payload: dict = Body(...)):
+    """Send a push notification to all stored subscribers. Requires VAPID keys in env."""
+    VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
+    VAPID_CLAIMS = {"sub": os.getenv("VAPID_CONTACT", "mailto:admin@airsense.cm")}
+
+    if not _WEBPUSH_AVAILABLE or not VAPID_PRIVATE_KEY:
+        return {
+            "status":  "not_configured",
+            "message": "Set VAPID_PRIVATE_KEY env var and install pywebpush",
+        }
+
+    import json as _json
+
+    sent_count   = 0
+    failed_count = 0
+
+    for endpoint, subscription in list(_PUSH_SUBSCRIPTIONS.items()):
+        try:
+            webpush(
+                subscription_info=subscription,
+                data=_json.dumps(payload),
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims=VAPID_CLAIMS,
+            )
+            sent_count += 1
+        except Exception as exc:
+            logger.warning("push_notify failed for %s: %s", endpoint, exc)
+            failed_count += 1
+
+    return {
+        "sent":   sent_count,
+        "failed": failed_count,
+        "total":  len(_PUSH_SUBSCRIPTIONS),
+    }
+
+
+# ── 4. Email subscription + digest ───────────────────────────────────────────
+
+@app.post("/email/subscribe", tags=["Outreach"])
+async def email_subscribe(email: str = Body(..., embed=True)):
+    """Add an email to the daily digest list."""
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email address.")
+    if email not in _EMAIL_SUBS:
+        _EMAIL_SUBS.append(email)
+    return {"status": "subscribed", "total": len(_EMAIL_SUBS)}
+
+
+@app.get("/email/digest", tags=["Outreach"])
+def email_digest(lang: str = "en"):
+    """Return today's digest HTML for preview or sending."""
+    today     = date.today().strftime("%Y-%m-%d")
+    subject   = f"AirSense Daily · Cameroon Air Quality · {today}"
+
+    sorted_cities = sorted(CITY_STATS.items(), key=lambda x: x[1].get("mean_pm25", 0), reverse=True)
+    top5_polluted = sorted_cities[:5]
+    top3_cleanest = sorted_cities[-3:][::-1]  # ascending clean order
+
+    national_mean = (
+        sum(s.get("mean_pm25", 0) for s in CITY_STATS.values()) / len(CITY_STATS)
+        if CITY_STATS else 0.0
+    )
+
+    def _row(city_name: str, stats: dict) -> str:
+        pm = stats.get("mean_pm25", 0)
+        lv = AQI_LEVELS[get_aqi_level(pm)]["en"]
+        color = AQI_LEVELS[get_aqi_level(pm)]["color"]
+        return (
+            f'<tr><td style="padding:6px 12px;">{city_name}</td>'
+            f'<td style="padding:6px 12px; text-align:right;">{pm:.1f} µg/m³</td>'
+            f'<td style="padding:6px 12px;"><span style="background:{color};color:#fff;'
+            f'padding:2px 8px;border-radius:99px;font-size:12px;">{lv}</span></td></tr>'
+        )
+
+    polluted_rows = "".join(_row(c, s) for c, s in top5_polluted)
+    cleanest_rows = "".join(_row(c, s) for c, s in top3_cleanest)
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>{subject}</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;margin:0;padding:24px;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+    <div style="background:#1a1a2e;color:#fff;padding:24px 32px;">
+      <h1 style="margin:0;font-size:22px;">🌍 AirSense Daily</h1>
+      <p style="margin:4px 0 0;color:#94a3b8;font-size:14px;">Cameroon Air Quality · {today}</p>
+    </div>
+    <div style="padding:24px 32px;">
+      <p style="color:#475569;">National mean PM2.5: <strong>{national_mean:.1f} µg/m³</strong></p>
+
+      <h2 style="font-size:16px;color:#dc2626;margin-top:24px;">⚠️ Most Polluted Cities</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead><tr style="background:#fee2e2;color:#7f1d1d;">
+          <th style="padding:6px 12px;text-align:left;">City</th>
+          <th style="padding:6px 12px;text-align:right;">PM2.5</th>
+          <th style="padding:6px 12px;text-align:left;">Level</th>
+        </tr></thead>
+        <tbody>{polluted_rows}</tbody>
+      </table>
+
+      <h2 style="font-size:16px;color:#16a34a;margin-top:24px;">✅ Cleanest Cities</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead><tr style="background:#dcfce7;color:#14532d;">
+          <th style="padding:6px 12px;text-align:left;">City</th>
+          <th style="padding:6px 12px;text-align:right;">PM2.5</th>
+          <th style="padding:6px 12px;text-align:left;">Level</th>
+        </tr></thead>
+        <tbody>{cleanest_rows}</tbody>
+      </table>
+    </div>
+    <div style="background:#f1f5f9;padding:16px 32px;font-size:12px;color:#64748b;">
+      You are receiving this because you subscribed to AirSense daily digests.
+      To unsubscribe reply STOP or visit <a href="https://airsense.cm">airsense.cm</a>.
+    </div>
+  </div>
+</body>
+</html>"""
+
+    # Plain-text fallback
+    plain_lines = [
+        f"AirSense Daily · Cameroon Air Quality · {today}",
+        f"National mean PM2.5: {national_mean:.1f} µg/m³",
+        "",
+        "Most Polluted:",
+    ]
+    for c, s in top5_polluted:
+        pm = s.get("mean_pm25", 0)
+        plain_lines.append(f"  {c}: {pm:.1f} µg/m³ ({AQI_LEVELS[get_aqi_level(pm)]['en']})")
+    plain_lines += ["", "Cleanest:"]
+    for c, s in top3_cleanest:
+        pm = s.get("mean_pm25", 0)
+        plain_lines.append(f"  {c}: {pm:.1f} µg/m³ ({AQI_LEVELS[get_aqi_level(pm)]['en']})")
+    plain_lines += ["", "airsense.cm"]
+    plain_text = "\n".join(plain_lines)
+
+    return {"subject": subject, "html": html_body, "text": plain_text}
+
+
+@app.post("/email/send-digest", tags=["Outreach"])
+async def send_digest(lang: str = "en"):
+    """Send the daily digest to all subscribers via SMTP."""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    SMTP_HOST = os.getenv("SMTP_HOST", "")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER = os.getenv("SMTP_USER", "")
+    SMTP_PASS = os.getenv("SMTP_PASS", "")
+    SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER)
+
+    if not all([SMTP_HOST, SMTP_USER, SMTP_PASS]):
+        return {
+            "status":  "not_configured",
+            "message": "Set SMTP_HOST, SMTP_USER, SMTP_PASS env vars",
+        }
+
+    digest = email_digest(lang=lang)
+    subject  = digest["subject"]
+    html_body = digest["html"]
+    text_body = digest["text"]
+
+    sent        = 0
+    failed_list: List[str] = []
+
+    for recipient in list(_EMAIL_SUBS):
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"]    = SMTP_FROM
+            msg["To"]      = recipient
+            msg.attach(MIMEText(text_body, "plain"))
+            msg.attach(MIMEText(html_body, "html"))
+
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+                server.ehlo()
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASS)
+                server.sendmail(SMTP_FROM, recipient, msg.as_string())
+
+            sent += 1
+        except Exception as exc:
+            logger.warning("send_digest failed for %s: %s", recipient, exc)
+            failed_list.append(recipient)
+
+    return {"sent": sent, "failed": failed_list}
+
+
+# ── 5. WhatsApp / SMS webhooks (Africa's Talking format) ──────────────────────
+
+def _match_city(text: str) -> Optional[str]:
+    """Case-insensitive fuzzy city match against CITY_STATS keys."""
+    text_lower = text.strip().lower()
+    # Exact match first
+    for city_name in CITY_STATS:
+        if city_name.lower() == text_lower:
+            return city_name
+    # Partial / prefix match
+    for city_name in CITY_STATS:
+        if text_lower in city_name.lower() or city_name.lower().startswith(text_lower):
+            return city_name
+    return None
+
+
+@app.post("/webhook/whatsapp", tags=["Outreach"])
+async def whatsapp_webhook(request: Request):
+    """Africa's Talking WhatsApp webhook. User texts a city name, gets air quality back."""
+    from fastapi.responses import PlainTextResponse
+
+    form  = await request.form()
+    text  = form.get("text", "").strip()
+    phone = form.get("from", "")  # noqa: F841 (available for logging/personalisation)
+
+    if not text or text.lower() == "help":
+        reply = (
+            "🌍 AirSense Cameroon\n"
+            "Send a city name to get live air quality.\n"
+            "Examples: Yaoundé, Douala, Maroua, Bafoussam, Garoua\n"
+            "Powered by airsense.cm"
+        )
+        return PlainTextResponse(reply)
+
+    city_name = _match_city(text)
+    if city_name is None:
+        reply = (
+            "City not found. Try: Yaoundé, Douala, Maroua, Bafoussam, Garoua\n"
+            "Type HELP for usage instructions."
+        )
+        return PlainTextResponse(reply)
+
+    result  = city_summary(city_name, lang="en")
+    return PlainTextResponse(result["bulletin"])
+
+
+@app.post("/webhook/sms", tags=["Outreach"])
+async def sms_webhook(request: Request):
+    """Africa's Talking SMS webhook. Same logic as WhatsApp but SMS-length constrained."""
+    from fastapi.responses import PlainTextResponse
+
+    form  = await request.form()
+    text  = form.get("text", "").strip()
+    phone = form.get("from", "")  # noqa: F841
+
+    if not text or text.lower() == "help":
+        reply = "AirSense: Send city name for air quality. E.g. Douala -airsense.cm"
+        return PlainTextResponse(reply)
+
+    city_name = _match_city(text)
+    if city_name is None:
+        reply = "City not found. Try: Yaounde, Douala, Maroua, Bafoussam, Garoua -AirSense"
+        return PlainTextResponse(reply)
+
+    pm25      = CITY_STATS.get(city_name, {}).get("mean_pm25", 20.0)
+    level_key = get_aqi_level(pm25)
+    level     = AQI_LEVELS[level_key]["en"]
+
+    if pm25 < 15:
+        advisory_short = "Safe"
+    elif pm25 < 35:
+        advisory_short = "Limit outdoor"
+    elif pm25 < 55:
+        advisory_short = "Avoid outdoor"
+    else:
+        advisory_short = "Stay indoors"
+
+    reply = f"{city_name}: PM2.5 {pm25:.0f}µg/m³ ({level}). {advisory_short} -AirSense"
+    # Truncate to 160 chars just in case
+    reply = reply[:160]
+    return PlainTextResponse(reply)
